@@ -1733,35 +1733,7 @@ function initEventListeners() {
     openModal("superRoleModal");
   });
 
-  const hospCreateRoleBtn = document.getElementById("hospCreateRoleBtn");
-  if (hospCreateRoleBtn) {
-    hospCreateRoleBtn.addEventListener("click", () => {
-      document.getElementById("superRoleForm").reset();
-      const hospGroup = document.getElementById("super_role_hosp_group");
-      if (hospGroup) hospGroup.style.display = "none";
-      openModal("superRoleModal");
-    });
-  }
 
-  const hospMenuRoleSelect = document.getElementById("hosp_menu_role_select");
-  if (hospMenuRoleSelect) {
-    hospMenuRoleSelect.addEventListener("change", (e) => {
-      loadHospRoleMenusConfig(e.target.value);
-    });
-  }
-
-  const hospLoadMenuConfigBtn = document.getElementById("hospLoadMenuConfigBtn");
-  if (hospLoadMenuConfigBtn) {
-    hospLoadMenuConfigBtn.addEventListener("click", () => {
-      const role = document.getElementById("hosp_menu_role_select").value;
-      loadHospRoleMenusConfig(role);
-    });
-  }
-
-  const hospSaveMenuConfigBtn = document.getElementById("hospSaveMenuConfigBtn");
-  if (hospSaveMenuConfigBtn) {
-    hospSaveMenuConfigBtn.addEventListener("click", saveHospRoleMenu);
-  }
 
   const superMenuHospitalSelect = document.getElementById("super_menu_hospital_select");
   if (superMenuHospitalSelect) {
@@ -1783,8 +1755,47 @@ function initEventListeners() {
     document.getElementById("roomForm").reset();
     document.getElementById("room_id").value = "";
     document.getElementById("roomModalTitle").textContent = "Add Clinical Room";
+    
+    const roomHospGroup = document.getElementById("room_hosp_group");
+    if (roomHospGroup) roomHospGroup.style.display = "none";
+
     openModal("roomModal");
   });
+
+  const superAddRoomBtn = document.getElementById("superAddRoomBtn");
+  if (superAddRoomBtn) {
+    superAddRoomBtn.addEventListener("click", () => {
+      document.getElementById("roomForm").reset();
+      document.getElementById("room_id").value = "";
+      document.getElementById("roomModalTitle").textContent = "Add Clinical Room to Hospital";
+      
+      const roomHospGroup = document.getElementById("room_hosp_group");
+      if (roomHospGroup) roomHospGroup.style.display = "block";
+
+      const superRoomHospSelect = document.getElementById("super_room_hospital_select");
+      const roomHospSelect = document.getElementById("room_hospital_id");
+      if (superRoomHospSelect && roomHospSelect) {
+        roomHospSelect.value = superRoomHospSelect.value;
+      }
+
+      openModal("roomModal");
+    });
+  }
+
+  const superFetchRoomsBtn = document.getElementById("superFetchRoomsBtn");
+  if (superFetchRoomsBtn) {
+    superFetchRoomsBtn.addEventListener("click", () => {
+      const hospId = document.getElementById("super_room_hospital_select").value;
+      loadSuperHospitalRooms(hospId);
+    });
+  }
+
+  const superRoomHospitalSelect = document.getElementById("super_room_hospital_select");
+  if (superRoomHospitalSelect) {
+    superRoomHospitalSelect.addEventListener("change", (e) => {
+      loadSuperHospitalRooms(e.target.value);
+    });
+  }
 
   document.getElementById("allocateRoomBtn").addEventListener("click", async () => {
     document.getElementById("allocationForm").reset();
@@ -2293,6 +2304,15 @@ async function loadRooms() {
   const allocsTbody = document.getElementById("allocationsTableBody");
   const visitsTbody = document.getElementById("visitsTableBody");
 
+  const user = getUser();
+  const addRoomBtn = document.getElementById("addRoomBtn");
+  if (addRoomBtn) {
+    addRoomBtn.style.display = (user && user.role === 'super_admin') ? '' : 'none';
+  }
+
+  const roomActionsHeaders = document.querySelectorAll(".room-actions-col");
+  roomActionsHeaders.forEach(el => el.style.display = (user && user.role === 'super_admin') ? '' : 'none');
+
   // 1. Fetch & Load Rooms list
   try {
     const res = await fetch(`${API_BASE}/rooms`, { headers: authHeaders() });
@@ -2307,12 +2327,13 @@ async function loadRooms() {
             <td data-label="Type">${esc(r.room_type)}</td>
             <td data-label="Status"><span class="badge badge-${r.status === 'available' ? 'paid' : r.status === 'occupied' ? 'unpaid' : 'partial'}">${esc(r.status)}</span></td>
             <td data-label="Price / Day"><strong>${formatCurrency(r.price_per_day)}</strong></td>
+            ${(user && user.role === 'super_admin') ? `
             <td data-label="Actions">
               <div style="display: flex; gap: 6px;">
                 <button class="action-btn btn-edit" onclick="editRoom(${r.id})">Edit</button>
                 <button class="action-btn btn-delete" onclick="deleteRoom(${r.id})">Delete</button>
               </div>
-            </td>
+            </td>` : ''}
           </tr>
         `).join("");
       }
@@ -2392,7 +2413,15 @@ async function saveRoom(e) {
     if (res.ok && result.success) {
       showToast(id ? "Room inventory updated!" : "Room registered successfully!", "success");
       closeModal("roomModal");
-      loadRooms();
+      const user = getUser();
+      if (user && user.role === 'super_admin') {
+        const activeHospSelect = document.getElementById("super_room_hospital_select");
+        if (activeHospSelect) {
+          loadSuperHospitalRooms(activeHospSelect.value);
+        }
+      } else {
+        loadRooms();
+      }
     } else {
       showToast(result.error || "Failed to save room details", "error");
     }
@@ -2413,6 +2442,18 @@ window.editRoom = async function (id) {
       document.getElementById("room_type_select").value = r.room_type;
       document.getElementById("room_status_select").value = r.status;
       document.getElementById("room_price").value = r.price_per_day;
+
+      // Handle target hospital selection display
+      const roomHospGroup = document.getElementById("room_hosp_group");
+      const roomHospSelect = document.getElementById("room_hospital_id");
+      const user = getUser();
+      if (user && user.role === 'super_admin') {
+        if (roomHospGroup) roomHospGroup.style.display = "block";
+        if (roomHospSelect) roomHospSelect.value = r.hospital_id || "";
+      } else {
+        if (roomHospGroup) roomHospGroup.style.display = "none";
+      }
+
       openModal("roomModal");
     }
   } catch (err) {
@@ -2429,7 +2470,15 @@ window.deleteRoom = async function (id) {
     });
     if (res.ok) {
       showToast("Room removed from inventory", "success");
-      loadRooms();
+      const user = getUser();
+      if (user && user.role === 'super_admin') {
+        const activeHospSelect = document.getElementById("super_room_hospital_select");
+        if (activeHospSelect) {
+          loadSuperHospitalRooms(activeHospSelect.value);
+        }
+      } else {
+        loadRooms();
+      }
     } else {
       const data = await res.json();
       showToast(data.error || "Delete failed", "error");
@@ -2691,9 +2740,6 @@ async function loadHospitalSetup() {
       document.getElementById("setupStatsDoctors").textContent = statsData.stats.doctors;
       document.getElementById("setupStatsRooms").textContent = statsData.stats.rooms;
     }
-
-    // Load hospital custom roles & menus config
-    await loadHospitalRolesAndMenus();
   } catch (err) {
     showToast("Failed to load hospital settings", "error");
   }
@@ -2764,17 +2810,22 @@ async function loadSuperPanel() {
       const superMenuHospitalSelect = document.getElementById("super_menu_hospital_select");
       const superRoleHospSelect = document.getElementById("super_role_hosp_select");
       const superUserHospitalSelect = document.getElementById("super_user_hospital_select");
+      const superRoomHospitalSelect = document.getElementById("super_room_hospital_select");
       const staffHospitalSelect = document.getElementById("staff_hospital_id");
+      const roomHospitalSelect = document.getElementById("room_hospital_id");
 
       const optionsHTML = dataHosp.hospitals.map(h => `<option value="${h.id}">${esc(h.name)}</option>`).join("");
       if (superMenuHospitalSelect) superMenuHospitalSelect.innerHTML = optionsHTML;
       if (superRoleHospSelect) superRoleHospSelect.innerHTML = optionsHTML;
       if (superUserHospitalSelect) superUserHospitalSelect.innerHTML = optionsHTML;
+      if (superRoomHospitalSelect) superRoomHospitalSelect.innerHTML = optionsHTML;
       if (staffHospitalSelect) staffHospitalSelect.innerHTML = optionsHTML;
+      if (roomHospitalSelect) roomHospitalSelect.innerHTML = optionsHTML;
 
-      // Trigger user query for selected hospital
+      // Trigger queries for selected hospital
       if (dataHosp.hospitals.length > 0) {
         loadSuperHospitalUsers(dataHosp.hospitals[0].id);
+        loadSuperHospitalRooms(dataHosp.hospitals[0].id);
       }
 
       if (dataHosp.hospitals.length === 0) {
@@ -3090,5 +3141,44 @@ async function loadSuperHospitalUsers(hospId) {
     }).join("");
   } catch (err) {
     tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">Network error fetching users.</td></tr>';
+  }
+}
+
+async function loadSuperHospitalRooms(hospId) {
+  const tbody = document.getElementById("superRoomsTableBody");
+  if (!tbody) return;
+
+  tbody.innerHTML = '<tr><td colspan="5" class="loading-cell"><span class="spinner"></span> Loading hospital rooms inventory...</td></tr>';
+
+  try {
+    const res = await fetch(`${API_BASE}/rooms?hospital_id=${hospId}`, { headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">Failed to retrieve rooms list.</td></tr>';
+      return;
+    }
+
+    const rooms = data.rooms || [];
+    if (rooms.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">No clinical rooms registered for this hospital.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rooms.map(r => `
+      <tr>
+        <td><strong>${esc(r.room_no)}</strong></td>
+        <td>${esc(r.room_type)}</td>
+        <td><strong>${formatCurrency(r.price_per_day)}</strong></td>
+        <td><span class="badge badge-${r.status === 'available' ? 'paid' : r.status === 'occupied' ? 'unpaid' : 'partial'}">${esc(r.status)}</span></td>
+        <td>
+          <div style="display: flex; gap: 6px;">
+            <button class="action-btn btn-edit" onclick="editRoom(${r.id})" title="Modify room configurations">Edit</button>
+            <button class="action-btn btn-delete" onclick="deleteRoom(${r.id})" title="Remove room from hospital inventory">Delete</button>
+          </div>
+        </td>
+      </tr>
+    `).join("");
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">Network error fetching clinical rooms.</td></tr>';
   }
 }

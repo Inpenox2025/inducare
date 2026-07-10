@@ -382,7 +382,7 @@
                                     <th>Type</th>
                                     <th>Status</th>
                                     <th>Price / Day</th>
-                                    <th>Actions</th>
+                                    <th class="room-actions-col">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="roomsTableBody">
@@ -487,78 +487,6 @@
                 </div>
             </div>
 
-            <!-- Hospital Admin Roles & Menu Configurator -->
-            <div class="overview-details-grid" style="grid-template-columns: 0.4fr 0.6fr; gap: 24px; margin-top: 24px;">
-                <!-- Hospital Custom Roles Directory -->
-                <div class="details-card">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <h3>🔑 Hospital Custom Roles</h3>
-                        <button class="btn btn-primary" id="hospCreateRoleBtn" style="padding:6px 12px; font-size:12px;">+ Create Role</button>
-                    </div>
-                    <div class="table-container minimal" style="margin-top: 16px; max-height: 250px; overflow-y:auto;">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Role Name</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody id="hospRolesTableBody">
-                                <tr>
-                                    <td colspan="2" class="empty-cell">No custom roles.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Hospital Menu Configurator -->
-                <div class="details-card">
-                    <h3>🛡️ Role Menu Privileges Configuration</h3>
-                    <div class="form-row" style="margin-top: 16px; align-items: flex-end;">
-                        <div class="form-group" style="flex: 0.5;">
-                            <label for="hosp_menu_role_select">Select Role Account <span class="req">*</span></label>
-                            <select class="form-control" id="hosp_menu_role_select">
-                                <!-- Populated dynamically -->
-                            </select>
-                        </div>
-                        <div style="flex: 0.5; display: flex; gap: 12px;">
-                            <button class="btn btn-outline" id="hospLoadMenuConfigBtn" type="button">Fetch Menus</button>
-                            <button class="btn btn-primary" id="hospSaveMenuConfigBtn" type="button" style="background-color: var(--success); box-shadow: 0 4px 12px rgba(16,185,129,0.2);">Save Mapping</button>
-                        </div>
-                    </div>
-
-                    <div style="margin-top: 16px; border-top: 1.5px solid var(--border); padding-top: 12px;">
-                        <h4>Active Sidebar Tabs:</h4>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-top: 12px;">
-                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor:pointer;">
-                                <input type="checkbox" name="hosp_menu_tab" value="overview" data-label="Overview Panel" data-icon="📊"> 📊 Overview Panel
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor:pointer;">
-                                <input type="checkbox" name="hosp_menu_tab" value="patients" data-label="Patients Registry" data-icon="👥"> 👥 Patients Registry
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor:pointer;">
-                                <input type="checkbox" name="hosp_menu_tab" value="appointments" data-label="Appointments" data-icon="📅"> 📅 Appointments
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor:pointer;">
-                                <input type="checkbox" name="hosp_menu_tab" value="invoices" data-label="Billing & Receipts" data-icon="💳"> 💳 Billing & Receipts
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor:pointer;">
-                                <input type="checkbox" name="hosp_menu_tab" value="doctors" data-label="Doctors Registry" data-icon="👨‍⚕️"> 👨‍⚕️ Doctors Registry
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor:pointer;">
-                                <input type="checkbox" name="hosp_menu_tab" value="rooms" data-label="Rooms & Allocations" data-icon="🏨"> 🏨 Rooms & Allocations
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor:pointer;">
-                                <input type="checkbox" name="hosp_menu_tab" value="staff" data-label="Staff Settings" data-icon="🔑"> 🔑 User Accounts
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor:pointer;">
-                                <input type="checkbox" name="hosp_menu_tab" value="hospital-setup" data-label="Hospital Setup" data-icon="⚙️"> ⚙️ Hospital Setup
-                            </label>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </section>
 
         <!-- ═══════ SECTION: SUPER ADMIN PANEL ═══════ -->
@@ -699,6 +627,45 @@
                         <tbody id="superUsersTableBody">
                             <tr>
                                 <td colspan="5" class="loading-cell">Select a hospital and fetch users...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Hospital Rooms Inventory Manager -->
+            <div class="details-card" style="margin-top: 24px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3>🏨 Hospital Clinical Rooms Inventory Management</h3>
+                    <button class="btn btn-primary" id="superAddRoomBtn" style="padding:6px 12px; font-size:12px;">+ Add Room</button>
+                </div>
+                
+                <div class="form-row" style="margin-top: 16px; align-items: flex-end; gap: 16px;">
+                    <div class="form-group" style="flex: 0.4; margin-bottom: 0;">
+                        <label for="super_room_hospital_select">Filter by Hospital <span class="req">*</span></label>
+                        <select class="form-control" id="super_room_hospital_select">
+                            <!-- Populated dynamically with hospitals -->
+                        </select>
+                    </div>
+                    <div>
+                        <button class="btn btn-outline" id="superFetchRoomsBtn" type="button">Fetch Rooms</button>
+                    </div>
+                </div>
+
+                <div class="table-container minimal" style="margin-top: 16px; max-height: 350px; overflow-y:auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Room Number</th>
+                                <th>Room Type</th>
+                                <th>Price / Day</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="superRoomsTableBody">
+                            <tr>
+                                <td colspan="5" class="loading-cell">Select a hospital and fetch rooms...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -1436,6 +1403,12 @@
             <div class="modal-body">
                 <form id="roomForm" autocomplete="off">
                     <input type="hidden" id="room_id" name="id">
+                    <div class="form-group" id="room_hosp_group" style="display:none;">
+                        <label for="room_hospital_id">Target Hospital <span class="req">*</span></label>
+                        <select class="form-control" id="room_hospital_id" name="hospital_id">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
                     <div class="form-group">
                         <label for="room_no_input">Room Number <span class="req">*</span></label>
                         <input type="text" class="form-control" id="room_no_input" name="room_no" placeholder="e.g. Room 105" required>

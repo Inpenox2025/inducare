@@ -300,9 +300,9 @@ module.exports = async function handler(req, res) {
         }
       }
 
-      // Require admin permissions to modify room inventory
-      if (user.role !== 'admin' && user.role !== 'super_admin') {
-        return res.status(403).json({ error: 'Access denied. Administrator privileges required.' });
+      // Require Super Admin permissions to modify room inventory
+      if (user.role !== 'super_admin') {
+        return res.status(403).json({ error: 'Access denied. Super Administrator privileges required.' });
       }
 
       if (req.method === 'PUT') {
@@ -382,9 +382,9 @@ module.exports = async function handler(req, res) {
         }
       }
 
-      // Require admin permissions to modify room inventory
-      if (user.role !== 'admin' && user.role !== 'super_admin') {
-        return res.status(403).json({ error: 'Access denied. Administrator privileges required.' });
+      // Require Super Admin permissions to modify room inventory
+      if (user.role !== 'super_admin') {
+        return res.status(403).json({ error: 'Access denied. Super Administrator privileges required.' });
       }
 
       if (req.method === 'POST') {

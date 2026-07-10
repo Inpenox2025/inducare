@@ -244,7 +244,6 @@ module.exports = async function handler(req, res) {
           { role_name: 'admin', menu_key: 'invoices', menu_label: 'Billing & Receipts', menu_icon: '💳' },
           { role_name: 'admin', menu_key: 'doctors', menu_label: 'Doctors Registry', menu_icon: '👨‍⚕️' },
           { role_name: 'admin', menu_key: 'rooms', menu_label: 'Rooms & Allocations', menu_icon: '🏨' },
-          { role_name: 'admin', menu_key: 'staff', menu_label: 'Staff Settings', menu_icon: '👩‍⚕️' },
           { role_name: 'admin', menu_key: 'hospital-setup', menu_label: 'Hospital Setup', menu_icon: '⚙️' },
           
           // Nurse menus
