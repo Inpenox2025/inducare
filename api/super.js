@@ -77,14 +77,16 @@ module.exports = async function handler(req, res) {
     // POST/PUT: Update hospital profile
     if (req.method === 'POST' || req.method === 'PUT') {
       try {
-        const { name, logo_data } = req.body;
+        const { name, logo_data, gst_no, gst_percent } = req.body;
         const hostId = user.role === 'super_admin' ? (req.body.hospital_id ? parseInt(req.body.hospital_id) : null) : user.hospital_id;
         if (!hostId) return res.status(400).json({ error: 'Hospital ID is required' });
 
         const rows = await sql`
           UPDATE hospitals SET
             name = ${name.trim()},
-            logo_data = ${logo_data || null}
+            logo_data = ${logo_data || null},
+            gst_no = ${gst_no !== undefined ? gst_no.trim() : null},
+            gst_percent = ${gst_percent !== undefined ? parseFloat(gst_percent) || 0.00 : 0.00}
           WHERE id = ${hostId}
           RETURNING *
         `;

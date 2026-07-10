@@ -166,11 +166,27 @@ module.exports = async function handler(req, res) {
           const countVal = parseInt(countRes[0].total);
           const invNo = `INSP${hostId}${dateStr}${countVal}`;
           const desc = `Consultation Fee receipt for appointment with ${doctor_name}`;
+          
+          const rawFee = parseFloat(fee) || 0.00;
+          const hospRes = await sql`SELECT gst_no, gst_percent FROM hospitals WHERE id = ${hostId}`;
+          const hosp = hospRes[0];
+          
+          let taxableAmt = rawFee;
+          let gstAmt = 0.00;
+          let gstRate = 0.00;
+          let finalTotalAmt = rawFee;
+
+          if (hosp && hosp.gst_no && hosp.gst_no.trim() !== "" && hosp.gst_percent && parseFloat(hosp.gst_percent) > 0) {
+            gstRate = parseFloat(hosp.gst_percent);
+            gstAmt = Math.round((rawFee * gstRate / 100) * 100) / 100;
+            finalTotalAmt = rawFee + gstAmt;
+          }
+
           await sql`
             INSERT INTO invoices (
-              invoice_no, patient_id, appointment_id, description, amount, paid_amount, due_amount, status, created_by, hospital_id
+              invoice_no, patient_id, appointment_id, description, amount, paid_amount, due_amount, status, created_by, hospital_id, taxable_amount, gst_amount, gst_rate
             ) VALUES (
-              ${invNo}, ${patientIdInt}, ${appointment.id}, ${desc}, ${fee || 0.00}, 0.00, ${fee || 0.00}, 'unpaid', ${user.id}, ${hostId}
+              ${invNo}, ${patientIdInt}, ${appointment.id}, ${desc}, ${finalTotalAmt}, 0.00, ${finalTotalAmt}, 'unpaid', ${user.id}, ${hostId}, ${taxableAmt}, ${gstAmt}, ${gstRate}
             )
           `;
         }

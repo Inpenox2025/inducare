@@ -49,7 +49,7 @@ module.exports = async function handler(req, res) {
       const rows = await sql`
         SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile, p.address as patient_address,
                a.doctor_name, a.appointment_date, a.appointment_time,
-               h.name as hospital_name, h.logo_data as hospital_logo
+               h.name as hospital_name, h.logo_data as hospital_logo, h.gst_no as gst_no
         FROM invoices i
         JOIN patients p ON i.patient_id = p.id
         LEFT JOIN appointments a ON i.appointment_id = a.id
@@ -72,15 +72,15 @@ module.exports = async function handler(req, res) {
 
       // Hospital Header (Custom Dynamic Branding)
       let logoWritten = false;
+      const headerStartY = 45;
+      
       if (invoice.hospital_logo && invoice.hospital_logo.startsWith("data:image")) {
         try {
           const base64Data = invoice.hospital_logo.split(",")[1];
           const imgBuffer = Buffer.from(base64Data, "base64");
-          doc.image(imgBuffer, {
-            fit: [140, 50],
-            align: "center",
+          doc.image(imgBuffer, 50, headerStartY, {
+            fit: [140, 50]
           });
-          doc.moveDown(0.4);
           logoWritten = true;
         } catch (e) {
           console.error("Failed to render custom base64 logo in PDF:", e);
@@ -92,20 +92,41 @@ module.exports = async function handler(req, res) {
           .fontSize(22)
           .font("Helvetica-Bold")
           .fillColor("#00bba8")
-          .text(invoice.hospital_name ? invoice.hospital_name.toUpperCase() : "INDUCARE", { align: "center" });
+          .text(invoice.hospital_name ? invoice.hospital_name.toUpperCase() : "INDUCARE", 50, headerStartY, { align: "left" });
       }
 
+      // Draw Hospital details on the top right
       doc
-        .fontSize(9)
+        .fontSize(10)
+        .font("Helvetica-Bold")
+        .fillColor("#0f172a")
+        .text((invoice.hospital_name || "INDUCARE").toUpperCase(), 350, headerStartY, { align: "right", width: 195 });
+        
+      doc
+        .fontSize(8.5)
         .font("Helvetica")
-        .fillColor("#607377")
-        .text(invoice.hospital_name ? "SMART CUSTOM RECEIPT" : "SMART CLINIC & HOSPITAL ERP", {
-          align: "center",
-        });
-      doc.fontSize(9).text("Contact: +91 8688932150", {
-        align: "center",
-      });
-      doc.moveDown(0.8);
+        .fillColor("#64748b")
+        .text(invoice.hospital_name ? "SMART CUSTOM RECEIPT" : "SMART CLINIC & HOSPITAL ERP", 350, headerStartY + 15, { align: "right", width: 195 });
+
+      doc
+        .fontSize(8.5)
+        .font("Helvetica")
+        .fillColor("#64748b")
+        .text("Contact: +91 8688932150", 350, headerStartY + 27, { align: "right", width: 195 });
+
+      let nextYOffset = 39;
+      if (invoice.gst_no) {
+        doc
+          .fontSize(8.5)
+          .font("Helvetica")
+          .fillColor("#64748b")
+          .text(`GSTIN: ${invoice.gst_no.toUpperCase()}`, 350, headerStartY + nextYOffset, { align: "right", width: 195 });
+        nextYOffset += 12;
+      }
+
+      // Move cursor below the header
+      doc.y = headerStartY + nextYOffset + 10;
+      doc.moveDown(0.2);
 
       // Decorative divider
       doc
@@ -114,7 +135,7 @@ module.exports = async function handler(req, res) {
         .strokeColor("#cbd5e1")
         .lineWidth(1.5)
         .stroke();
-      doc.moveDown(1);
+      doc.moveDown(0.8);
 
       // Title & Date
       doc
@@ -201,7 +222,11 @@ module.exports = async function handler(req, res) {
         tableRowY,
         { width: 380 },
       );
-      doc.text(formatCurrency(invoice.amount), 450, tableRowY, {
+      const printRowAmt = (invoice.gst_rate && parseFloat(invoice.gst_rate) > 0 && invoice.taxable_amount) 
+        ? parseFloat(invoice.taxable_amount) 
+        : parseFloat(invoice.amount);
+
+      doc.text(formatCurrency(printRowAmt), 450, tableRowY, {
         align: "right",
         width: 95,
       });
@@ -217,41 +242,96 @@ module.exports = async function handler(req, res) {
       doc.moveDown(0.6);
 
       const totalsY = doc.y;
-      doc
-        .font("Helvetica-Bold")
-        .fillColor("#475569")
-        .text("Total Amount:", 320, totalsY);
-      doc
-        .font("Helvetica-Bold")
-        .fillColor("#0f172a")
-        .text(formatCurrency(invoice.amount), 450, totalsY, {
-          align: "right",
-          width: 95,
-        });
+      let offset = 0;
+
+      if (invoice.gst_rate && parseFloat(invoice.gst_rate) > 0 && invoice.taxable_amount) {
+        doc
+          .font("Helvetica-Bold")
+          .fillColor("#475569")
+          .text("Taxable Value:", 320, totalsY);
+        doc
+          .font("Helvetica")
+          .fillColor("#0f172a")
+          .text(formatCurrency(invoice.taxable_amount), 450, totalsY, {
+            align: "right",
+            width: 95,
+          });
+        
+        offset += 16;
+        
+        const halfRate = parseFloat(invoice.gst_rate) / 2;
+        const halfGstAmt = parseFloat(invoice.gst_amount) / 2;
+        
+        doc
+          .font("Helvetica-Bold")
+          .fillColor("#475569")
+          .text(`CGST (${halfRate}%):`, 320, totalsY + offset);
+        doc
+          .font("Helvetica")
+          .fillColor("#0f172a")
+          .text(formatCurrency(halfGstAmt), 450, totalsY + offset, {
+            align: "right",
+            width: 95,
+          });
+        
+        offset += 16;
+
+        doc
+          .font("Helvetica-Bold")
+          .fillColor("#475569")
+          .text(`SGST (${halfRate}%):`, 320, totalsY + offset);
+        doc
+          .font("Helvetica")
+          .fillColor("#0f172a")
+          .text(formatCurrency(halfGstAmt), 450, totalsY + offset, {
+            align: "right",
+            width: 95,
+          });
+          
+        offset += 16;
+      }
 
       doc
         .font("Helvetica-Bold")
         .fillColor("#475569")
-        .text("Amount Paid:", 320, totalsY + 16);
+        .text("Total Amount:", 320, totalsY + offset);
+      doc
+        .font("Helvetica-Bold")
+        .fillColor("#0f172a")
+        .text(formatCurrency(invoice.amount), 450, totalsY + offset, {
+          align: "right",
+          width: 95,
+        });
+
+      offset += 16;
+
+      doc
+        .font("Helvetica-Bold")
+        .fillColor("#475569")
+        .text("Amount Paid:", 320, totalsY + offset);
       doc
         .font("Helvetica")
         .fillColor("#0f172a")
-        .text(formatCurrency(invoice.paid_amount), 450, totalsY + 16, {
+        .text(formatCurrency(invoice.paid_amount), 450, totalsY + offset, {
           align: "right",
           width: 95,
         });
 
+      offset += 16;
+
       doc
         .font("Helvetica-Bold")
         .fillColor("#475569")
-        .text("Outstanding Due:", 320, totalsY + 32);
+        .text("Outstanding Due:", 320, totalsY + offset);
       doc
         .font("Helvetica-Bold")
         .fillColor("#ef4444")
-        .text(formatCurrency(invoice.due_amount), 450, totalsY + 32, {
+        .text(formatCurrency(invoice.due_amount), 450, totalsY + offset, {
           align: "right",
           width: 95,
         });
+
+      doc.y = totalsY + offset;
 
       // Highlight Status Banner
       doc.moveDown(3.5);
@@ -484,13 +564,27 @@ module.exports = async function handler(req, res) {
           const countVal = parseInt(countRes[0].total);
           const invNo = `INSP${hostId}${dateStr}${countVal}`;
           const totalAmt = parseFloat(amount);
+          
+          const hospRes = await sql`SELECT gst_no, gst_percent FROM hospitals WHERE id = ${hostId}`;
+          const hosp = hospRes[0];
+          
+          let taxableAmt = totalAmt;
+          let gstAmt = 0.00;
+          let gstRate = 0.00;
+          let finalTotalAmt = totalAmt;
+
+          if (hosp && hosp.gst_no && hosp.gst_no.trim() !== "" && hosp.gst_percent && parseFloat(hosp.gst_percent) > 0) {
+            gstRate = parseFloat(hosp.gst_percent);
+            gstAmt = Math.round((totalAmt * gstRate / 100) * 100) / 100;
+            finalTotalAmt = totalAmt + gstAmt;
+          }
 
           let paidAmt = 0.0;
           let isPaid = status || "unpaid";
           if (isPaid === "paid") {
-            paidAmt = totalAmt;
+            paidAmt = finalTotalAmt;
           }
-          const dueAmt = totalAmt - paidAmt;
+          const dueAmt = finalTotalAmt - paidAmt;
 
           const patientIdInt = parseInt(patient_id);
           const appointmentIdInt = appointment_id
@@ -501,10 +595,10 @@ module.exports = async function handler(req, res) {
 
           const rows = await sql`
             INSERT INTO invoices (
-              invoice_no, patient_id, appointment_id, description, amount, paid_amount, due_amount, status, payment_mode, payment_date, created_by, hospital_id
+              invoice_no, patient_id, appointment_id, description, amount, paid_amount, due_amount, status, payment_mode, payment_date, created_by, hospital_id, taxable_amount, gst_amount, gst_rate
             ) VALUES (
-              ${invNo}, ${patientIdInt}, ${appointmentIdInt}, ${description}, ${totalAmt}, ${paidAmt}, ${dueAmt}, ${isPaid},
-              ${payment_mode || null}, ${paymentDateVal}, ${user.id}, ${hostId}
+              ${invNo}, ${patientIdInt}, ${appointmentIdInt}, ${description}, ${finalTotalAmt}, ${paidAmt}, ${dueAmt}, ${isPaid},
+              ${payment_mode || null}, ${paymentDateVal}, ${user.id}, ${hostId}, ${taxableAmt}, ${gstAmt}, ${gstRate}
             ) RETURNING *
           `;
 

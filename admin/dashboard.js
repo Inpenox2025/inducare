@@ -349,6 +349,12 @@ function renderCaseSheetHTML(p) {
   const dob = p.date_of_birth ? formatDate(p.date_of_birth) : "—";
   const gender = p.gender || "—";
 
+  const user = getUser();
+  const dynHospTitle = user && user.hospital_name ? user.hospital_name.toUpperCase() : "INDUCARE";
+  const headerLogoHTML = user && user.hospital_logo 
+    ? `<img src="${user.hospital_logo}" style="max-height:50px; display:block; margin: 0 auto 8px auto; object-fit: contain;">`
+    : `<div style="font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; color: #00bba8; letter-spacing: 0.5px; text-align: center; margin-bottom: 8px;">${dynHospTitle}</div>`;
+
   let cs = {};
   if (p.case_sheet_data) {
     try {
@@ -452,7 +458,7 @@ function renderCaseSheetHTML(p) {
     <div class="case-sheet-view">
       <!-- 📄 PAGE 1: CLINICAL CASE SHEET -->
       <div class="case-sheet-header">
-        <div style="font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; color: #00bba8; letter-spacing: 0.5px; text-align: center; margin-bottom: 8px;">INDUCARE</div>
+        ${headerLogoHTML}
         <div class="case-sheet-title">Patient Case Sheet</div>
       </div>
 
@@ -605,7 +611,7 @@ function renderCaseSheetHTML(p) {
 
       <!-- 📄 PAGE 2: CLINICAL PROTOCOL & TREATMENT PLAN -->
       <div class="case-sheet-header">
-        <div style="font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; color: #00bba8; letter-spacing: 0.5px; text-align: center; margin-bottom: 8px;">INDUCARE</div>
+        ${headerLogoHTML}
         <div class="case-sheet-title">Patient Protocol & Treatment Plan</div>
       </div>
 
@@ -704,7 +710,7 @@ function renderCaseSheetHTML(p) {
           return `
             <div class="case-sheet-page-break"></div>
             <div class="case-sheet-header" style="margin-top: 40px;">
-              ${user && user.hospital_logo ? `<img src="${user.hospital_logo}" style="max-height:50px; display:block; margin: 0 auto 8px auto;">` : `<div style="font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; color: #00bba8; letter-spacing: 0.5px; text-align: center; margin-bottom: 8px;">${dynHospTitle}</div>`}
+              ${headerLogoHTML}
               <div class="case-sheet-title">Patient Progress & Doctor Visits Sheet</div>
             </div>
 
@@ -2719,6 +2725,9 @@ async function loadHospitalSetup() {
     if (res.ok && data.success && data.hospital) {
       const h = data.hospital;
       document.getElementById("hosp_name_input").value = h.name || "";
+      document.getElementById("hosp_gst_no_input").value = h.gst_no || "";
+      document.getElementById("hosp_gst_percent_input").value = h.gst_percent !== undefined ? h.gst_percent : "0.00";
+
       const preview = document.getElementById("hosp_logo_preview");
       const emptyText = document.getElementById("hosp_logo_empty_text");
       if (h.logo_data) {
@@ -2749,12 +2758,14 @@ async function saveHospitalSetup(e) {
   e.preventDefault();
   const name = document.getElementById("hosp_name_input").value;
   const logo = window.tempHospitalLogoBase64 || "";
+  const gst_no = document.getElementById("hosp_gst_no_input").value;
+  const gst_percent = document.getElementById("hosp_gst_percent_input").value;
 
   try {
     const res = await fetch(`${API_BASE}/super?action=hospital`, {
       method: "POST",
       headers: authHeaders(),
-      body: JSON.stringify({ name, logo_data: logo })
+      body: JSON.stringify({ name, logo_data: logo, gst_no, gst_percent })
     });
     const data = await res.json();
     if (res.ok && data.success) {
