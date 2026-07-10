@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Dashboard — Ozonature</title>
+    <link rel="stylesheet" href="/admin/dashboard.css">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+</head>
+
+<body>
+
+    <!-- ═══════ SIDEBAR ═══════ -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <img src="/assets/ozonature%20logo.jpg" alt="Ozonature Logo" style="height: 36px; width: 36px; border-radius: 50%; object-fit: cover;">
+            <div class="brand-text">
+                Ozonature
+                <span>Staff Portal</span>
+            </div>
+            <button class="sidebar-close" id="sidebarClose">✕</button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active" data-tab="overview" id="navOverview">
+                <span class="nav-icon">📊</span> Overview
+            </a>
+            <a href="#" class="nav-item" data-tab="patients" id="navPatients">
+                <span class="nav-icon">👥</span> Patients Registry
+            </a>
+            <a href="#" class="nav-item" data-tab="appointments" id="navAppointments">
+                <span class="nav-icon">📅</span> Appointments
+            </a>
+            <a href="#" class="nav-item" data-tab="invoices" id="navInvoices">
+                <span class="nav-icon">💳</span> Billing & Receipts
+            </a>
+            <a href="#" class="nav-item" data-tab="staff" id="navStaff">
+                <span class="nav-icon">👩‍⚕️</span> Staff Management
+            </a>
+            <div class="nav-divider"></div>
+            <a href="../" class="nav-item">
+                <span class="nav-icon">🌐</span> View Website
+            </a>
+            <a href="#" class="nav-item" id="logoutBtn">
+                <span class="nav-icon">🚪</span> Logout
+            </a>
+        </nav>
+        <div class="sidebar-footer" style="flex-direction: column; align-items: stretch; gap: 8px;">
+            <div class="user-info" id="userInfo" style="border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 8px; margin-bottom: 4px;">
+                <div class="user-avatar" id="headerAvatar">U</div>
+                <div>
+                    <div class="user-name" id="userName">Staff Member</div>
+                    <div class="user-role" id="userRole">nurse</div>
+                </div>
+            </div>
+            <div style="font-size: 10px; color: #8e9ea2; text-align: center; line-height: 1.4;">
+                Developed & Maintained by<br>
+                <a href="https://inpenox.in" target="_blank" style="color: #00bba8; font-weight: 600; text-decoration: none;">Inpenox</a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ═══════ MAIN CONTENT ═══════ -->
+    <main class="main-content" id="mainContent">
+        <!-- Top Bar -->
+        <header class="topbar">
+            <button class="sidebar-toggle" id="sidebarToggle">☰</button>
+            <h1 class="page-title" id="pageTitle">Overview</h1>
+            <div class="topbar-right-info">
+                <span id="currentDateDisplay" style="font-size: 13px; color: var(--text3); font-weight: 500;">Saturday,
+                    July 4, 2026</span>
+            </div>
+        </header>
+
+        <!-- ═══════ SECTION: OVERVIEW ═══════ -->
+        <section id="tab-overview" class="tab-panel active">
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon patient-icon">👥</div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="statTotalPatients">0</div>
+                        <div class="stat-label">Total Patients</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon visit-icon">📅</div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="statTodayVisits">0</div>
+                        <div class="stat-label">Appointments Today</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon cash-icon">💵</div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="statCashReconciliation">₹ 0.00</div>
+                        <div class="stat-label">Collected in Cash</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon online-icon">📱</div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="statOnlineReconciliation">₹ 0.00</div>
+                        <div class="stat-label">Collected Online</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon due-icon">⚠️</div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="statOutstandingDues">₹ 0.00</div>
+                        <div class="stat-label">Outstanding Dues</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="overview-details-grid">
+                <!-- Doctor Productivity -->
+                <div class="details-card">
+                    <h3>👨‍⚕️ Doctor Productivity Reports</h3>
+                    <div class="table-container minimal">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Doctor Name</th>
+                                    <th>Appointments</th>
+                                    <th>Revenues Generated</th>
+                                </tr>
+                            </thead>
+                            <tbody id="doctorStatsBody">
+                                <tr>
+                                    <td colspan="3" class="empty-cell">No doctor stats computed.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Recent Invoices & Payments -->
+                <div class="details-card">
+                    <h3>💳 Recent Billing Updates</h3>
+                    <div class="table-container minimal">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Invoice No</th>
+                                    <th>Patient Name</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentInvoicesBody">
+                                <tr>
+                                    <td colspan="4" class="empty-cell">No recent invoices found.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════ SECTION: PATIENTS ═══════ -->
+        <section id="tab-patients" class="tab-panel">
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <input type="text" class="search-input" id="searchPatientInput"
+                        placeholder="🔍 Search patient by name, mobile, case history...">
+                </div>
+                <div class="toolbar-right">
+                    <button class="btn btn-primary" id="addPatientBtn">+ Add Patient</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Mobile</th>
+                            <th>Age / Gender</th>
+                            <th>Email</th>
+                            <th>Case Sheet</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="patientsTableBody">
+                        <tr>
+                            <td colspan="7" class="loading-cell"><span class="spinner"></span> Loading patient
+                                database...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination" id="patientsPagination"></div>
+        </section>
+
+        <!-- ═══════ SECTION: APPOINTMENTS ═══════ -->
+        <section id="tab-appointments" class="tab-panel">
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <input type="text" class="search-input" id="searchAppointmentInput"
+                        placeholder="🔍 Search appointments (patient, doctor)...">
+                    <select class="filter-select" id="filterAppointmentDate">
+                        <option value="">All Scheduled Dates</option>
+                        <option value="today">Today's Visits Only</option>
+                    </select>
+                </div>
+                <div class="toolbar-right">
+                    <button class="btn btn-primary" id="bookAppointmentBtn">+ Schedule Appointment</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Patient Name</th>
+                            <th>Doctor Consultant</th>
+                            <th>Visit Date</th>
+                            <th>Time slot</th>
+                            <th>Purpose</th>
+                            <th>Fee Amount</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="appointmentsTableBody">
+                        <tr>
+                            <td colspan="9" class="loading-cell"><span class="spinner"></span> Loading schedule
+                                records...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination" id="appointmentsPagination"></div>
+        </section>
+
+        <!-- ═══════ SECTION: INVOICES ═══════ -->
+        <section id="tab-invoices" class="tab-panel">
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <input type="text" class="search-input" id="searchInvoiceInput"
+                        placeholder="🔍 Search invoices by No., patient...">
+                    <select class="filter-select" id="filterInvoiceStatus">
+                        <option value="">All Billing Statuses</option>
+                        <option value="paid">Paid</option>
+                        <option value="unpaid">Unpaid</option>
+                        <option value="partially_paid">Partially Paid</option>
+                    </select>
+                </div>
+                <div class="toolbar-right">
+                    <button class="btn btn-primary" id="createInvoiceBtn">+ Create Custom Invoice</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Invoice No</th>
+                            <th>Patient Name</th>
+                            <th>Description</th>
+                            <th>Total Fee</th>
+                            <th>Paid Amount</th>
+                            <th>Outstanding Due</th>
+                            <th>Payment Status</th>
+                            <th>Payment Mode</th>
+                            <th>Payment Date</th>
+                            <th>Receipt Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="invoicesTableBody">
+                        <tr>
+                            <td colspan="10" class="loading-cell"><span class="spinner"></span> Loading invoices
+                                database...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination" id="invoicesPagination"></div>
+        </section>
+
+        <!-- ═══════ SECTION: STAFF ═══════ -->
+        <section id="tab-staff" class="tab-panel">
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <p class="section-desc" style="color: var(--text3); font-size:13px; font-weight:500;">
+                        Admins can manage hospital user credentials, edit roles, or perform password resets.
+                    </p>
+                </div>
+                <div class="toolbar-right">
+                    <button class="btn btn-primary" id="addStaffBtn">+ Add Staff User</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>User ID</th>
+                            <th>Staff Username</th>
+                            <th>Contact Info</th>
+                            <th>Role Account Type</th>
+                            <th>Created Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="staffTableBody">
+                        <tr>
+                            <td colspan="6" class="loading-cell"><span class="spinner"></span> Loading staff registry...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- ═══════════════════════════════════════
+   MODAL WINDOWS (CRUD & DATA CAPTURE)
+   ═══════════════════════════════════════ -->
+
+    <!-- 1. Patient Details Modal -->
+    <div class="modal-overlay" id="patientModal">
+        <div class="modal" id="patientModalContainer">
+            <div class="modal-header">
+                <h2 id="patientModalTitle">Register New Patient</h2>
+                <button class="modal-close" data-close="patientModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <!-- Modal Tabs (Visible/Active only during Edit) -->
+                <div class="modal-tabs" id="patientModalTabs" style="display: none;">
+                    <button type="button" class="modal-tab-btn active" data-form-tab="basic">Basic Info</button>
+                    <button type="button" class="modal-tab-btn" data-form-tab="symptoms">Symptoms & History</button>
+                    <button type="button" class="modal-tab-btn" data-form-tab="wellness">Wellness & Vitals</button>
+                    <button type="button" class="modal-tab-btn" data-form-tab="protocol">Treatments & Protocol</button>
+                </div>
+
+                <form id="patientForm" autocomplete="off">
+                    <input type="hidden" id="patient_id" name="id">
+
+                    <!-- Tab 1: Basic Info -->
+                    <div id="form-tab-basic" class="tab-content-pane active">
+                        <div class="form-group">
+                            <label for="patient_name">Patient's Full Name <span class="req">*</span></label>
+                            <input type="text" class="form-control" id="patient_name" name="full_name" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="patient_dob">Date of Birth</label>
+                                <input type="date" class="form-control" id="patient_dob" name="date_of_birth">
+                            </div>
+                            <div class="form-group">
+                                <label for="patient_gender">Gender</label>
+                                <select class="form-control" id="patient_gender" name="gender">
+                                    <option value="">Select Gender</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="patient_mobile">Mobile Number</label>
+                                <input type="tel" class="form-control" id="patient_mobile" name="mobile_no">
+                            </div>
+                            <div class="form-group">
+                                <label for="patient_email">Email Address</label>
+                                <input type="email" class="form-control" id="patient_email" name="email">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="patient_address">Residential Address</label>
+                            <input type="text" class="form-control" id="patient_address" name="address">
+                        </div>
+                        <div class="form-group">
+                            <label for="patient_history">Clinical History Notes / Existing Diagnosis</label>
+                            <textarea class="form-control" id="patient_history" name="medical_history" rows="3"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Symptoms & History -->
+                    <div id="form-tab-symptoms" class="tab-content-pane">
+                        <div class="form-group">
+                            <label for="cs_chief_complaint">Chief Complaint</label>
+                            <textarea class="form-control" id="cs_chief_complaint" name="cs_chief_complaint" rows="2" placeholder="Describe symptoms or reasons for the visit..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="cs_history_present_illness">History of Present Illness</label>
+                            <textarea class="form-control" id="cs_history_present_illness" name="cs_history_present_illness" rows="2" placeholder="Onset, duration, severity, etc..."></textarea>
+                        </div>
+
+                        <div class="form-section-header">Past Medical History — Conditions</div>
+                        <div class="checkbox-grid">
+                            <label class="checkbox-label"><input type="checkbox" name="cs_past_diabetes" value="true"> Diabetes Mellitus</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_past_hypertension" value="true"> Hypertension</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_past_thyroid" value="true"> Thyroid Disorder</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_past_cardiac" value="true"> Cardiac Disease</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_past_asthma" value="true"> Asthma / Respiratory</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_past_arthritis" value="true"> Arthritis / Joint Disorders</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_past_neuro" value="true"> Neurological Disorder</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_past_kidney" value="true"> Kidney Disease</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_past_liver" value="true"> Liver Disease</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_past_skin" value="true"> Skin Disorders</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_past_autoimmune" value="true"> Autoimmune Disorders</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_past_cancer" value="true"> Cancer History</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_past_psychological" value="true"> Psychological Disorders</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_past_other" value="true"> Other</label>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cs_past_surgeries">Previous Surgeries / Hospitalizations</label>
+                                <textarea class="form-control" id="cs_past_surgeries" name="cs_past_surgeries" rows="2" placeholder="List any previous operations..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="cs_past_medications">Current Medications</label>
+                                <textarea class="form-control" id="cs_past_medications" name="cs_past_medications" rows="2" placeholder="List medications presently being taken..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 3: Wellness & Vitals -->
+                    <div id="form-tab-wellness" class="tab-content-pane">
+                        <div class="form-section-header">Allergies</div>
+                        <div class="checkbox-grid">
+                            <label class="checkbox-label"><input type="checkbox" name="cs_drug_allergy" value="true"> Drug Allergy</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_environmental_allergy" value="true"> Environmental Allergy</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_food_allergy" value="true"> Food Allergy</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_no_known_allergies" value="true"> No Known Allergies</label>
+                        </div>
+                        <div class="form-group">
+                            <label for="cs_allergies_details">Allergies Details</label>
+                            <input type="text" class="form-control" id="cs_allergies_details" name="cs_allergies_details" placeholder="Specific allergic reactions / severity...">
+                        </div>
+
+                        <div class="form-section-header">Family History</div>
+                        <div class="checkbox-grid">
+                            <label class="checkbox-label"><input type="checkbox" name="cs_fam_diabetes" value="true"> Diabetes</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_fam_hypertension" value="true"> Hypertension</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_fam_cardiac" value="true"> Cardiac Disease</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_fam_cancer" value="true"> Cancer</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_fam_thyroid" value="true"> Thyroid Disorders</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_fam_neuro" value="true"> Neurological Disorders</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_fam_genetic" value="true"> Genetic Disorders</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_fam_other" value="true"> Other</label>
+                        </div>
+
+                        <div class="form-section-header">Lifestyle & Wellness Assessment</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Smoking</label>
+                                <div class="radio-group-flex">
+                                    <label class="radio-label"><input type="radio" name="cs_lifestyle_smoking" value="Yes"> Yes</label>
+                                    <label class="radio-label"><input type="radio" name="cs_lifestyle_smoking" value="No"> No</label>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Alcohol Consumption</label>
+                                <div class="radio-group-flex">
+                                    <label class="radio-label"><input type="radio" name="cs_lifestyle_alcohol" value="Yes"> Yes</label>
+                                    <label class="radio-label"><input type="radio" name="cs_lifestyle_alcohol" value="No"> No</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cs_lifestyle_water">Water Intake</label>
+                                <input type="text" class="form-control" id="cs_lifestyle_water" name="cs_lifestyle_water" placeholder="e.g. 2-3 Litres/day">
+                            </div>
+                            <div class="form-group">
+                                <label for="cs_lifestyle_diet">Diet Pattern</label>
+                                <input type="text" class="form-control" id="cs_lifestyle_diet" name="cs_lifestyle_diet" placeholder="e.g. Vegetarian / Keto / Balanced">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cs_lifestyle_sleep">Sleep Quality</label>
+                                <select class="form-control" id="cs_lifestyle_sleep" name="cs_lifestyle_sleep">
+                                    <option value="">Select Sleep Quality</option>
+                                    <option value="Good">Good</option>
+                                    <option value="Average">Average</option>
+                                    <option value="Poor">Poor</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="cs_lifestyle_activity">Physical Activity Level</label>
+                                <select class="form-control" id="cs_lifestyle_activity" name="cs_lifestyle_activity">
+                                    <option value="">Select Activity Level</option>
+                                    <option value="Sedentary">Sedentary</option>
+                                    <option value="Moderate">Moderate</option>
+                                    <option value="Active">Active</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cs_lifestyle_stress">Stress Level</label>
+                                <select class="form-control" id="cs_lifestyle_stress" name="cs_lifestyle_stress">
+                                    <option value="">Select Stress Level</option>
+                                    <option value="Low">Low</option>
+                                    <option value="Moderate">Moderate</option>
+                                    <option value="High">High</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-section-header">Vital Signs & Physical Assessment</div>
+                        <div class="form-row" style="grid-template-columns: repeat(3, 1fr);">
+                            <div class="form-group">
+                                <label for="cs_vital_height">Height (cm)</label>
+                                <input type="text" class="form-control" id="cs_vital_height" name="cs_vital_height" placeholder="Height">
+                            </div>
+                            <div class="form-group">
+                                <label for="cs_vital_weight">Weight (kg)</label>
+                                <input type="text" class="form-control" id="cs_vital_weight" name="cs_vital_weight" placeholder="Weight">
+                            </div>
+                            <div class="form-group">
+                                <label for="cs_vital_bmi">BMI</label>
+                                <input type="text" class="form-control" id="cs_vital_bmi" name="cs_vital_bmi" placeholder="BMI">
+                            </div>
+                        </div>
+                        <div class="form-row" style="grid-template-columns: repeat(4, 1fr);">
+                            <div class="form-group">
+                                <label for="cs_vital_bp">Blood Pressure</label>
+                                <input type="text" class="form-control" id="cs_vital_bp" name="cs_vital_bp" placeholder="BP (e.g. 120/80)">
+                            </div>
+                            <div class="form-group">
+                                <label for="cs_vital_pulse">Pulse Rate</label>
+                                <input type="text" class="form-control" id="cs_vital_pulse" name="cs_vital_pulse" placeholder="Pulse (BPM)">
+                            </div>
+                            <div class="form-group">
+                                <label for="cs_vital_temp">Temperature (°F)</label>
+                                <input type="text" class="form-control" id="cs_vital_temp" name="cs_vital_temp" placeholder="Temp">
+                            </div>
+                            <div class="form-group">
+                                <label for="cs_vital_spo2">SpO2 (%)</label>
+                                <input type="text" class="form-control" id="cs_vital_spo2" name="cs_vital_spo2" placeholder="SpO2">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="cs_clinical_examination">Clinical Examination & Observations</label>
+                            <textarea class="form-control" id="cs_clinical_examination" name="cs_clinical_examination" rows="2" placeholder="Doctor notes on physical observation..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Tab 4: Treatments & Protocol -->
+                    <div id="form-tab-protocol" class="tab-content-pane">
+                        <div class="form-section-header">Protocol Selection</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cs_protocol_service">Select Protocol / Service</label>
+                                <select class="form-control" id="cs_protocol_service" name="cs_protocol_service">
+                                    <option value="">-- Select Service --</option>
+                                    <option value="Ozone Therapy">Ozone Therapy</option>
+                                    <option value="Acupuncture">Acupuncture</option>
+                                    <option value="Naturopathy & Detox">Naturopathy & Detox</option>
+                                    <option value="Diabetic Wound Care">Diabetic Wound Care</option>
+                                    <option value="Pain Management">Pain Management</option>
+                                    <option value="Cupping Therapy">Cupping Therapy</option>
+                                    <option value="Kansya Therapy">Kansya Therapy</option>
+                                    <option value="Energy Medicine">Energy Medicine</option>
+                                    <option value="Therapeutic Wellness Baths">Therapeutic Wellness Baths</option>
+                                    <option value="Therapeutic Massages">Therapeutic Massages</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="cs_protocol_description">Protocol Description (Autopopulated, Editable)</label>
+                            <textarea class="form-control" id="cs_protocol_description" name="cs_protocol_description" rows="2" placeholder="Description of protocol..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cs_provisional_diagnosis">Provisional Diagnosis / Clinical Impression</label>
+                            <textarea class="form-control" id="cs_provisional_diagnosis" name="cs_provisional_diagnosis" rows="2" placeholder="Clinical impression..."></textarea>
+                        </div>
+
+                        <div class="form-section-header">Recommended Therapies</div>
+                        <div class="checkbox-grid">
+                            <label class="checkbox-label"><input type="checkbox" name="cs_rec_ozone" value="true"> Ozone Therapy</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_rec_iv" value="true"> IV Nutritional Therapy</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_rec_physio" value="true"> Physiotherapy</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_rec_massage" value="true"> Massage Therapy</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_rec_cupping" value="true"> Cupping Therapy</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_rec_detox" value="true"> Detoxification Therapy</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_rec_pain" value="true"> Pain Management Therapy</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_rec_rehab" value="true"> Rehabilitation Therapy</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_rec_lifestyle" value="true"> Lifestyle Modification Program</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_rec_other" value="true"> Other</label>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cs_treatment_objectives">Treatment Objectives</label>
+                            <textarea class="form-control" id="cs_treatment_objectives" name="cs_treatment_objectives" rows="2" placeholder="Enter treatment objectives..."></textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cs_other_conditions">Other Conditions</label>
+                                <input type="text" class="form-control" id="cs_other_conditions" name="cs_other_conditions" placeholder="Any secondary conditions...">
+                            </div>
+                            <div class="form-group">
+                                <label for="cs_current_medication_treatment">Current Medication / Treatment</label>
+                                <input type="text" class="form-control" id="cs_current_medication_treatment" name="cs_current_medication_treatment" placeholder="Current treatment path...">
+                            </div>
+                        </div>
+
+                        <div class="form-section-header">Previous Treatments Tried</div>
+                        <div class="checkbox-grid">
+                            <label class="checkbox-label"><input type="checkbox" name="cs_prev_allopathy" value="true"> Allopathy</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_prev_ayurveda" value="true"> Ayurveda</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_prev_homeopathy" value="true"> Homeopathy</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_prev_physio" value="true"> Physiotherapy</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_prev_alternative" value="true"> Alternative Therapy</label>
+                            <label class="checkbox-label"><input type="checkbox" name="cs_prev_none" value="true"> None</label>
+                        </div>
+                        <div class="form-group">
+                            <label for="cs_prev_treatment_details">Previous Treatments Details</label>
+                            <input type="text" class="form-control" id="cs_prev_treatment_details" name="cs_prev_treatment_details" placeholder="Previous treatment durations, effects...">
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cs_pref_consultation_type">Preferred Consultation Type</label>
+                                <select class="form-control" id="cs_pref_consultation_type" name="cs_pref_consultation_type">
+                                    <option value="">Select Type</option>
+                                    <option value="In-clinic Consultation">In-clinic Consultation</option>
+                                    <option value="Tele Consultation">Tele Consultation</option>
+                                    <option value="Follow-up Review">Follow-up Review</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="cs_pref_date_time">Preferred Date / Time</label>
+                                <input type="text" class="form-control" id="cs_pref_date_time" name="cs_pref_date_time" placeholder="e.g. Tuesdays 10:00 AM">
+                            </div>
+                        </div>
+
+                        <div class="form-section-header">Consent for Consultation</div>
+                        <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="cs_consent_agreed" name="cs_consent_agreed" value="true" style="width:16px; height:16px; cursor:pointer;">
+                            <label for="cs_consent_agreed" style="margin-bottom:0; cursor:pointer; font-size:12.5px;">I confirm that the info provided is true to the best of my knowledge.</label>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cs_patient_signature">Patient Signature (Name / Initials)</label>
+                                <input type="text" class="form-control" id="cs_patient_signature" name="cs_patient_signature" placeholder="Signature text">
+                            </div>
+                            <div class="form-group">
+                                <label for="cs_signature_date">Date</label>
+                                <input type="date" class="form-control" id="cs_signature_date" name="cs_signature_date">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cs_consulting_doctor">Consulting Doctor / Therapist</label>
+                                <input type="text" class="form-control" id="cs_consulting_doctor" name="cs_consulting_doctor" placeholder="Doctor's Name">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline" data-close="patientModal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="savePatientBtn">Save Profile</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Appointment Booking Modal -->
+    <div class="modal-overlay" id="appointmentModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="appointmentModalTitle">Schedule Appointment</h2>
+                <button class="modal-close" data-close="appointmentModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="appointmentForm" autocomplete="off">
+                    <input type="hidden" id="appointment_id" name="id">
+
+                    <div class="form-group">
+                        <label for="app_patient_id">Select Patient <span class="req">*</span></label>
+                        <select class="form-control" id="app_patient_id" name="patient_id" required>
+                            <option value="">Select a registered patient...</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="app_doctor">Doctor Consultant <span class="req">*</span></label>
+                            <input type="text" class="form-control" id="app_doctor" name="doctor_name"
+                                placeholder="Dr. Name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="app_fee">Consultation Fee (₹) <span class="req">*</span></label>
+                            <input type="number" class="form-control" id="app_fee" name="fee" min="0" step="0.01"
+                                value="500.00" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="app_date">Appointment Date <span class="req">*</span></label>
+                            <input type="date" class="form-control" id="app_date" name="appointment_date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="app_time">Time Slot <span class="req">*</span></label>
+                            <input type="time" class="form-control" id="app_time" name="appointment_time" required>
+                        </div>
+                    </div>
+                    <div class="form-row" id="appStatusContainer" style="display:none;">
+                        <div class="form-group">
+                            <label for="app_status">Status</label>
+                            <select class="form-control" id="app_status" name="status">
+                                <option value="scheduled">Scheduled</option>
+                                <option value="completed">Completed</option>
+                                <option value="cancelled">Cancelled</option>
+                                <option value="no-show">No Show</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="app_purpose">Purpose / Diagnostic Referral</label>
+                        <input type="text" class="form-control" id="app_purpose" name="purpose"
+                            placeholder="e.g. Health checkup, blood draw referral">
+                    </div>
+                    <div class="form-group" id="autoInvoiceCheckboxGroup"
+                        style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="app_autoinvoice" name="auto_invoice" value="true" checked
+                            style="width:16px; height:16px; cursor:pointer;">
+                        <label for="app_autoinvoice"
+                            style="margin-bottom:0; cursor:pointer; font-weight: 500;">Automatically generate fee
+                            receipt / invoice for this visit</label>
+                    </div>
+                    <div class="modal-footer" style="margin-top: 24px;">
+                        <button type="button" class="btn btn-outline" data-close="appointmentModal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="saveAppointmentBtn">Book Appointment</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Custom Invoice Creation Modal -->
+    <div class="modal-overlay" id="invoiceModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="invoiceModalTitle">Create Custom Invoice</h2>
+                <button class="modal-close" data-close="invoiceModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="invoiceForm" autocomplete="off">
+                    <div class="form-group">
+                        <label for="inv_patient_id">Select Patient <span class="req">*</span></label>
+                        <select class="form-control" id="inv_patient_id" name="patient_id" required>
+                            <option value="">Select a patient...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="inv_desc">Billing Description <span class="req">*</span></label>
+                        <input type="text" class="form-control" id="inv_desc" name="description"
+                            placeholder="e.g. Inpatient Room Charges / Pharmacy Fees / Lab Panel" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="inv_amount">Total Amount (₹) <span class="req">*</span></label>
+                            <input type="number" class="form-control" id="inv_amount" name="amount" min="0" step="0.01"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label for="inv_status">Status</label>
+                            <select class="form-control" id="inv_status" name="status">
+                                <option value="unpaid">Unpaid (Pending)</option>
+                                <option value="paid">Paid (Fully Settled)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group" id="invPaymentModeGroup" style="display:none;">
+                        <label for="inv_mode">Payment Mode</label>
+                        <select class="form-control" id="inv_mode" name="payment_mode">
+                            <option value="cash">Cash Reconciliation</option>
+                            <option value="online">Online / UPI / NetBanking</option>
+                        </select>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline" data-close="invoiceModal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="saveInvoiceBtn">Issue Invoice</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Payment Reconciliation Modal -->
+    <div class="modal-overlay" id="reconciliationModal">
+        <div class="modal" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2>Payment Reconciliation</h2>
+                <button class="modal-close" data-close="reconciliationModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="reconciliationForm">
+                    <input type="hidden" id="recon_invoice_id">
+                    <input type="hidden" id="recon_invoice_amount">
+
+                    <div class="recon-summary-box"
+                        style="background-color: var(--bg-primary); border-radius:8px; padding:16px; margin-bottom:20px; border: 1px solid var(--border);">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px;">
+                            <span style="color:var(--text3); font-weight:500;">Invoice No:</span>
+                            <strong id="reconInvoiceNo" style="color:var(--text1);">INV-XXXX</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px;">
+                            <span style="color:var(--text3); font-weight:500;">Total Billed Amount:</span>
+                            <strong id="reconTotalBilled" style="color:var(--text1);">₹ 0.00</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:14px;">
+                            <span style="color:var(--text3); font-weight:500;">Current Dues:</span>
+                            <strong id="reconCurrentDue" style="color:var(--error); font-weight:700;">₹ 0.00</strong>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="recon_paid_amount">Collected Payment Amount (₹) <span class="req">*</span></label>
+                        <input type="number" class="form-control" id="recon_paid_amount" min="0" step="0.01" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="recon_payment_mode">Payment Mode Reconciliation <span class="req">*</span></label>
+                        <select class="form-control" id="recon_payment_mode" required>
+                            <option value="cash">Paid in Cash</option>
+                            <option value="online">Paid Online (UPI / Card / Net Banking)</option>
+                        </select>
+                    </div>
+
+                    <div class="modal-footer" style="margin-top: 24px;">
+                        <button type="button" class="btn btn-outline" data-close="reconciliationModal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Process Reconciliation</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. Staff User Account Modal -->
+    <div class="modal-overlay" id="staffModal">
+        <div class="modal" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2 id="staffModalTitle">Create Staff Account</h2>
+                <button class="modal-close" data-close="staffModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="staffForm" autocomplete="off">
+                    <input type="hidden" id="staff_id" name="id">
+
+                    <div class="form-group">
+                        <label for="staff_username">Staff Username <span class="req">*</span></label>
+                        <input type="text" class="form-control" id="staff_username" name="username" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="staff_password" id="staffPassLabel">Password <span class="req">*</span></label>
+                        <input type="password" class="form-control" id="staff_password" name="password"
+                            placeholder="Enter secure password" required>
+                        <p id="staffPassHint" style="font-size:11px; color:var(--text3); margin-top:4px; display:none;">
+                            Leave blank to keep existing password.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="staff_email">Email Address</label>
+                        <input type="email" class="form-control" id="staff_email" name="email" placeholder="staff@ozonature.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="staff_phone">Mobile / Phone Number</label>
+                        <input type="tel" class="form-control" id="staff_phone" name="phone" placeholder="e.g. +91 9876543210">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="staff_role">Account Privilege Role <span class="req">*</span></label>
+                        <select class="form-control" id="staff_role" name="role" required>
+                            <option value="nurse">Nurse (Staff Access)</option>
+                            <option value="admin">Administrator (Full Control)</option>
+                        </select>
+                    </div>
+
+                    <div class="modal-footer" style="margin-top: 24px;">
+                        <button type="button" class="btn btn-outline" data-close="staffModal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="saveStaffBtn">Create Account</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. Case Sheet Printable View Modal -->
+    <div class="modal-overlay" id="caseSheetViewModal">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h2>View Clinical Case Sheet</h2>
+                <button class="modal-close" data-close="caseSheetViewModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="print-btn-container">
+                    <button class="btn btn-primary" id="printCaseSheetBtn"><span style="margin-right:4px;">🖨️</span> Print Case Sheet</button>
+                </div>
+                <div id="caseSheetViewContent">
+                    <!-- Dynamic Printable Content -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">Toast Message</div>
+
+    <script src="/admin/dashboard.js"></script>
+</body>
+
+</html>

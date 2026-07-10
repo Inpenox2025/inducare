@@ -1,0 +1,24 @@
+{
+  "buildCommand": "",
+  "outputDirectory": ".",
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/api/auth/login", "destination": "/api/auth?action=login" },
+    { "source": "/api/auth/me", "destination": "/api/auth?action=me" },
+    { "source": "/api/users/:id", "destination": "/api/users?id=:id" },
+    { "source": "/api/patients/:id", "destination": "/api/patients?id=:id" },
+    { "source": "/api/appointments/:id", "destination": "/api/appointments?id=:id" },
+    { "source": "/api/invoices/export-pdf", "destination": "/api/invoices?action=export-pdf" },
+    { "source": "/api/invoices/:id", "destination": "/api/invoices?id=:id" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,POST,PUT,DELETE,OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type,Authorization" }
+      ]
+    }
+  ]
+}

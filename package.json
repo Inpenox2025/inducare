@@ -1,0 +1,19 @@
+{
+  "name": "hospital-lead-management",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Hospital Lead and Management System with Patients, Appointments, Staff, and Payment Reconciliation",
+  "scripts": {
+    "dev": "node dev-server.js",
+    "start": "node dev-server.js",
+    "build": "echo 'No build step needed'"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "xlsx": "^0.18.5",
+    "pdfkit": "^0.15.0",
+    "express": "^4.19.2"
+  }
+}
