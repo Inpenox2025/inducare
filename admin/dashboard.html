@@ -665,6 +665,45 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Hospital User Accounts Manager -->
+            <div class="details-card" style="margin-top: 24px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3>👤 Hospital User Accounts & Roles Management</h3>
+                    <button class="btn btn-primary" id="superAddUserBtn" style="padding:6px 12px; font-size:12px;">+ Add User Account</button>
+                </div>
+                
+                <div class="form-row" style="margin-top: 16px; align-items: flex-end; gap: 16px;">
+                    <div class="form-group" style="flex: 0.4; margin-bottom: 0;">
+                        <label for="super_user_hospital_select">Filter by Hospital <span class="req">*</span></label>
+                        <select class="form-control" id="super_user_hospital_select">
+                            <!-- Populated dynamically with hospitals -->
+                        </select>
+                    </div>
+                    <div>
+                        <button class="btn btn-outline" id="superFetchUsersBtn" type="button">Fetch Users</button>
+                    </div>
+                </div>
+
+                <div class="table-container minimal" style="margin-top: 16px; max-height: 350px; overflow-y:auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Username</th>
+                                <th>Contact Info</th>
+                                <th>Role</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="superUsersTableBody">
+                            <tr>
+                                <td colspan="5" class="loading-cell">Select a hospital and fetch users...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </section>
     </main>
 
@@ -1277,6 +1316,13 @@
             <div class="modal-body">
                 <form id="staffForm" autocomplete="off">
                     <input type="hidden" id="staff_id" name="id">
+
+                    <div class="form-group" id="staff_hosp_group" style="display:none;">
+                        <label for="staff_hospital_id">Target Hospital <span class="req">*</span></label>
+                        <select class="form-control" id="staff_hospital_id" name="hospital_id">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
 
                     <div class="form-group">
                         <label for="staff_username">Staff Username <span class="req">*</span></label>

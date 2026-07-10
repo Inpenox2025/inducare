@@ -1570,7 +1570,15 @@ async function saveStaff(e) {
         "success",
       );
       closeModal("staffModal");
-      loadStaff();
+      const user = getUser();
+      if (user && user.role === 'super_admin') {
+        const activeHospSelect = document.getElementById("super_user_hospital_select");
+        if (activeHospSelect) {
+          loadSuperHospitalUsers(activeHospSelect.value);
+        }
+      } else {
+        loadStaff();
+      }
     } else {
       showToast(result.error || "Failed to save staff credentials", "error");
     }
@@ -1591,11 +1599,22 @@ window.editStaff = async function (id) {
     if (res.ok && data.success) {
       const u = data.user;
       document.getElementById("staffModalTitle").textContent =
-        "Modify Staff Credentials";
+        "Modify User Credentials";
       document.getElementById("staff_id").value = u.id;
       document.getElementById("staff_username").value = u.username;
       document.getElementById("staff_email").value = u.email || "";
       document.getElementById("staff_phone").value = u.phone || "";
+
+      // Handle target hospital selection display
+      const staffHospGroup = document.getElementById("staff_hosp_group");
+      const staffHospSelect = document.getElementById("staff_hospital_id");
+      const user = getUser();
+      if (user && user.role === 'super_admin') {
+        if (staffHospGroup) staffHospGroup.style.display = "block";
+        if (staffHospSelect) staffHospSelect.value = u.hospital_id || "";
+      } else {
+        if (staffHospGroup) staffHospGroup.style.display = "none";
+      }
 
       // Update form requirements for resets
       document.getElementById("staff_password").required = false;
@@ -1630,7 +1649,15 @@ window.deleteStaff = async function (id) {
     if (res.ok) {
       alert("Staff login account removed successfully!");
       showToast("Staff login removed", "success");
-      loadStaff();
+      const user = getUser();
+      if (user && user.role === 'super_admin') {
+        const activeHospSelect = document.getElementById("super_user_hospital_select");
+        if (activeHospSelect) {
+          loadSuperHospitalUsers(activeHospSelect.value);
+        }
+      } else {
+        loadStaff();
+      }
     } else {
       const data = await res.json();
       showToast(data.error || "Delete failed", "error");
@@ -1865,6 +1892,10 @@ function initEventListeners() {
     document.getElementById("staffModalTitle").textContent =
       "Create Staff Account";
 
+    // Hide target hospital selector for regular admins
+    const staffHospGroup = document.getElementById("staff_hosp_group");
+    if (staffHospGroup) staffHospGroup.style.display = "none";
+
     document.getElementById("staff_password").required = true;
     document.getElementById("staff_password").placeholder =
       "Enter secure password";
@@ -1875,6 +1906,52 @@ function initEventListeners() {
     document.getElementById("saveStaffBtn").textContent = "Create Account";
     openModal("staffModal");
   });
+
+  const superAddUserBtn = document.getElementById("superAddUserBtn");
+  if (superAddUserBtn) {
+    superAddUserBtn.addEventListener("click", () => {
+      document.getElementById("staffForm").reset();
+      document.getElementById("staff_id").value = "";
+      document.getElementById("staffModalTitle").textContent =
+        "Create Hospital User Login";
+
+      // Show target hospital selector for Super Admins
+      const staffHospGroup = document.getElementById("staff_hosp_group");
+      if (staffHospGroup) staffHospGroup.style.display = "block";
+
+      // Match selected hospital dropdown option
+      const superUserHospSelect = document.getElementById("super_user_hospital_select");
+      const staffHospSelect = document.getElementById("staff_hospital_id");
+      if (superUserHospSelect && staffHospSelect) {
+        staffHospSelect.value = superUserHospSelect.value;
+      }
+
+      document.getElementById("staff_password").required = true;
+      document.getElementById("staff_password").placeholder =
+        "Enter secure password";
+      document.getElementById("staffPassHint").style.display = "none";
+      document.getElementById("staffPassLabel").innerHTML =
+        'Password <span class="req">*</span>';
+
+      document.getElementById("saveStaffBtn").textContent = "Create User Account";
+      openModal("staffModal");
+    });
+  }
+
+  const superFetchUsersBtn = document.getElementById("superFetchUsersBtn");
+  if (superFetchUsersBtn) {
+    superFetchUsersBtn.addEventListener("click", () => {
+      const hospId = document.getElementById("super_user_hospital_select").value;
+      loadSuperHospitalUsers(hospId);
+    });
+  }
+
+  const superUserHospitalSelect = document.getElementById("super_user_hospital_select");
+  if (superUserHospitalSelect) {
+    superUserHospitalSelect.addEventListener("change", (e) => {
+      loadSuperHospitalUsers(e.target.value);
+    });
+  }
 
   // Dynamic input triggers (Invoice paid state reveals payment mode selection)
   document.getElementById("inv_status").addEventListener("change", (e) => {
@@ -2686,11 +2763,18 @@ async function loadSuperPanel() {
       // Populate hospital selectors
       const superMenuHospitalSelect = document.getElementById("super_menu_hospital_select");
       const superRoleHospSelect = document.getElementById("super_role_hosp_select");
-      if (superMenuHospitalSelect) {
-        superMenuHospitalSelect.innerHTML = dataHosp.hospitals.map(h => `<option value="${h.id}">${esc(h.name)}</option>`).join("");
-      }
-      if (superRoleHospSelect) {
-        superRoleHospSelect.innerHTML = dataHosp.hospitals.map(h => `<option value="${h.id}">${esc(h.name)}</option>`).join("");
+      const superUserHospitalSelect = document.getElementById("super_user_hospital_select");
+      const staffHospitalSelect = document.getElementById("staff_hospital_id");
+
+      const optionsHTML = dataHosp.hospitals.map(h => `<option value="${h.id}">${esc(h.name)}</option>`).join("");
+      if (superMenuHospitalSelect) superMenuHospitalSelect.innerHTML = optionsHTML;
+      if (superRoleHospSelect) superRoleHospSelect.innerHTML = optionsHTML;
+      if (superUserHospitalSelect) superUserHospitalSelect.innerHTML = optionsHTML;
+      if (staffHospitalSelect) staffHospitalSelect.innerHTML = optionsHTML;
+
+      // Trigger user query for selected hospital
+      if (dataHosp.hospitals.length > 0) {
+        loadSuperHospitalUsers(dataHosp.hospitals[0].id);
       }
 
       if (dataHosp.hospitals.length === 0) {
@@ -2961,5 +3045,50 @@ async function saveHospRoleMenu() {
     }
   } catch (err) {
     showToast("Network error saving mapping", "error");
+  }
+}
+
+async function loadSuperHospitalUsers(hospId) {
+  const tbody = document.getElementById("superUsersTableBody");
+  if (!tbody) return;
+
+  tbody.innerHTML = '<tr><td colspan="5" class="loading-cell"><span class="spinner"></span> Loading hospital user accounts...</td></tr>';
+
+  try {
+    const res = await fetch(`${API_BASE}/users?hospital_id=${hospId}`, { headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">Failed to retrieve users.</td></tr>';
+      return;
+    }
+
+    const users = data.users || [];
+    if (users.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">No users registered for this hospital.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = users.map(u => {
+      const emailVal = u.email ? `<div style="font-size:12px; color:var(--text2);">${esc(u.email)}</div>` : "";
+      const phoneVal = u.phone ? `<div style="font-size:11px; color:var(--text3);">${esc(u.phone)}</div>` : "";
+      const contactInfo = (emailVal || phoneVal) ? `${emailVal}${phoneVal}` : '<span style="color:var(--text3); font-style:italic;">—</span>';
+
+      return `
+        <tr>
+          <td>#${u.id}</td>
+          <td><strong>${esc(u.username)}</strong></td>
+          <td>${contactInfo}</td>
+          <td><span style="text-transform:uppercase; font-size:11px; font-weight:600; color:var(--text2);">${esc(u.role)}</span></td>
+          <td>
+            <div style="display: flex; gap: 6px;">
+              <button class="action-btn btn-edit" onclick="editStaff(${u.id})" title="Edit Roles / Reset Password">Edit</button>
+              <button class="action-btn btn-delete" onclick="deleteStaff(${u.id})" title="Delete User account">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join("");
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">Network error fetching users.</td></tr>';
   }
 }

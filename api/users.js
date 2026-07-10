@@ -42,8 +42,9 @@ module.exports = async function handler(req, res) {
         }
         return res.status(200).json({ success: true, user: rows[0] });
       } else {
+        const queryHosp = req.query.hospital_id;
         const rows = adminUser.role === 'super_admin'
-          ? await sql`SELECT id, username, email, phone, role, hospital_id, created_at FROM users ORDER BY created_at DESC`
+          ? (queryHosp ? await sql`SELECT id, username, email, phone, role, hospital_id, created_at FROM users WHERE hospital_id = ${parseInt(queryHosp)} ORDER BY created_at DESC` : await sql`SELECT id, username, email, phone, role, hospital_id, created_at FROM users ORDER BY created_at DESC`)
           : await sql`SELECT id, username, email, phone, role, hospital_id, created_at FROM users WHERE hospital_id = ${adminUser.hospital_id} ORDER BY created_at DESC`;
         return res.status(200).json({ success: true, users: rows });
       }
