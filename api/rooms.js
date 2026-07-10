@@ -24,7 +24,9 @@ module.exports = async function handler(req, res) {
   const sql = getSQL();
   const id = req.query.id;
   const action = req.query.action || '';
-  const targetHospitalId = user.role === 'super_admin' ? (req.query.hospital_id ? parseInt(req.query.hospital_id) : null) : user.hospital_id;
+  const targetHospitalId = user.role === 'super_admin' 
+    ? (req.query.hospital_id ? parseInt(req.query.hospital_id) : (req.body && req.body.hospital_id ? parseInt(req.body.hospital_id) : null)) 
+    : user.hospital_id;
 
   // ══════════════════════════════════════════════════════════
   // Action: Allocations (Admitting / Discharging Patients)
@@ -307,30 +309,22 @@ module.exports = async function handler(req, res) {
 
       if (req.method === 'PUT') {
         try {
-          const { room_no, room_type, status, price_per_day } = req.body;
+          const { room_no, room_type, status, price_per_day, hospital_id } = req.body;
           if (!room_no) return res.status(400).json({ error: 'Room number is required' });
 
-          const rows = targetHospitalId !== null
-            ? await sql`
-              UPDATE rooms SET
-                room_no = ${room_no.trim()},
-                room_type = ${room_type ? room_type.trim() : null},
-                status = ${status || 'available'},
-                price_per_day = ${price_per_day || 0.00},
-                updated_at = NOW()
-              WHERE id = ${parseInt(id)} AND hospital_id = ${targetHospitalId}
-              RETURNING *
-            `
-            : await sql`
-              UPDATE rooms SET
-                room_no = ${room_no.trim()},
-                room_type = ${room_type ? room_type.trim() : null},
-                status = ${status || 'available'},
-                price_per_day = ${price_per_day || 0.00},
-                updated_at = NOW()
-              WHERE id = ${parseInt(id)}
-              RETURNING *
-            `;
+          const hostId = hospital_id ? parseInt(hospital_id) : (targetHospitalId || 1);
+
+          const rows = await sql`
+            UPDATE rooms SET
+              room_no = ${room_no.trim()},
+              room_type = ${room_type ? room_type.trim() : null},
+              status = ${status || 'available'},
+              price_per_day = ${price_per_day || 0.00},
+              hospital_id = ${hostId},
+              updated_at = NOW()
+            WHERE id = ${parseInt(id)}
+            RETURNING *
+          `;
           if (rows.length === 0) return res.status(404).json({ error: 'Room not found' });
           return res.status(200).json({ success: true, room: rows[0] });
         } catch (error) {
@@ -340,9 +334,7 @@ module.exports = async function handler(req, res) {
 
       if (req.method === 'DELETE') {
         try {
-          const rows = targetHospitalId !== null
-            ? await sql`DELETE FROM rooms WHERE id = ${parseInt(id)} AND hospital_id = ${targetHospitalId} RETURNING id`
-            : await sql`DELETE FROM rooms WHERE id = ${parseInt(id)} RETURNING id`;
+          const rows = await sql`DELETE FROM rooms WHERE id = ${parseInt(id)} RETURNING id`;
           if (rows.length === 0) return res.status(404).json({ error: 'Room not found' });
           return res.status(200).json({ success: true, message: 'Room removed from inventory successfully' });
         } catch (error) {
