@@ -2934,11 +2934,31 @@ async function loadSuperPanel() {
       }
     }
 
-    // 2. Fetch roles
-    const resRoles = await fetch(`${API_BASE}/super?action=roles`, { headers: authHeaders() });
+    // 2. Fetch roles for the first hospital by default
+    if (dataHosp.hospitals.length > 0) {
+      await loadSuperRoles(dataHosp.hospitals[0].id);
+    } else {
+      superRolesTableBody.innerHTML = '<tr><td colspan="3" class="empty-cell">No roles registry available.</td></tr>';
+    }
+
+    // Load cross-tenant patients list
+    await loadSuperPatients();
+  } catch (err) {
+    showToast("Failed to query Super parameters", "error");
+  }
+}
+
+async function loadSuperRoles(hospitalId) {
+  const superRolesTableBody = document.getElementById("superRolesTableBody");
+  const menuRoleSelect = document.getElementById("menu_role_select");
+  if (!superRolesTableBody) return;
+  
+  superRolesTableBody.innerHTML = '<tr><td colspan="3" class="loading-cell">Loading roles directory...</td></tr>';
+  
+  try {
+    const resRoles = await fetch(`${API_BASE}/super?action=roles&hospital_id=${hospitalId}`, { headers: authHeaders() });
     const dataRoles = await resRoles.json();
     if (resRoles.ok && dataRoles.success) {
-      // Standard roles + custom ones
       const defaultRoles = [
         { role_name: 'nurse', description: 'Default Staff Nurse access' },
         { role_name: 'doctor', description: 'Default attending clinician access' },
