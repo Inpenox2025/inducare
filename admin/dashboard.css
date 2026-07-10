@@ -1181,3 +1181,41 @@ textarea.form-control {
   scrollbar-color: rgba(20, 184, 166, 0.25) transparent;
 }
 
+
+
+/* Responsive Grid Overrides */
+.rooms-split-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 24px;
+}
+.setup-split-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.super-split-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 24px;
+}
+.tax-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 992px) {
+  .rooms-split-grid,
+  .setup-split-grid,
+  .super-split-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .tax-form-row {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+}

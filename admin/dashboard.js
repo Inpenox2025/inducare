@@ -3021,6 +3021,42 @@ async function loadSuperRoles(hospitalId) {
   }
 }
 
+async function populateStaffRoleDropdown(hospitalId) {
+  const staffRoleSelect = document.getElementById("staff_role");
+  if (!staffRoleSelect) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/super?action=roles&hospital_id=${hospitalId}`, { headers: authHeaders() });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      const defaultRoles = [
+        { role_name: 'nurse', description: 'Nurse (Staff Access)' },
+        { role_name: 'doctor', description: 'Doctor (Clinical Access)' },
+        { role_name: 'patient', description: 'Patient (Portal Access)' },
+        { role_name: 'admin', description: 'Administrator (Full Control)' }
+      ];
+      
+      const allRoles = [...defaultRoles];
+      if (data.roles && Array.isArray(data.roles)) {
+        data.roles.forEach(r => {
+          if (!allRoles.some(ar => ar.role_name === r.role_name)) {
+            allRoles.push({
+              role_name: r.role_name,
+              description: `${r.role_name.charAt(0).toUpperCase() + r.role_name.slice(1)} (Custom Role)`
+            });
+          }
+        });
+      }
+
+      staffRoleSelect.innerHTML = allRoles.map(r => `
+        <option value="${r.role_name}">${esc(r.description)}</option>
+      `).join("");
+    }
+  } catch (err) {
+    console.error("Failed to populate staff roles dropdown:", err);
+  }
+}
+
 let superPatientsList = [];
 
 async function loadSuperPatients() {
