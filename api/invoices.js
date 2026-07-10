@@ -49,7 +49,8 @@ module.exports = async function handler(req, res) {
       const rows = await sql`
         SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile, p.address as patient_address,
                a.doctor_name, a.appointment_date, a.appointment_time,
-               h.name as hospital_name, h.logo_data as hospital_logo, h.gst_no as gst_no
+               h.name as hospital_name, h.logo_data as hospital_logo, h.gst_no as gst_no,
+               COALESCE(i.tax_name, h.tax_name, 'GST') as tax_name
         FROM invoices i
         JOIN patients p ON i.patient_id = p.id
         LEFT JOIN appointments a ON i.appointment_id = a.id
@@ -116,11 +117,13 @@ module.exports = async function handler(req, res) {
 
       let nextYOffset = 39;
       if (invoice.gst_no) {
+        const taxName = (invoice.tax_name || "GST").toUpperCase();
+        const taxLabel = taxName === "GST" ? "GSTIN" : `${taxName} No`;
         doc
           .fontSize(8.5)
           .font("Helvetica")
           .fillColor("#64748b")
-          .text(`GSTIN: ${invoice.gst_no.toUpperCase()}`, 350, headerStartY + nextYOffset, { align: "right", width: 195 });
+          .text(`${taxLabel}: ${invoice.gst_no.toUpperCase()}`, 350, headerStartY + nextYOffset, { align: "right", width: 195 });
         nextYOffset += 12;
       }
 
@@ -258,37 +261,54 @@ module.exports = async function handler(req, res) {
           });
         
         offset += 16;
-        
-        const halfRate = parseFloat(invoice.gst_rate) / 2;
-        const halfGstAmt = parseFloat(invoice.gst_amount) / 2;
-        
-        doc
-          .font("Helvetica-Bold")
-          .fillColor("#475569")
-          .text(`CGST (${halfRate}%):`, 320, totalsY + offset);
-        doc
-          .font("Helvetica")
-          .fillColor("#0f172a")
-          .text(formatCurrency(halfGstAmt), 450, totalsY + offset, {
-            align: "right",
-            width: 95,
-          });
-        
-        offset += 16;
 
-        doc
-          .font("Helvetica-Bold")
-          .fillColor("#475569")
-          .text(`SGST (${halfRate}%):`, 320, totalsY + offset);
-        doc
-          .font("Helvetica")
-          .fillColor("#0f172a")
-          .text(formatCurrency(halfGstAmt), 450, totalsY + offset, {
-            align: "right",
-            width: 95,
-          });
+        const taxName = (invoice.tax_name || "GST").toUpperCase();
+        if (taxName === "GST" || taxName === "CGST/SGST") {
+          const halfRate = parseFloat(invoice.gst_rate) / 2;
+          const halfGstAmt = parseFloat(invoice.gst_amount) / 2;
           
-        offset += 16;
+          doc
+            .font("Helvetica-Bold")
+            .fillColor("#475569")
+            .text(`CGST (${halfRate}%):`, 320, totalsY + offset);
+          doc
+            .font("Helvetica")
+            .fillColor("#0f172a")
+            .text(formatCurrency(halfGstAmt), 450, totalsY + offset, {
+              align: "right",
+              width: 95,
+            });
+          
+          offset += 16;
+
+          doc
+            .font("Helvetica-Bold")
+            .fillColor("#475569")
+            .text(`SGST (${halfRate}%):`, 320, totalsY + offset);
+          doc
+            .font("Helvetica")
+            .fillColor("#0f172a")
+            .text(formatCurrency(halfGstAmt), 450, totalsY + offset, {
+              align: "right",
+              width: 95,
+            });
+            
+          offset += 16;
+        } else {
+          doc
+            .font("Helvetica-Bold")
+            .fillColor("#475569")
+            .text(`${invoice.tax_name || "Tax"} (${invoice.gst_rate}%):`, 320, totalsY + offset);
+          doc
+            .font("Helvetica")
+            .fillColor("#0f172a")
+            .text(formatCurrency(invoice.gst_amount), 450, totalsY + offset, {
+              align: "right",
+              width: 95,
+            });
+          
+          offset += 16;
+        }
       }
 
       doc
@@ -565,13 +585,14 @@ module.exports = async function handler(req, res) {
           const invNo = `INSP${hostId}${dateStr}${countVal}`;
           const totalAmt = parseFloat(amount);
           
-          const hospRes = await sql`SELECT gst_no, gst_percent FROM hospitals WHERE id = ${hostId}`;
+          const hospRes = await sql`SELECT gst_no, gst_percent, tax_name FROM hospitals WHERE id = ${hostId}`;
           const hosp = hospRes[0];
           
           let taxableAmt = totalAmt;
           let gstAmt = 0.00;
           let gstRate = 0.00;
           let finalTotalAmt = totalAmt;
+          const taxNameVal = hosp && hosp.tax_name ? hosp.tax_name.trim() : 'GST';
 
           if (hosp && hosp.gst_no && hosp.gst_no.trim() !== "" && hosp.gst_percent && parseFloat(hosp.gst_percent) > 0) {
             gstRate = parseFloat(hosp.gst_percent);
@@ -595,10 +616,10 @@ module.exports = async function handler(req, res) {
 
           const rows = await sql`
             INSERT INTO invoices (
-              invoice_no, patient_id, appointment_id, description, amount, paid_amount, due_amount, status, payment_mode, payment_date, created_by, hospital_id, taxable_amount, gst_amount, gst_rate
+              invoice_no, patient_id, appointment_id, description, amount, paid_amount, due_amount, status, payment_mode, payment_date, created_by, hospital_id, taxable_amount, gst_amount, gst_rate, tax_name
             ) VALUES (
               ${invNo}, ${patientIdInt}, ${appointmentIdInt}, ${description}, ${finalTotalAmt}, ${paidAmt}, ${dueAmt}, ${isPaid},
-              ${payment_mode || null}, ${paymentDateVal}, ${user.id}, ${hostId}, ${taxableAmt}, ${gstAmt}, ${gstRate}
+              ${payment_mode || null}, ${paymentDateVal}, ${user.id}, ${hostId}, ${taxableAmt}, ${gstAmt}, ${gstRate}, ${taxNameVal}
             ) RETURNING *
           `;
 

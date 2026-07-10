@@ -77,7 +77,7 @@ module.exports = async function handler(req, res) {
     // POST/PUT: Update hospital profile
     if (req.method === 'POST' || req.method === 'PUT') {
       try {
-        const { name, logo_data, gst_no, gst_percent } = req.body;
+        const { name, logo_data, gst_no, gst_percent, tax_name } = req.body;
         const hostId = user.role === 'super_admin' ? (req.body.hospital_id ? parseInt(req.body.hospital_id) : null) : user.hospital_id;
         if (!hostId) return res.status(400).json({ error: 'Hospital ID is required' });
 
@@ -86,7 +86,8 @@ module.exports = async function handler(req, res) {
             name = ${name.trim()},
             logo_data = ${logo_data || null},
             gst_no = ${gst_no !== undefined ? gst_no.trim() : null},
-            gst_percent = ${gst_percent !== undefined ? parseFloat(gst_percent) || 0.00 : 0.00}
+            gst_percent = ${gst_percent !== undefined ? parseFloat(gst_percent) || 0.00 : 0.00},
+            tax_name = ${tax_name !== undefined ? tax_name.trim() : 'GST'}
           WHERE id = ${hostId}
           RETURNING *
         `;
@@ -170,17 +171,54 @@ module.exports = async function handler(req, res) {
 
     if (req.method === 'POST') {
       try {
-        const { name, logo_data } = req.body;
+        const { name, logo_data, gst_no, gst_percent, tax_name } = req.body;
         if (!name) return res.status(400).json({ error: 'Hospital name is required' });
 
         const rows = await sql`
-          INSERT INTO hospitals (name, logo_data)
-          VALUES (${name.trim()}, ${logo_data || null})
+          INSERT INTO hospitals (name, logo_data, gst_no, gst_percent, tax_name)
+          VALUES (${name.trim()}, ${logo_data || null}, ${gst_no || null}, ${gst_percent ? parseFloat(gst_percent) : 0.00}, ${tax_name || 'GST'})
           RETURNING *
         `;
         return res.status(201).json({ success: true, hospital: rows[0] });
       } catch (error) {
         return res.status(500).json({ error: 'Failed to register hospital', details: error.message });
+      }
+    }
+
+    if (req.method === 'PUT') {
+      try {
+        const id = req.query.id;
+        if (!id) return res.status(400).json({ error: 'Hospital ID parameter is required' });
+        const { name, logo_data, gst_no, gst_percent, tax_name } = req.body;
+        if (!name) return res.status(400).json({ error: 'Hospital name is required' });
+
+        const rows = await sql`
+          UPDATE hospitals SET
+            name = ${name.trim()},
+            logo_data = ${logo_data || null},
+            gst_no = ${gst_no !== undefined ? gst_no.trim() : null},
+            gst_percent = ${gst_percent !== undefined ? parseFloat(gst_percent) || 0.00 : 0.00},
+            tax_name = ${tax_name !== undefined ? tax_name.trim() : 'GST'}
+          WHERE id = ${parseInt(id)}
+          RETURNING *
+        `;
+        if (rows.length === 0) return res.status(404).json({ error: 'Hospital not found' });
+        return res.status(200).json({ success: true, hospital: rows[0] });
+      } catch (error) {
+        return res.status(500).json({ error: 'Failed to update hospital', details: error.message });
+      }
+    }
+
+    if (req.method === 'DELETE') {
+      try {
+        const id = req.query.id;
+        if (!id) return res.status(400).json({ error: 'Hospital ID parameter is required' });
+
+        const rows = await sql`DELETE FROM hospitals WHERE id = ${parseInt(id)} RETURNING id`;
+        if (rows.length === 0) return res.status(404).json({ error: 'Hospital not found' });
+        return res.status(200).json({ success: true, message: 'Hospital deleted successfully' });
+      } catch (error) {
+        return res.status(500).json({ error: 'Failed to delete hospital', details: error.message });
       }
     }
   }
@@ -218,6 +256,40 @@ module.exports = async function handler(req, res) {
         return res.status(201).json({ success: true, role: rows[0] });
       } catch (error) {
         return res.status(500).json({ error: 'Failed to register role', details: error.message });
+      }
+    }
+
+    if (req.method === 'PUT') {
+      try {
+        const id = req.query.id;
+        if (!id) return res.status(400).json({ error: 'Role ID parameter is required' });
+        const { role_name, description } = req.body;
+        if (!role_name) return res.status(400).json({ error: 'Role name is required' });
+
+        const rows = await sql`
+          UPDATE custom_roles SET
+            role_name = ${role_name.trim().toLowerCase()},
+            description = ${description || null}
+          WHERE id = ${parseInt(id)} AND hospital_id = ${hostId}
+          RETURNING *
+        `;
+        if (rows.length === 0) return res.status(404).json({ error: 'Role not found' });
+        return res.status(200).json({ success: true, role: rows[0] });
+      } catch (error) {
+        return res.status(500).json({ error: 'Failed to update role', details: error.message });
+      }
+    }
+
+    if (req.method === 'DELETE') {
+      try {
+        const id = req.query.id;
+        if (!id) return res.status(400).json({ error: 'Role ID parameter is required' });
+
+        const rows = await sql`DELETE FROM custom_roles WHERE id = ${parseInt(id)} AND hospital_id = ${hostId} RETURNING id`;
+        if (rows.length === 0) return res.status(404).json({ error: 'Role not found' });
+        return res.status(200).json({ success: true, message: 'Role deleted successfully' });
+      } catch (error) {
+        return res.status(500).json({ error: 'Failed to delete role', details: error.message });
       }
     }
   }

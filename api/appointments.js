@@ -168,13 +168,14 @@ module.exports = async function handler(req, res) {
           const desc = `Consultation Fee receipt for appointment with ${doctor_name}`;
           
           const rawFee = parseFloat(fee) || 0.00;
-          const hospRes = await sql`SELECT gst_no, gst_percent FROM hospitals WHERE id = ${hostId}`;
+          const hospRes = await sql`SELECT gst_no, gst_percent, tax_name FROM hospitals WHERE id = ${hostId}`;
           const hosp = hospRes[0];
           
           let taxableAmt = rawFee;
           let gstAmt = 0.00;
           let gstRate = 0.00;
           let finalTotalAmt = rawFee;
+          const taxNameVal = hosp && hosp.tax_name ? hosp.tax_name.trim() : 'GST';
 
           if (hosp && hosp.gst_no && hosp.gst_no.trim() !== "" && hosp.gst_percent && parseFloat(hosp.gst_percent) > 0) {
             gstRate = parseFloat(hosp.gst_percent);
@@ -184,9 +185,9 @@ module.exports = async function handler(req, res) {
 
           await sql`
             INSERT INTO invoices (
-              invoice_no, patient_id, appointment_id, description, amount, paid_amount, due_amount, status, created_by, hospital_id, taxable_amount, gst_amount, gst_rate
+              invoice_no, patient_id, appointment_id, description, amount, paid_amount, due_amount, status, created_by, hospital_id, taxable_amount, gst_amount, gst_rate, tax_name
             ) VALUES (
-              ${invNo}, ${patientIdInt}, ${appointment.id}, ${desc}, ${finalTotalAmt}, 0.00, ${finalTotalAmt}, 'unpaid', ${user.id}, ${hostId}, ${taxableAmt}, ${gstAmt}, ${gstRate}
+              ${invNo}, ${patientIdInt}, ${appointment.id}, ${desc}, ${finalTotalAmt}, 0.00, ${finalTotalAmt}, 'unpaid', ${user.id}, ${hostId}, ${taxableAmt}, ${gstAmt}, ${gstRate}, ${taxNameVal}
             )
           `;
         }

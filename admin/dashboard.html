@@ -464,13 +464,17 @@
                                 <span id="hosp_logo_empty_text" style="color: var(--text3); font-size: 13px;">No Logo Selected</span>
                             </div>
                         </div>
-                        <div class="form-row" style="margin-top: 16px;">
-                            <div class="form-group" style="flex: 1;">
-                                <label for="hosp_gst_no_input">GST Registration Number</label>
+                        <div class="form-row" style="margin-top: 16px; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                            <div class="form-group">
+                                <label for="hosp_tax_name_input">Tax Type / Name</label>
+                                <input type="text" class="form-control" id="hosp_tax_name_input" name="tax_name" placeholder="e.g. GST, VAT, Service Tax" value="GST">
+                            </div>
+                            <div class="form-group">
+                                <label for="hosp_gst_no_input">Tax Registration No / ID</label>
                                 <input type="text" class="form-control" id="hosp_gst_no_input" name="gst_no" placeholder="e.g. 22AAAAA1111A1Z1">
                             </div>
-                            <div class="form-group" style="flex: 1;">
-                                <label for="hosp_gst_percent_input">GST Percentage (%)</label>
+                            <div class="form-group">
+                                <label for="hosp_gst_percent_input">Tax Percentage (%)</label>
                                 <input type="number" class="form-control" id="hosp_gst_percent_input" name="gst_percent" min="0" max="100" step="0.01" value="0.00">
                             </div>
                         </div>
@@ -508,7 +512,7 @@
                         <h3>🏢 Hospital Multitenant Registries</h3>
                         <button class="btn btn-primary" id="addHospBtn" style="padding:6px 12px; font-size:12px;">+ Add Hospital</button>
                     </div>
-                    <div class="table-container minimal" style="margin-top: 16px; max-height: 350px; overflow-y:auto;">
+                    <div class="table-container minimal" style="margin-top: 16px; max-height: 350px; overflow:auto;">
                         <table class="data-table">
                             <thead>
                                 <tr>
@@ -516,6 +520,7 @@
                                     <th>Branding Name</th>
                                     <th>Doctors</th>
                                     <th>Rooms</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="superHospitalsTableBody">
@@ -533,12 +538,13 @@
                         <h3>🔑 Account Roles Registry</h3>
                         <button class="btn btn-primary" id="createRoleBtn" style="padding:6px 12px; font-size:12px;">+ Create Role</button>
                     </div>
-                    <div class="table-container minimal" style="margin-top: 16px; max-height: 350px; overflow-y:auto;">
+                    <div class="table-container minimal" style="margin-top: 16px; max-height: 350px; overflow:auto;">
                         <table class="data-table">
                             <thead>
                                 <tr>
                                     <th>Role Name</th>
                                     <th>Description</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="superRolesTableBody">
@@ -623,7 +629,7 @@
                     </div>
                 </div>
 
-                <div class="table-container minimal" style="margin-top: 16px; max-height: 350px; overflow-y:auto;">
+                <div class="table-container minimal" style="margin-top: 16px; max-height: 350px; overflow:auto;">
                     <table class="data-table">
                         <thead>
                             <tr>
@@ -662,7 +668,7 @@
                     </div>
                 </div>
 
-                <div class="table-container minimal" style="margin-top: 16px; max-height: 350px; overflow-y:auto;">
+                <div class="table-container minimal" style="margin-top: 16px; max-height: 350px; overflow:auto;">
                     <table class="data-table">
                         <thead>
                             <tr>
@@ -1536,11 +1542,12 @@
     <div class="modal-overlay" id="superHospitalModal">
         <div class="modal" style="max-width: 450px;">
             <div class="modal-header">
-                <h2>Add Hospital Registry</h2>
+                <h2 id="superHospitalModalTitle">Add Hospital Registry</h2>
                 <button class="modal-close" data-close="superHospitalModal">✕</button>
             </div>
             <div class="modal-body">
                 <form id="superHospitalForm" autocomplete="off">
+                    <input type="hidden" id="super_hosp_id">
                     <div class="form-group">
                         <label for="super_hosp_name">Hospital Name <span class="req">*</span></label>
                         <input type="text" class="form-control" id="super_hosp_name" name="name" required>
@@ -1549,9 +1556,21 @@
                         <label for="super_hosp_logo_file">Hospital Logo Image</label>
                         <input type="file" class="form-control" id="super_hosp_logo_file" accept="image/*">
                     </div>
+                    <div class="form-group">
+                        <label for="super_hosp_tax_name">Tax Type / Name</label>
+                        <input type="text" class="form-control" id="super_hosp_tax_name" placeholder="e.g. GST, VAT, Service Tax" value="GST">
+                    </div>
+                    <div class="form-group">
+                        <label for="super_hosp_gst_no">Tax Registration ID</label>
+                        <input type="text" class="form-control" id="super_hosp_gst_no" placeholder="e.g. 22AAAAA1111A1Z1">
+                    </div>
+                    <div class="form-group">
+                        <label for="super_hosp_gst_percent">Tax Percentage (%)</label>
+                        <input type="number" class="form-control" id="super_hosp_gst_percent" min="0" max="100" step="0.01" value="0.00">
+                    </div>
                     <div class="modal-footer" style="margin-top: 24px;">
                         <button type="button" class="btn btn-outline" data-close="superHospitalModal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Create Hospital</button>
+                        <button type="submit" class="btn btn-primary" id="superHospitalSubmitBtn">Create Hospital</button>
                     </div>
                 </form>
             </div>
@@ -1562,11 +1581,12 @@
     <div class="modal-overlay" id="superRoleModal">
         <div class="modal" style="max-width: 450px;">
             <div class="modal-header">
-                <h2>Create Custom Role</h2>
+                <h2 id="superRoleModalTitle">Create Custom Role</h2>
                 <button class="modal-close" data-close="superRoleModal">✕</button>
             </div>
             <div class="modal-body">
                 <form id="superRoleForm" autocomplete="off">
+                    <input type="hidden" id="super_role_id" name="id">
                     <div class="form-group" id="super_role_hosp_group" style="display:none;">
                         <label for="super_role_hosp_select">Target Hospital <span class="req">*</span></label>
                         <select class="form-control" id="super_role_hosp_select">
@@ -1583,7 +1603,7 @@
                     </div>
                     <div class="modal-footer" style="margin-top: 24px;">
                         <button type="button" class="btn btn-outline" data-close="superRoleModal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Create Role</button>
+                        <button type="submit" class="btn btn-primary" id="superRoleSubmitBtn">Create Role</button>
                     </div>
                 </form>
             </div>

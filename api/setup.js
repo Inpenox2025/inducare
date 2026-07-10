@@ -134,11 +134,13 @@ module.exports = async function handler(req, res) {
     // Migration: Add GST configuration columns to hospitals
     await sql`ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS gst_no VARCHAR(50)`;
     await sql`ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS gst_percent NUMERIC(5,2) DEFAULT 0.00`;
+    await sql`ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS tax_name VARCHAR(50) DEFAULT 'GST'`;
 
     // Migration: Add GST breakup columns to invoices
     await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS taxable_amount NUMERIC(15,2)`;
     await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS gst_amount NUMERIC(15,2)`;
     await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS gst_rate NUMERIC(5,2)`;
+    await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS tax_name VARCHAR(50) DEFAULT 'GST'`;
 
     // 4b. Create Doctors Table
     await sql`

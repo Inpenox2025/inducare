@@ -1742,12 +1742,18 @@ function initEventListeners() {
 
   document.getElementById("addHospBtn").addEventListener("click", () => {
     document.getElementById("superHospitalForm").reset();
+    document.getElementById("super_hosp_id").value = "";
+    document.getElementById("superHospitalModalTitle").textContent = "Add Hospital Registry";
+    document.getElementById("superHospitalSubmitBtn").textContent = "Create Hospital";
     window.tempHospitalLogoBase64 = "";
     openModal("superHospitalModal");
   });
 
   document.getElementById("createRoleBtn").addEventListener("click", () => {
     document.getElementById("superRoleForm").reset();
+    document.getElementById("super_role_id").value = "";
+    document.getElementById("superRoleModalTitle").textContent = "Create Custom Role";
+    document.getElementById("superRoleSubmitBtn").textContent = "Create Role";
     const hospGroup = document.getElementById("super_role_hosp_group");
     if (hospGroup) hospGroup.style.display = "block";
     openModal("superRoleModal");
@@ -2739,6 +2745,7 @@ async function loadHospitalSetup() {
     if (res.ok && data.success && data.hospital) {
       const h = data.hospital;
       document.getElementById("hosp_name_input").value = h.name || "";
+      document.getElementById("hosp_tax_name_input").value = h.tax_name || "GST";
       document.getElementById("hosp_gst_no_input").value = h.gst_no || "";
       document.getElementById("hosp_gst_percent_input").value = h.gst_percent !== undefined ? h.gst_percent : "0.00";
 
@@ -2772,6 +2779,7 @@ async function saveHospitalSetup(e) {
   e.preventDefault();
   const name = document.getElementById("hosp_name_input").value;
   const logo = window.tempHospitalLogoBase64 || "";
+  const tax_name = document.getElementById("hosp_tax_name_input").value;
   const gst_no = document.getElementById("hosp_gst_no_input").value;
   const gst_percent = document.getElementById("hosp_gst_percent_input").value;
 
@@ -2779,7 +2787,7 @@ async function saveHospitalSetup(e) {
     const res = await fetch(`${API_BASE}/super?action=hospital`, {
       method: "POST",
       headers: authHeaders(),
-      body: JSON.stringify({ name, logo_data: logo, gst_no, gst_percent })
+      body: JSON.stringify({ name, logo_data: logo, tax_name, gst_no, gst_percent })
     });
     const data = await res.json();
     if (res.ok && data.success) {
@@ -2808,7 +2816,7 @@ async function saveHospitalSetup(e) {
         }
       }
     } else {
-      showToast(data.error || "Save failed", "error");
+      showToast(data.error ? `${data.error} (${data.details || ''})` : "Save failed", "error");
     }
   } catch (err) {
     showToast("Connection error saving settings", "error");
@@ -2854,7 +2862,7 @@ async function loadSuperPanel() {
       }
 
       if (dataHosp.hospitals.length === 0) {
-        superHospitalsTableBody.innerHTML = '<tr><td colspan="4" class="empty-cell">No hospitals registered yet.</td></tr>';
+        superHospitalsTableBody.innerHTML = '<tr><td colspan="5" class="empty-cell">No hospitals registered yet.</td></tr>';
       } else {
         superHospitalsTableBody.innerHTML = dataHosp.hospitals.map(h => `
           <tr>
@@ -2865,6 +2873,12 @@ async function loadSuperPanel() {
             </td>
             <td>${h.doctors_count} registered</td>
             <td>${h.rooms_count} inventory</td>
+            <td>
+              <div style="display: flex; gap: 6px;">
+                <button class="action-btn btn-edit" onclick="editHospital(${h.id})" title="Modify hospital settings">Edit</button>
+                <button class="action-btn btn-delete" onclick="deleteHospital(${h.id})" title="Remove hospital from registry">Delete</button>
+              </div>
+            </td>
           </tr>
         `).join("");
       }
@@ -2892,6 +2906,14 @@ async function loadSuperPanel() {
         <tr>
           <td><code style="background-color:var(--bg-primary); padding:2px 6px; border-radius:4px; font-weight:700;">${esc(r.role_name)}</code></td>
           <td>${esc(r.description || "N/A")}</td>
+          <td>
+            ${r.id ? `
+              <div style="display: flex; gap: 6px;">
+                <button class="action-btn btn-edit" onclick="editRole(${r.id})" title="Modify role description">Edit</button>
+                <button class="action-btn btn-delete" onclick="deleteRole(${r.id})" title="Remove custom role">Delete</button>
+              </div>
+            ` : `<span style="font-size:11px; color:var(--text3); font-style:italic;">System Role</span>`}
+          </td>
         </tr>
       `).join("");
 
@@ -2912,52 +2934,124 @@ async function loadSuperPanel() {
 
 async function saveSuperHospital(e) {
   e.preventDefault();
+  const id = document.getElementById("super_hosp_id").value;
   const name = document.getElementById("super_hosp_name").value;
   const logo = window.tempHospitalLogoBase64 || "";
+  const tax_name = document.getElementById("super_hosp_tax_name").value;
+  const gst_no = document.getElementById("super_hosp_gst_no").value;
+  const gst_percent = document.getElementById("super_hosp_gst_percent").value;
 
   try {
-    const res = await fetch(`${API_BASE}/super?action=hospitals`, {
-      method: "POST",
+    const url = id ? `${API_BASE}/super?action=hospitals&id=${id}` : `${API_BASE}/super?action=hospitals`;
+    const method = id ? "PUT" : "POST";
+
+    const res = await fetch(url, {
+      method,
       headers: authHeaders(),
-      body: JSON.stringify({ name, logo_data: logo })
+      body: JSON.stringify({ name, logo_data: logo, tax_name, gst_no, gst_percent })
     });
     const data = await res.json();
     if (res.ok && data.success) {
-      showToast("Hospital registration successful!", "success");
+      showToast(id ? "Hospital settings updated successfully!" : "Hospital registration successful!", "success");
       closeModal("superHospitalModal");
       loadSuperPanel();
     } else {
-      showToast(data.error || "Failed to add hospital", "error");
+      showToast(data.error ? `${data.error} (${data.details || ''})` : (id ? "Failed to update hospital" : "Failed to add hospital"), "error");
     }
   } catch (err) {
     showToast("Network error saving hospital profile", "error");
   }
 }
 
+window.editHospital = async function (id) {
+  try {
+    const res = await fetch(`${API_BASE}/super?action=hospital&hospital_id=${id}`, { headers: authHeaders() });
+    const data = await res.json();
+    if (res.ok && data.success && data.hospital) {
+      const h = data.hospital;
+      document.getElementById("superHospitalModalTitle").textContent = "Modify Hospital Settings";
+      document.getElementById("superHospitalSubmitBtn").textContent = "Save Changes";
+      document.getElementById("super_hosp_id").value = h.id;
+      document.getElementById("super_hosp_name").value = h.name || "";
+      document.getElementById("super_hosp_tax_name").value = h.tax_name || "GST";
+      document.getElementById("super_hosp_gst_no").value = h.gst_no || "";
+      document.getElementById("super_hosp_gst_percent").value = h.gst_percent !== undefined ? h.gst_percent : "0.00";
+      
+      const preview = document.getElementById("hosp_logo_preview");
+      const emptyText = document.getElementById("hosp_logo_empty_text");
+      if (h.logo_data) {
+        if (preview) {
+          preview.src = h.logo_data;
+          preview.style.display = "block";
+        }
+        if (emptyText) emptyText.style.display = "none";
+        window.tempHospitalLogoBase64 = h.logo_data;
+      } else {
+        if (preview) preview.style.display = "none";
+        if (emptyText) emptyText.style.display = "block";
+        window.tempHospitalLogoBase64 = "";
+      }
+
+      openModal("superHospitalModal");
+    } else {
+      showToast(data.error || "Failed to load hospital details", "error");
+    }
+  } catch (err) {
+    showToast("Network error loading hospital details", "error");
+  }
+};
+
+window.deleteHospital = async function (id) {
+  if (!confirm("Are you sure you want to delete this hospital? This will remove all associated rooms, doctors, staff and patients records permanently!")) return;
+  try {
+    const res = await fetch(`${API_BASE}/super?action=hospitals&id=${id}`, {
+      method: "DELETE",
+      headers: authHeaders()
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast("Hospital deleted successfully", "success");
+      loadSuperPanel();
+    } else {
+      showToast(data.error || "Failed to delete hospital", "error");
+    }
+  } catch (err) {
+    showToast("Network error deleting hospital", "error");
+  }
+};
+
 async function saveSuperRole(e) {
   e.preventDefault();
+  const id = document.getElementById("super_role_id").value;
   const roleName = document.getElementById("super_role_name").value.trim().toLowerCase();
   const desc = document.getElementById("super_role_desc").value;
 
   const user = getUser();
   const payload = { role_name: roleName, description: desc };
 
+  let hostId = null;
   if (user.role === 'super_admin') {
     const hospSelect = document.getElementById("super_role_hosp_select");
     if (hospSelect && hospSelect.value) {
       payload.hospital_id = parseInt(hospSelect.value);
+      hostId = payload.hospital_id;
     }
   }
 
   try {
-    const res = await fetch(`${API_BASE}/super?action=roles`, {
-      method: "POST",
+    const url = id 
+      ? `${API_BASE}/super?action=roles&id=${id}${hostId ? `&hospital_id=${hostId}` : ''}` 
+      : `${API_BASE}/super?action=roles`;
+    const method = id ? "PUT" : "POST";
+
+    const res = await fetch(url, {
+      method,
       headers: authHeaders(),
       body: JSON.stringify(payload)
     });
     const data = await res.json();
     if (res.ok && data.success) {
-      showToast("Custom role registered successfully!", "success");
+      showToast(id ? "Role updated successfully!" : "Custom role registered successfully!", "success");
       closeModal("superRoleModal");
       
       // Reload lists based on role and panel view
@@ -2967,12 +3061,78 @@ async function saveSuperRole(e) {
         loadHospitalRolesAndMenus();
       }
     } else {
-      showToast(data.error || "Role creation failed", "error");
+      showToast(data.error ? `${data.error} (${data.details || ''})` : "Role save failed", "error");
     }
   } catch (err) {
-    showToast("Network error creating role profile", "error");
+    showToast("Network error saving role profile", "error");
   }
 }
+
+window.editRole = async function (id) {
+  try {
+    const user = getUser();
+    let hostId = "";
+    if (user.role === 'super_admin') {
+      const superRoleHospSelect = document.getElementById("super_role_hosp_select");
+      if (superRoleHospSelect) hostId = superRoleHospSelect.value;
+    }
+    
+    // Fetch all roles for this hospital, and find the target role by id
+    const res = await fetch(`${API_BASE}/super?action=roles${hostId ? `&hospital_id=${hostId}` : ''}`, { headers: authHeaders() });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      const r = data.roles.find(item => item.id === id);
+      if (r) {
+        document.getElementById("superRoleModalTitle").textContent = "Modify Custom Role";
+        document.getElementById("superRoleSubmitBtn").textContent = "Save Changes";
+        document.getElementById("super_role_id").value = r.id;
+        document.getElementById("super_role_name").value = r.role_name;
+        document.getElementById("super_role_desc").value = r.description || "";
+        
+        const hospGroup = document.getElementById("super_role_hosp_group");
+        if (hospGroup) hospGroup.style.display = "none"; // Hide hospital selector when editing to prevent moving roles across tenants
+        
+        openModal("superRoleModal");
+      } else {
+        showToast("Role details not found", "error");
+      }
+    } else {
+      showToast(data.error || "Failed to load role details", "error");
+    }
+  } catch (err) {
+    showToast("Network error loading role details", "error");
+  }
+};
+
+window.deleteRole = async function (id) {
+  if (!confirm("Are you sure you want to delete this custom role? Users assigned to this role will lose their custom menu permissions.")) return;
+  try {
+    const user = getUser();
+    let hostId = "";
+    if (user.role === 'super_admin') {
+      const superRoleHospSelect = document.getElementById("super_role_hosp_select");
+      if (superRoleHospSelect) hostId = superRoleHospSelect.value;
+    }
+
+    const res = await fetch(`${API_BASE}/super?action=roles&id=${id}${hostId ? `&hospital_id=${hostId}` : ''}`, {
+      method: "DELETE",
+      headers: authHeaders()
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast("Custom role deleted successfully", "success");
+      if (user.role === 'super_admin') {
+        loadSuperPanel();
+      } else {
+        loadHospitalRolesAndMenus();
+      }
+    } else {
+      showToast(data.error || "Failed to delete role", "error");
+    }
+  } catch (err) {
+    showToast("Network error deleting role", "error");
+  }
+};
 
 async function loadRoleMenusConfig(role) {
   // Clear checkboxes
