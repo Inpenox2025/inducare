@@ -1705,14 +1705,28 @@ function initEventListeners() {
       reader.onload = function(evt) {
         const preview = document.getElementById("hosp_logo_preview");
         const emptyText = document.getElementById("hosp_logo_empty_text");
-        preview.src = evt.target.result;
-        preview.style.display = "block";
+        if (preview) preview.src = evt.target.result;
+        if (preview) preview.style.display = "block";
         if (emptyText) emptyText.style.display = "none";
         window.tempHospitalLogoBase64 = evt.target.result;
       };
       reader.readAsDataURL(file);
     }
   });
+
+  const superHospLogoFile = document.getElementById("super_hosp_logo_file");
+  if (superHospLogoFile) {
+    superHospLogoFile.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          window.tempHospitalLogoBase64 = evt.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
 
   // Dynamic menu mapper updates
   document.getElementById("menu_role_select").addEventListener("change", (e) => {
