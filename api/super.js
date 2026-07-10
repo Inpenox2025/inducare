@@ -31,6 +31,7 @@ module.exports = async function handler(req, res) {
     if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
     try {
       const role = req.query.role || user.role;
+      const targetHospitalId = user.role === 'super_admin' ? (req.query.hospital_id ? parseInt(req.query.hospital_id) : 1) : user.hospital_id;
       
       // Super admin always has all options
       if (role === 'super_admin') {
@@ -42,11 +43,11 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ success: true, menus: superMenus });
       }
 
-      // Query database custom role menu
+      // Query database custom role menu for the user's hospital!
       const rows = await sql`
         SELECT menu_key, menu_label, menu_icon 
         FROM role_menus 
-        WHERE role_name = ${role}
+        WHERE role_name = ${role} AND hospital_id = ${targetHospitalId}
         ORDER BY id ASC
       `;
       return res.status(200).json({ success: true, menus: rows });
@@ -138,14 +139,18 @@ module.exports = async function handler(req, res) {
   }
 
   // ══════════════════════════════════════════════════════════
-  // Rest of operations require SUPER_ADMIN role
+  // Rest of operations require ADMIN or SUPER_ADMIN role
   // ══════════════════════════════════════════════════════════
-  if (user.role !== 'super_admin') {
-    return res.status(403).json({ error: 'Access denied. Super Admin privileges required.' });
+  if (user.role !== 'super_admin' && user.role !== 'admin') {
+    return res.status(403).json({ error: 'Access denied. Administrator privileges required.' });
   }
 
   // ══════ Super Admin: Hospitals CRUD ══════
   if (action === 'hospitals') {
+    if (user.role !== 'super_admin') {
+      return res.status(403).json({ error: 'Access denied. Super Admin privileges required.' });
+    }
+    
     if (req.method === 'GET') {
       try {
         const rows = await sql`
@@ -178,11 +183,18 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  // ══════ Super Admin: Custom Roles CRUD ══════
+  // ══════ Super Admin / Hospital Admin: Custom Roles CRUD (tenant-isolated) ══════
   if (action === 'roles') {
+    const hostId = user.role === 'super_admin' ? (req.query.hospital_id ? parseInt(req.query.hospital_id) : 1) : user.hospital_id;
+    if (!hostId) return res.status(400).json({ error: 'Hospital ID is required' });
+
     if (req.method === 'GET') {
       try {
-        const rows = await sql`SELECT * FROM custom_roles ORDER BY role_name ASC`;
+        const rows = await sql`
+          SELECT * FROM custom_roles 
+          WHERE hospital_id = ${hostId} 
+          ORDER BY role_name ASC
+        `;
         return res.status(200).json({ success: true, roles: rows });
       } catch (error) {
         return res.status(500).json({ error: 'Failed to fetch roles', details: error.message });
@@ -194,11 +206,11 @@ module.exports = async function handler(req, res) {
         const { role_name, description } = req.body;
         if (!role_name) return res.status(400).json({ error: 'Role name is required' });
 
-        // Add custom role
+        // Add custom role for this specific hospital
         const rows = await sql`
-          INSERT INTO custom_roles (role_name, description)
-          VALUES (${role_name.trim().toLowerCase()}, ${description || null})
-          ON CONFLICT (role_name) DO UPDATE SET description = EXCLUDED.description
+          INSERT INTO custom_roles (role_name, description, hospital_id)
+          VALUES (${role_name.trim().toLowerCase()}, ${description || null}, ${hostId})
+          ON CONFLICT (role_name, hospital_id) DO UPDATE SET description = EXCLUDED.description
           RETURNING *
         `;
         return res.status(201).json({ success: true, role: rows[0] });
@@ -208,8 +220,11 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  // ══════ Super Admin: Menu Mappings configuration ══════
+  // ══════ Super Admin / Hospital Admin: Menu Mappings configuration (tenant-isolated) ══════
   if (action === 'menu-mapping') {
+    const hostId = user.role === 'super_admin' ? (req.body.hospital_id ? parseInt(req.body.hospital_id) : 1) : user.hospital_id;
+    if (!hostId) return res.status(400).json({ error: 'Hospital ID is required' });
+
     if (req.method === 'POST') {
       try {
         const { role_name, menus } = req.body; // menus: array of {menu_key, menu_label, menu_icon}
@@ -217,14 +232,14 @@ module.exports = async function handler(req, res) {
           return res.status(400).json({ error: 'Role name and menu lists are required' });
         }
 
-        // Clear existing menu mappings
-        await sql`DELETE FROM role_menus WHERE role_name = ${role_name}`;
+        // Clear existing menu mappings for this role in this hospital
+        await sql`DELETE FROM role_menus WHERE role_name = ${role_name} AND hospital_id = ${hostId}`;
 
         // Insert new mappings
         for (const m of menus) {
           await sql`
-            INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon)
-            VALUES (${role_name}, ${m.menu_key}, ${m.menu_label}, ${m.menu_icon})
+            INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon, hospital_id)
+            VALUES (${role_name}, ${m.menu_key}, ${m.menu_label}, ${m.menu_icon}, ${hostId})
           `;
         }
 
@@ -235,5 +250,5 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  return res.status(404).json({ error: 'Super Admin action not found' });
+  return res.status(404).json({ error: 'Action not found' });
 };

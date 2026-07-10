@@ -23,9 +23,11 @@ module.exports = async function handler(req, res) {
     await sql`
       CREATE TABLE IF NOT EXISTS custom_roles (
         id SERIAL PRIMARY KEY,
-        role_name VARCHAR(50) UNIQUE NOT NULL,
+        role_name VARCHAR(50) NOT NULL,
         description TEXT,
-        created_at TIMESTAMP DEFAULT NOW()
+        hospital_id INT REFERENCES hospitals(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT NOW(),
+        CONSTRAINT custom_roles_role_hosp_uniq UNIQUE (role_name, hospital_id)
       )
     `;
 
@@ -37,9 +39,17 @@ module.exports = async function handler(req, res) {
         menu_key VARCHAR(50) NOT NULL,
         menu_label VARCHAR(100) NOT NULL,
         menu_icon VARCHAR(10) NOT NULL,
+        hospital_id INT REFERENCES hospitals(id) ON DELETE CASCADE,
         created_at TIMESTAMP DEFAULT NOW()
       )
     `;
+
+    // Migration updates for existing database tables
+    await sql`ALTER TABLE custom_roles DROP CONSTRAINT IF EXISTS custom_roles_role_name_key`;
+    await sql`ALTER TABLE custom_roles ADD COLUMN IF NOT EXISTS hospital_id INT REFERENCES hospitals(id) ON DELETE CASCADE`;
+    await sql`ALTER TABLE custom_roles DROP CONSTRAINT IF EXISTS custom_roles_role_hosp_uniq`;
+    await sql`ALTER TABLE custom_roles ADD CONSTRAINT custom_roles_role_hosp_uniq UNIQUE (role_name, hospital_id)`;
+    await sql`ALTER TABLE role_menus ADD COLUMN IF NOT EXISTS hospital_id INT REFERENCES hospitals(id) ON DELETE CASCADE`;
 
     // 1. Create Users Table
     await sql`
@@ -202,50 +212,58 @@ module.exports = async function handler(req, res) {
       hospital1Id = hps[0].id;
     }
 
-    // Seed default custom roles
-    const rolesToSeed = [
-      { role_name: 'admin', description: 'Hospital Administrator' },
-      { role_name: 'nurse', description: 'Staff Nurse' },
-      { role_name: 'doctor', description: 'Medical Doctor' },
-      { role_name: 'pharmacist', description: 'Pharmacy Manager' }
-    ];
-    for (const r of rolesToSeed) {
-      const checkRole = await sql`SELECT id FROM custom_roles WHERE role_name = ${r.role_name}`;
-      if (checkRole.length === 0) {
-        await sql`INSERT INTO custom_roles (role_name, description) VALUES (${r.role_name}, ${r.description})`;
-      }
-    }
-
-    // Seed role menus if empty
-    const checkMenus = await sql`SELECT id FROM role_menus LIMIT 1`;
-    if (checkMenus.length === 0) {
-      const defaultMenus = [
-        // Admin menus
-        { role_name: 'admin', menu_key: 'overview', menu_label: 'Overview Panel', menu_icon: '📊' },
-        { role_name: 'admin', menu_key: 'patients', menu_label: 'Patients Registry', menu_icon: '👥' },
-        { role_name: 'admin', menu_key: 'appointments', menu_label: 'Appointments', menu_icon: '📅' },
-        { role_name: 'admin', menu_key: 'invoices', menu_label: 'Billing & Receipts', menu_icon: '💳' },
-        { role_name: 'admin', menu_key: 'doctors', menu_label: 'Doctors Registry', menu_icon: '👨‍⚕️' },
-        { role_name: 'admin', menu_key: 'rooms', menu_label: 'Rooms & Allocations', menu_icon: '🏨' },
-        { role_name: 'admin', menu_key: 'staff', menu_label: 'Staff Settings', menu_icon: '👩‍⚕️' },
-        { role_name: 'admin', menu_key: 'hospital-setup', menu_label: 'Hospital Setup', menu_icon: '⚙️' },
-        
-        // Nurse menus
-        { role_name: 'nurse', menu_key: 'overview', menu_label: 'Overview Panel', menu_icon: '📊' },
-        { role_name: 'nurse', menu_key: 'patients', menu_label: 'Patients Registry', menu_icon: '👥' },
-        { role_name: 'nurse', menu_key: 'appointments', menu_label: 'Appointments', menu_icon: '📅' },
-        { role_name: 'nurse', menu_key: 'rooms', menu_label: 'Rooms & Allocations', menu_icon: '🏨' },
-
-        // Doctor menus
-        { role_name: 'doctor', menu_key: 'overview', menu_label: 'Overview Panel', menu_icon: '📊' },
-        { role_name: 'doctor', menu_key: 'patients', menu_label: 'Patients Registry', menu_icon: '👥' },
-        { role_name: 'doctor', menu_key: 'rooms', menu_label: 'Rooms & Allocations', menu_icon: '🏨' }
+    // Seed default custom roles and menus for EACH hospital
+    const hospitals = await sql`SELECT id FROM hospitals`;
+    for (const h of hospitals) {
+      const rolesToSeed = [
+        { role_name: 'admin', description: 'Hospital Administrator' },
+        { role_name: 'nurse', description: 'Staff Nurse' },
+        { role_name: 'doctor', description: 'Medical Doctor' },
+        { role_name: 'pharmacist', description: 'Pharmacy Manager' }
       ];
-      for (const m of defaultMenus) {
-        await sql`
-          INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon)
-          VALUES (${m.role_name}, ${m.menu_key}, ${m.menu_label}, ${m.menu_icon})
+      for (const r of rolesToSeed) {
+        const checkRole = await sql`
+          SELECT id FROM custom_roles 
+          WHERE role_name = ${r.role_name} AND hospital_id = ${h.id}
         `;
+        if (checkRole.length === 0) {
+          await sql`
+            INSERT INTO custom_roles (role_name, description, hospital_id) 
+            VALUES (${r.role_name}, ${r.description}, ${h.id})
+          `;
+        }
+      }
+
+      const checkMenus = await sql`SELECT id FROM role_menus WHERE hospital_id = ${h.id} LIMIT 1`;
+      if (checkMenus.length === 0) {
+        const defaultMenus = [
+          // Admin menus
+          { role_name: 'admin', menu_key: 'overview', menu_label: 'Overview Panel', menu_icon: '📊' },
+          { role_name: 'admin', menu_key: 'patients', menu_label: 'Patients Registry', menu_icon: '👥' },
+          { role_name: 'admin', menu_key: 'appointments', menu_label: 'Appointments', menu_icon: '📅' },
+          { role_name: 'admin', menu_key: 'invoices', menu_label: 'Billing & Receipts', menu_icon: '💳' },
+          { role_name: 'admin', menu_key: 'doctors', menu_label: 'Doctors Registry', menu_icon: '👨‍⚕️' },
+          { role_name: 'admin', menu_key: 'rooms', menu_label: 'Rooms & Allocations', menu_icon: '🏨' },
+          { role_name: 'admin', menu_key: 'staff', menu_label: 'Staff Settings', menu_icon: '👩‍⚕️' },
+          { role_name: 'admin', menu_key: 'hospital-setup', menu_label: 'Hospital Setup', menu_icon: '⚙️' },
+          
+          // Nurse menus
+          { role_name: 'nurse', menu_key: 'overview', menu_label: 'Overview Panel', menu_icon: '📊' },
+          { role_name: 'nurse', menu_key: 'patients', menu_label: 'Patients Registry', menu_icon: '👥' },
+          { role_name: 'nurse', menu_key: 'appointments', menu_label: 'Appointments', menu_icon: '📅' },
+          { role_name: 'nurse', menu_key: 'rooms', menu_label: 'Rooms & Allocations', menu_icon: '🏨' },
+
+          // Doctor menus
+          { role_name: 'doctor', menu_key: 'overview', menu_label: 'Overview Panel', menu_icon: '📊' },
+          { role_name: 'doctor', menu_key: 'patients', menu_label: 'Patients Registry', menu_icon: '👥' },
+          { role_name: 'doctor', menu_key: 'rooms', menu_label: 'Rooms & Allocations', menu_icon: '🏨' }
+        ];
+        for (const m of defaultMenus) {
+          await sql`
+            INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon, hospital_id)
+            VALUES (${m.role_name}, ${m.menu_key}, ${m.menu_label}, ${m.menu_icon}, ${h.id})
+          `;
+        }
       }
     }
 
