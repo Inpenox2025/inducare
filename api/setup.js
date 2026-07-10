@@ -80,6 +80,62 @@ module.exports = async function handler(req, res) {
       )
     `;
 
+    // 4b. Create Doctors Table
+    await sql`
+      CREATE TABLE IF NOT EXISTS doctors (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        specialization VARCHAR(100),
+        phone VARCHAR(20),
+        email VARCHAR(100),
+        fee NUMERIC(15,2) DEFAULT 0.00,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
+    // 4c. Create Rooms Table
+    await sql`
+      CREATE TABLE IF NOT EXISTS rooms (
+        id SERIAL PRIMARY KEY,
+        room_no VARCHAR(50) UNIQUE NOT NULL,
+        room_type VARCHAR(50), -- 'ward', 'semi-private', 'private', 'icu'
+        status VARCHAR(20) DEFAULT 'available', -- 'available', 'occupied', 'maintenance'
+        price_per_day NUMERIC(15,2) DEFAULT 0.00,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
+    // 4d. Create Room Allocations Table
+    await sql`
+      CREATE TABLE IF NOT EXISTS room_allocations (
+        id SERIAL PRIMARY KEY,
+        room_id INT REFERENCES rooms(id) ON DELETE CASCADE,
+        patient_id INT REFERENCES patients(id) ON DELETE CASCADE,
+        admitted_at TIMESTAMP DEFAULT NOW(),
+        discharged_at TIMESTAMP,
+        status VARCHAR(20) DEFAULT 'active', -- 'active', 'discharged'
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
+    // 4e. Create Doctor Visits Table
+    await sql`
+      CREATE TABLE IF NOT EXISTS doctor_visits (
+        id SERIAL PRIMARY KEY,
+        allocation_id INT REFERENCES room_allocations(id) ON DELETE CASCADE,
+        doctor_id INT REFERENCES doctors(id) ON DELETE CASCADE,
+        visit_date TIMESTAMP DEFAULT NOW(),
+        clinical_notes TEXT,
+        temperature VARCHAR(20),
+        blood_pressure VARCHAR(20),
+        heart_rate VARCHAR(20),
+        status VARCHAR(20) DEFAULT 'completed', -- 'completed', 'cancelled'
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
     // 5. Seed default admin user if not exists
     const adminRows = await sql`SELECT id FROM users WHERE username = 'admin'`;
     let adminId;
@@ -102,6 +158,41 @@ module.exports = async function handler(req, res) {
       await sql`
         INSERT INTO users (username, password_hash, role) 
         VALUES ('nurse', ${hash}, 'nurse')
+      `;
+    }
+
+    // 6b. Seed default doctor user if not exists
+    const doctorRows = await sql`SELECT id FROM users WHERE username = 'doctor'`;
+    if (doctorRows.length === 0) {
+      const hash = await bcrypt.hash('doctor123', 10);
+      await sql`
+        INSERT INTO users (username, password_hash, role) 
+        VALUES ('doctor', ${hash}, 'doctor')
+      `;
+    }
+
+    // 6c. Seed sample doctors if empty
+    const checkDoctors = await sql`SELECT id FROM doctors LIMIT 1`;
+    if (checkDoctors.length === 0) {
+      await sql`
+        INSERT INTO doctors (name, specialization, phone, email, fee)
+        VALUES 
+        ('Dr. Stephen Strange', 'Cardiology', '9876543220', 'strange@inducare.com', 500.00),
+        ('Dr. Gregory House', 'Diagnostics', '9876543221', 'house@inducare.com', 1200.00),
+        ('Dr. Meredith Grey', 'General Surgery', '9876543222', 'grey@inducare.com', 800.00)
+      `;
+    }
+
+    // 6d. Seed sample rooms if empty
+    const checkRooms = await sql`SELECT id FROM rooms LIMIT 1`;
+    if (checkRooms.length === 0) {
+      await sql`
+        INSERT INTO rooms (room_no, room_type, status, price_per_day)
+        VALUES 
+        ('Room 101', 'Private', 'available', 1500.00),
+        ('Room 102', 'Semi-Private', 'available', 800.00),
+        ('Room 103', 'ICU', 'available', 5000.00),
+        ('Room 104', 'General Ward', 'available', 400.00)
       `;
     }
 

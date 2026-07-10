@@ -74,13 +74,34 @@ document.addEventListener("DOMContentLoaded", async () => {
       .charAt(0)
       .toUpperCase();
 
-    // Nurse Role Access Control
-    if (user.role === "nurse") {
-      // Hide staff management in navigation menu
-      const navStaff = document.getElementById("navStaff");
-      if (navStaff) navStaff.style.display = "none";
+    // Role-Based Menu Access Configuration
+    const navOverview = document.getElementById("navOverview");
+    const navPatients = document.getElementById("navPatients");
+    const navAppointments = document.getElementById("navAppointments");
+    const navInvoices = document.getElementById("navInvoices");
+    const navStaff = document.getElementById("navStaff");
+    const navDoctors = document.getElementById("navDoctors");
+    const navRooms = document.getElementById("navRooms");
 
-      // Hide add staff buttons or admin only actions
+    if (user.role === "admin") {
+      if (navStaff) navStaff.style.display = "";
+      if (navInvoices) navInvoices.style.display = "";
+      if (navAppointments) navAppointments.style.display = "";
+      if (navDoctors) navDoctors.style.display = "";
+      if (navRooms) navRooms.style.display = "";
+    } else if (user.role === "doctor") {
+      if (navStaff) navStaff.style.display = "none";
+      if (navInvoices) navInvoices.style.display = "none";
+      if (navAppointments) navAppointments.style.display = "none";
+      if (navDoctors) navDoctors.style.display = "none";
+      if (navRooms) navRooms.style.display = "";
+      document.body.classList.add("doctor-restricted");
+    } else if (user.role === "nurse") {
+      if (navStaff) navStaff.style.display = "none";
+      if (navInvoices) navInvoices.style.display = "none"; // remove billing to nurse
+      if (navAppointments) navAppointments.style.display = "";
+      if (navDoctors) navDoctors.style.display = "none";
+      if (navRooms) navRooms.style.display = "";
       document.body.classList.add("nurse-restricted");
     }
   }
@@ -119,9 +140,23 @@ function initTabNavigation() {
 
 function switchTab(tabName) {
   const user = getUser();
-  // Prevent nurse accessing staff page directly
-  if (tabName === "staff" && user && user.role !== "admin") {
-    showToast("Access Denied. Admins only.", "error");
+  if (!user) return;
+
+  // Enforce role-based access guards on tabs
+  if (user.role === "nurse") {
+    const allowed = ["overview", "patients", "appointments", "rooms"];
+    if (!allowed.includes(tabName)) {
+      showToast("Access Denied. Nurse permissions restricted.", "error");
+      return;
+    }
+  } else if (user.role === "doctor") {
+    const allowed = ["overview", "patients", "rooms"];
+    if (!allowed.includes(tabName)) {
+      showToast("Access Denied. Doctor permissions restricted.", "error");
+      return;
+    }
+  } else if (user.role !== "admin") {
+    showToast("Access Denied.", "error");
     return;
   }
 
@@ -155,6 +190,8 @@ function switchTab(tabName) {
   else if (tabName === "appointments") loadAppointments();
   else if (tabName === "invoices") loadInvoices();
   else if (tabName === "staff") loadStaff();
+  else if (tabName === "doctors") loadDoctors();
+  else if (tabName === "rooms") loadRooms();
 
   // Close mobile sidebar on navigate
   document.getElementById("sidebar").classList.remove("open");
@@ -673,6 +710,59 @@ function renderCaseSheetHTML(p) {
           Developed & Maintained by <a href="https://inspenox.in" target="_blank" style="color: #00bba8; text-decoration: none; font-weight: 700;">inspenox</a>
         </div>
       </div>
+
+      <!-- PAGE 3: DOCTOR VISITS HISTORY (DYNAMIC IF DATA EXISTS) -->
+      ${(() => {
+        if (cs.doctor_visits && Array.isArray(cs.doctor_visits) && cs.doctor_visits.length > 0) {
+          const rowsHTML = cs.doctor_visits.map(v => `
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${formatDate(v.visit_date)}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-weight:600;">${esc(v.doctor_name)}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-size:11px; color:#555;">Temp: ${esc(v.temp)} &deg;F | BP: ${esc(v.bp)} | HR: ${esc(v.hr)} bpm</td>
+              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${esc(v.notes)}</td>
+            </tr>
+          `).join("");
+
+          return `
+            <div class="case-sheet-page-break"></div>
+            <div class="case-sheet-header" style="margin-top: 40px;">
+              <div style="font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; color: #00bba8; letter-spacing: 0.5px; text-align: center; margin-bottom: 8px;">INDUCARE</div>
+              <div class="case-sheet-title">Patient Progress & Doctor Visits Sheet</div>
+            </div>
+
+            <div class="case-sheet-section">
+              <div class="case-sheet-section-title">Patient Identification</div>
+              <div class="case-sheet-meta-grid">
+                <div class="meta-item"><strong>Patient Name:</strong> ${displayVal(p.full_name)}</div>
+                <div class="meta-item"><strong>Mobile Number:</strong> ${displayVal(p.mobile_no)}</div>
+                <div class="meta-item"><strong>Total Visits:</strong> ${cs.doctor_visits.length}</div>
+              </div>
+            </div>
+
+            <div class="case-sheet-section" style="margin-top: 20px;">
+              <div class="case-sheet-section-title">In-Room Checkups & Vitals Log</div>
+              <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; margin-top: 10px;">
+                <thead>
+                  <tr style="background-color: #f8fafc; font-weight: bold; border-bottom: 2px solid #e2e8f0;">
+                    <th style="padding: 8px; border-bottom: 2px solid #e2e8f0;">Date</th>
+                    <th style="padding: 8px; border-bottom: 2px solid #e2e8f0;">Doctor</th>
+                    <th style="padding: 8px; border-bottom: 2px solid #e2e8f0;">Vitals Checked</th>
+                    <th style="padding: 8px; border-bottom: 2px solid #e2e8f0;">Clinical Notes / Observations</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rowsHTML}
+                </tbody>
+              </table>
+              
+              <div style="text-align: center; font-size: 11px; color: #555555; margin-top: 30px; border-top: 1px dashed #dddddd; padding-top: 8px;">
+                Developed & Maintained by <a href="https://inspenox.in" target="_blank" style="color: #00bba8; text-decoration: none; font-weight: 700;">inspenox</a>
+              </div>
+            </div>
+          `;
+        }
+        return "";
+      })()}
     </div>
   `;
 }
@@ -1588,6 +1678,45 @@ function initEventListeners() {
     .getElementById("reconciliationForm")
     .addEventListener("submit", processReconciliation);
   document.getElementById("staffForm").addEventListener("submit", saveStaff);
+  document.getElementById("doctorForm").addEventListener("submit", saveDoctor);
+  document.getElementById("roomForm").addEventListener("submit", saveRoom);
+  document.getElementById("allocationForm").addEventListener("submit", saveAllocation);
+  document.getElementById("visitForm").addEventListener("submit", saveDoctorVisit);
+
+  // Add triggers
+  document.getElementById("addDoctorBtn").addEventListener("click", () => {
+    document.getElementById("doctorForm").reset();
+    document.getElementById("doctor_id").value = "";
+    document.getElementById("doctorModalTitle").textContent = "Register New Doctor";
+    openModal("doctorModal");
+  });
+
+  document.getElementById("addRoomBtn").addEventListener("click", () => {
+    document.getElementById("roomForm").reset();
+    document.getElementById("room_id").value = "";
+    document.getElementById("roomModalTitle").textContent = "Add Clinical Room";
+    openModal("roomModal");
+  });
+
+  document.getElementById("allocateRoomBtn").addEventListener("click", async () => {
+    document.getElementById("allocationForm").reset();
+    await populateAllocationModalDropdowns();
+    openModal("allocationModal");
+  });
+
+  document.getElementById("logVisitBtn").addEventListener("click", async () => {
+    document.getElementById("visitForm").reset();
+    await populateVisitModalDropdowns();
+    openModal("visitModal");
+  });
+
+  let doctorSearchTimeout;
+  document.getElementById("searchDoctorInput").addEventListener("input", (e) => {
+    clearTimeout(doctorSearchTimeout);
+    doctorSearchTimeout = setTimeout(() => {
+      loadDoctors(e.target.value.trim());
+    }, 400);
+  });
 
   // Modal form tab clicks
   document.querySelectorAll(".modal-tab-btn").forEach((btn) => {
@@ -1906,4 +2035,417 @@ function esc(str) {
   const div = document.createElement("div");
   div.textContent = str;
   return div.innerHTML;
+}
+
+// ═══════════════════════════════════════
+// DOCTORS CRUD OPERATIONS
+// ═══════════════════════════════════════
+async function loadDoctors(search = "") {
+  const tbody = document.getElementById("doctorsTableBody");
+  try {
+    const res = await fetch(`${API_BASE}/doctors?search=${encodeURIComponent(search)}`, {
+      headers: authHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">Failed to load doctors list.</td></tr>';
+      return;
+    }
+
+    if (data.doctors.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">No doctors registered in clinical directory.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = data.doctors.map(d => `
+      <tr>
+        <td data-label="ID"><span style="color:var(--primary); font-weight:600;">#${d.id}</span></td>
+        <td data-label="Doctor Name"><strong>${esc(d.name)}</strong></td>
+        <td data-label="Specialization"><span style="font-weight:600; color:var(--text2);">${esc(d.specialization)}</span></td>
+        <td data-label="Phone">${esc(d.phone || '—')}</td>
+        <td data-label="Email">${esc(d.email || '—')}</td>
+        <td data-label="Consultation Fee"><strong>${formatCurrency(d.fee)}</strong></td>
+        <td data-label="Actions">
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button class="action-btn btn-edit" onclick="editDoctor(${d.id})">Edit</button>
+            <button class="action-btn btn-delete" onclick="deleteDoctor(${d.id})">Delete</button>
+          </div>
+        </td>
+      </tr>
+    `).join("");
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">Error loading doctor records.</td></tr>';
+  }
+}
+
+async function saveDoctor(e) {
+  e.preventDefault();
+  const form = document.getElementById("doctorForm");
+  const id = document.getElementById("doctor_id").value;
+  const formData = new FormData(form);
+  const data = Object.fromEntries(formData.entries());
+
+  try {
+    const url = id ? `${API_BASE}/doctors/${id}` : `${API_BASE}/doctors`;
+    const method = id ? "PUT" : "POST";
+
+    const res = await fetch(url, {
+      method,
+      headers: authHeaders(),
+      body: JSON.stringify(data)
+    });
+
+    const result = await res.json();
+    if (res.ok && result.success) {
+      showToast(id ? "Doctor profile updated!" : "Doctor registered successfully!", "success");
+      closeModal("doctorModal");
+      loadDoctors();
+    } else {
+      showToast(result.error || "Failed to save doctor details", "error");
+    }
+  } catch (err) {
+    showToast("Network error saving doctor profile", "error");
+  }
+}
+
+window.editDoctor = async function (id) {
+  try {
+    const res = await fetch(`${API_BASE}/doctors/${id}`, { headers: authHeaders() });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      const d = data.doctor;
+      document.getElementById("doctorModalTitle").textContent = "Modify Doctor Credentials";
+      document.getElementById("doctor_id").value = d.id;
+      document.getElementById("doctor_name_input").value = d.name;
+      document.getElementById("doctor_spec").value = d.specialization || "";
+      document.getElementById("doctor_phone").value = d.phone || "";
+      document.getElementById("doctor_email").value = d.email || "";
+      document.getElementById("doctor_fee").value = d.fee || 500;
+      openModal("doctorModal");
+    }
+  } catch (err) {
+    showToast("Failed to load doctor profile", "error");
+  }
+};
+
+window.deleteDoctor = async function (id) {
+  if (!confirm("Are you sure you want to delete this doctor?")) return;
+  try {
+    const res = await fetch(`${API_BASE}/doctors/${id}`, {
+      method: "DELETE",
+      headers: authHeaders()
+    });
+    if (res.ok) {
+      showToast("Doctor removed successfully", "success");
+      loadDoctors();
+    } else {
+      const data = await res.json();
+      showToast(data.error || "Delete failed", "error");
+    }
+  } catch {
+    showToast("Network error deleting doctor", "error");
+  }
+};
+
+// ═══════════════════════════════════════
+// ROOMS AND ALLOCATIONS OPERATIONS
+// ═══════════════════════════════════════
+async function loadRooms() {
+  const roomsTbody = document.getElementById("roomsTableBody");
+  const allocsTbody = document.getElementById("allocationsTableBody");
+  const visitsTbody = document.getElementById("visitsTableBody");
+
+  // 1. Fetch & Load Rooms list
+  try {
+    const res = await fetch(`${API_BASE}/rooms`, { headers: authHeaders() });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      if (data.rooms.length === 0) {
+        roomsTbody.innerHTML = '<tr><td colspan="5" class="empty-cell">No clinical rooms registered.</td></tr>';
+      } else {
+        roomsTbody.innerHTML = data.rooms.map(r => `
+          <tr>
+            <td data-label="Room No"><strong>${esc(r.room_no)}</strong></td>
+            <td data-label="Type">${esc(r.room_type)}</td>
+            <td data-label="Status"><span class="badge badge-${r.status === 'available' ? 'paid' : r.status === 'occupied' ? 'unpaid' : 'partial'}">${esc(r.status)}</span></td>
+            <td data-label="Price / Day"><strong>${formatCurrency(r.price_per_day)}</strong></td>
+            <td data-label="Actions">
+              <div style="display: flex; gap: 6px;">
+                <button class="action-btn btn-edit" onclick="editRoom(${r.id})">Edit</button>
+                <button class="action-btn btn-delete" onclick="deleteRoom(${r.id})">Delete</button>
+              </div>
+            </td>
+          </tr>
+        `).join("");
+      }
+    }
+  } catch (err) {
+    roomsTbody.innerHTML = '<tr><td colspan="5" class="empty-cell">Error loading room inventory.</td></tr>';
+  }
+
+  // 2. Fetch & Load Allocations list
+  try {
+    const res = await fetch(`${API_BASE}/rooms/allocations`, { headers: authHeaders() });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      const activeAllocs = data.allocations.filter(a => a.status === 'active');
+      if (activeAllocs.length === 0) {
+        allocsTbody.innerHTML = '<tr><td colspan="4" class="empty-cell">No patients currently admitted.</td></tr>';
+      } else {
+        allocsTbody.innerHTML = activeAllocs.map(a => `
+          <tr>
+            <td data-label="Room"><strong>${esc(a.room_no)}</strong> <span style="font-size:10px; color:var(--text3);">(${esc(a.room_type)})</span></td>
+            <td data-label="Patient"><strong>${esc(a.patient_name)}</strong></td>
+            <td data-label="Admitted Date">${formatDate(a.admitted_at)}</td>
+            <td data-label="Action">
+              <button class="action-btn btn-delete" style="background-color: var(--warning); color:#fff;" onclick="dischargeAllocation(${a.id})">Discharge</button>
+            </td>
+          </tr>
+        `).join("");
+      }
+    }
+  } catch (err) {
+    allocsTbody.innerHTML = '<tr><td colspan="4" class="empty-cell">Error loading active allocations.</td></tr>';
+  }
+
+  // 3. Fetch & Load Visits list
+  try {
+    const res = await fetch(`${API_BASE}/rooms/visits`, { headers: authHeaders() });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      if (data.visits.length === 0) {
+        visitsTbody.innerHTML = '<tr><td colspan="6" class="empty-cell">No doctor visits logged in rooms yet.</td></tr>';
+      } else {
+        visitsTbody.innerHTML = data.visits.map(v => `
+          <tr>
+            <td data-label="Room"><strong>${esc(v.room_no)}</strong></td>
+            <td data-label="Patient">${esc(v.patient_name)}</td>
+            <td data-label="Visiting Doctor"><strong>${esc(v.doctor_name)}</strong> <small style="color:var(--text3); display:block;">${esc(v.doctor_specialization)}</small></td>
+            <td data-label="Visit Date">${formatDate(v.visit_date)}</td>
+            <td data-label="Vitals (Temp/BP/HR)">Temp: ${esc(v.temperature || '—')} &deg;F<br>BP: ${esc(v.blood_pressure || '—')}<br>HR: ${esc(v.heart_rate || '—')} bpm</td>
+            <td data-label="Clinical notes" style="max-width: 250px; font-style:italic;">${esc(v.clinical_notes || 'No remarks recorded.')}</td>
+          </tr>
+        `).join("");
+      }
+    }
+  } catch (err) {
+    visitsTbody.innerHTML = '<tr><td colspan="6" class="empty-cell">Error loading visit history.</td></tr>';
+  }
+}
+
+async function saveRoom(e) {
+  e.preventDefault();
+  const form = document.getElementById("roomForm");
+  const id = document.getElementById("room_id").value;
+  const formData = new FormData(form);
+  const data = Object.fromEntries(formData.entries());
+
+  try {
+    const url = id ? `${API_BASE}/rooms/${id}` : `${API_BASE}/rooms`;
+    const method = id ? "PUT" : "POST";
+
+    const res = await fetch(url, {
+      method,
+      headers: authHeaders(),
+      body: JSON.stringify(data)
+    });
+
+    const result = await res.json();
+    if (res.ok && result.success) {
+      showToast(id ? "Room inventory updated!" : "Room registered successfully!", "success");
+      closeModal("roomModal");
+      loadRooms();
+    } else {
+      showToast(result.error || "Failed to save room details", "error");
+    }
+  } catch (err) {
+    showToast("Network error saving room details", "error");
+  }
+}
+
+window.editRoom = async function (id) {
+  try {
+    const res = await fetch(`${API_BASE}/rooms/${id}`, { headers: authHeaders() });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      const r = data.room;
+      document.getElementById("roomModalTitle").textContent = "Modify Room Settings";
+      document.getElementById("room_id").value = r.id;
+      document.getElementById("room_no_input").value = r.room_no;
+      document.getElementById("room_type_select").value = r.room_type;
+      document.getElementById("room_status_select").value = r.status;
+      document.getElementById("room_price").value = r.price_per_day;
+      openModal("roomModal");
+    }
+  } catch (err) {
+    showToast("Failed to load room settings", "error");
+  }
+};
+
+window.deleteRoom = async function (id) {
+  if (!confirm("Are you sure you want to remove this room from inventory?")) return;
+  try {
+    const res = await fetch(`${API_BASE}/rooms/${id}`, {
+      method: "DELETE",
+      headers: authHeaders()
+    });
+    if (res.ok) {
+      showToast("Room removed from inventory", "success");
+      loadRooms();
+    } else {
+      const data = await res.json();
+      showToast(data.error || "Delete failed", "error");
+    }
+  } catch {
+    showToast("Network error removing room", "error");
+  }
+};
+
+// Allocation dropdown loaders
+async function populateAllocationModalDropdowns() {
+  const patientSelect = document.getElementById("alloc_patient_select");
+  const roomSelect = document.getElementById("alloc_room_select");
+
+  patientSelect.innerHTML = '<option value="">Loading patients...</option>';
+  roomSelect.innerHTML = '<option value="">Loading rooms...</option>';
+
+  try {
+    // 1. Fetch Patients
+    const resPat = await fetch(`${API_BASE}/patients`, { headers: authHeaders() });
+    const dataPat = await resPat.json();
+    if (resPat.ok && dataPat.success) {
+      patientSelect.innerHTML = '<option value="">-- Choose Patient to Admit --</option>' + 
+        dataPat.patients.map(p => `<option value="${p.id}">${esc(p.full_name)} (ID: #${p.id})</option>`).join("");
+    } else {
+      patientSelect.innerHTML = '<option value="">Failed to load patients list</option>';
+    }
+
+    // 2. Fetch Rooms
+    const resRoom = await fetch(`${API_BASE}/rooms`, { headers: authHeaders() });
+    const dataRoom = await resRoom.json();
+    if (resRoom.ok && dataRoom.success) {
+      const availableRooms = dataRoom.rooms.filter(r => r.status === 'available');
+      if (availableRooms.length === 0) {
+        roomSelect.innerHTML = '<option value="">No available rooms left</option>';
+      } else {
+        roomSelect.innerHTML = '<option value="">-- Choose Available Room --</option>' + 
+          availableRooms.map(r => `<option value="${r.id}">${esc(r.room_no)} - ${esc(r.room_type)} (₹ ${r.price_per_day}/day)</option>`).join("");
+      }
+    } else {
+      roomSelect.innerHTML = '<option value="">Failed to load rooms list</option>';
+    }
+  } catch (err) {
+    patientSelect.innerHTML = '<option value="">Connection error</option>';
+    roomSelect.innerHTML = '<option value="">Connection error</option>';
+  }
+}
+
+async function saveAllocation(e) {
+  e.preventDefault();
+  const form = document.getElementById("allocationForm");
+  const formData = new FormData(form);
+  const data = Object.fromEntries(formData.entries());
+
+  try {
+    const res = await fetch(`${API_BASE}/rooms/allocations`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify(data)
+    });
+
+    const result = await res.json();
+    if (res.ok && result.success) {
+      showToast("Patient admitted to room successfully!", "success");
+      closeModal("allocationModal");
+      loadRooms();
+    } else {
+      showToast(result.error || "Admit failed", "error");
+    }
+  } catch (err) {
+    showToast("Network error admitting patient", "error");
+  }
+}
+
+window.dischargeAllocation = async function (id) {
+  if (!confirm("Are you sure you want to discharge this patient? This will release the room.")) return;
+  try {
+    const res = await fetch(`${API_BASE}/rooms/allocations/${id}`, {
+      method: "PUT",
+      headers: authHeaders()
+    });
+    if (res.ok) {
+      showToast("Patient discharged from room", "success");
+      loadRooms();
+    } else {
+      const data = await res.json();
+      showToast(data.error || "Discharge failed", "error");
+    }
+  } catch {
+    showToast("Network error discharging patient", "error");
+  }
+};
+
+// Visit dropdown loaders
+async function populateVisitModalDropdowns() {
+  const allocSelect = document.getElementById("visit_alloc_select");
+  const doctorSelect = document.getElementById("visit_doctor_select");
+
+  allocSelect.innerHTML = '<option value="">Loading admissions...</option>';
+  doctorSelect.innerHTML = '<option value="">Loading doctors...</option>';
+
+  try {
+    // 1. Fetch active allocations
+    const resAlloc = await fetch(`${API_BASE}/rooms/allocations`, { headers: authHeaders() });
+    const dataAlloc = await resAlloc.json();
+    if (resAlloc.ok && dataAlloc.success) {
+      const active = dataAlloc.allocations.filter(a => a.status === 'active');
+      if (active.length === 0) {
+        allocSelect.innerHTML = '<option value="">No patients actively admitted in rooms</option>';
+      } else {
+        allocSelect.innerHTML = '<option value="">-- Select Admitted Patient --</option>' + 
+          active.map(a => `<option value="${a.id}">${esc(a.patient_name)} in ${esc(a.room_no)}</option>`).join("");
+      }
+    } else {
+      allocSelect.innerHTML = '<option value="">Failed to load admissions</option>';
+    }
+
+    // 2. Fetch doctors
+    const resDoc = await fetch(`${API_BASE}/doctors`, { headers: authHeaders() });
+    const dataDoc = await resDoc.json();
+    if (resDoc.ok && dataDoc.success) {
+      doctorSelect.innerHTML = '<option value="">-- Choose Attending Doctor --</option>' + 
+        dataDoc.doctors.map(d => `<option value="${d.id}">${esc(d.name)} (${esc(d.specialization)})</option>`).join("");
+    } else {
+      doctorSelect.innerHTML = '<option value="">Failed to load doctors list</option>';
+    }
+  } catch (err) {
+    allocSelect.innerHTML = '<option value="">Connection error</option>';
+    doctorSelect.innerHTML = '<option value="">Connection error</option>';
+  }
+}
+
+async function saveDoctorVisit(e) {
+  e.preventDefault();
+  const form = document.getElementById("visitForm");
+  const formData = new FormData(form);
+  const data = Object.fromEntries(formData.entries());
+
+  try {
+    const res = await fetch(`${API_BASE}/rooms/visits`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify(data)
+    });
+
+    const result = await res.json();
+    if (res.ok && result.success) {
+      showToast("Doctor visit checkup logged & synchronized to patient case sheet!", "success");
+      closeModal("visitModal");
+      loadRooms();
+    } else {
+      showToast(result.error || "Visit log failed", "error");
+    }
+  } catch (err) {
+    showToast("Network error recording visit log", "error");
+  }
 }

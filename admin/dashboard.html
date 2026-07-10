@@ -35,6 +35,12 @@
             <a href="#" class="nav-item" data-tab="invoices" id="navInvoices">
                 <span class="nav-icon">💳</span> Billing & Receipts
             </a>
+            <a href="#" class="nav-item" data-tab="doctors" id="navDoctors">
+                <span class="nav-icon">👨‍⚕️</span> Doctors Management
+            </a>
+            <a href="#" class="nav-item" data-tab="rooms" id="navRooms">
+                <span class="nav-icon">🏨</span> Rooms & Allocations
+            </a>
             <a href="#" class="nav-item" data-tab="staff" id="navStaff">
                 <span class="nav-icon">👩‍⚕️</span> Staff Management
             </a>
@@ -313,6 +319,120 @@
                         </tr>
                     </tbody>
                 </table>
+            </div>
+        </section>
+
+        <!-- ═══════ SECTION: DOCTORS ═══════ -->
+        <section id="tab-doctors" class="tab-panel">
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <input type="text" class="search-input" id="searchDoctorInput"
+                        placeholder="🔍 Search doctors by name or specialization...">
+                </div>
+                <div class="toolbar-right">
+                    <button class="btn btn-primary" id="addDoctorBtn">+ Add Doctor</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Doctor Name</th>
+                            <th>Specialization</th>
+                            <th>Contact Phone</th>
+                            <th>Email Address</th>
+                            <th>Consultation Fee</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="doctorsTableBody">
+                        <tr>
+                            <td colspan="7" class="loading-cell"><span class="spinner"></span> Loading doctors...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ═══════ SECTION: ROOMS & ALLOCATIONS ═══════ -->
+        <section id="tab-rooms" class="tab-panel">
+            <div class="toolbar">
+                <div class="toolbar-left" style="gap: 12px; display: flex; align-items: center;">
+                    <button class="btn btn-primary" id="addRoomBtn">+ Add Room</button>
+                    <button class="btn btn-primary" id="allocateRoomBtn" style="background-color: var(--success); box-shadow: 0 4px 12px rgba(16,185,129,0.2);">+ Admit Patient to Room</button>
+                    <button class="btn btn-primary" id="logVisitBtn" style="background-color: var(--info); box-shadow: 0 4px 12px rgba(6,182,212,0.2);">+ Log Doctor Visit</button>
+                </div>
+            </div>
+            <div class="overview-details-grid" style="grid-template-columns: 1.1fr 0.9fr;">
+                <!-- Rooms List -->
+                <div class="details-card">
+                    <h3>🏨 Room Inventory List</h3>
+                    <div class="table-container minimal" style="max-height: 400px; overflow-y: auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Room No</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Price / Day</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="roomsTableBody">
+                                <tr>
+                                    <td colspan="5" class="loading-cell"><span class="spinner"></span> Loading rooms...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Active Allocations -->
+                <div class="details-card">
+                    <h3>🛌 Active Patients Admitted</h3>
+                    <div class="table-container minimal" style="max-height: 400px; overflow-y: auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Room</th>
+                                    <th>Patient</th>
+                                    <th>Admitted Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="allocationsTableBody">
+                                <tr>
+                                    <td colspan="4" class="loading-cell"><span class="spinner"></span> Loading allocations...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Doctor Visits log -->
+            <div class="details-card" style="margin-top: 24px;">
+                <h3>🩺 In-Room Doctor Visit History</h3>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Room</th>
+                                <th>Patient</th>
+                                <th>Visiting Doctor</th>
+                                <th>Visit Date/Time</th>
+                                <th>Vitals (Temp / BP / HR)</th>
+                                <th>Clinical notes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="visitsTableBody">
+                            <tr>
+                                <td colspan="6" class="loading-cell"><span class="spinner"></span> Loading visits...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </section>
     </main>
@@ -956,6 +1076,7 @@
                         <label for="staff_role">Account Privilege Role <span class="req">*</span></label>
                         <select class="form-control" id="staff_role" name="role" required>
                             <option value="nurse">Nurse (Staff Access)</option>
+                            <option value="doctor">Doctor (Clinical Access)</option>
                             <option value="admin">Administrator (Full Control)</option>
                         </select>
                     </div>
@@ -984,6 +1105,166 @@
                 <div id="caseSheetViewContent">
                     <!-- Dynamic Printable Content -->
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. Doctor Modal -->
+    <div class="modal-overlay" id="doctorModal">
+        <div class="modal" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2 id="doctorModalTitle">Register New Doctor</h2>
+                <button class="modal-close" data-close="doctorModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="doctorForm" autocomplete="off">
+                    <input type="hidden" id="doctor_id" name="id">
+                    <div class="form-group">
+                         <label for="doctor_name_input">Doctor Full Name <span class="req">*</span></label>
+                         <input type="text" class="form-control" id="doctor_name_input" name="name" required>
+                    </div>
+                    <div class="form-group">
+                         <label for="doctor_spec">Specialization <span class="req">*</span></label>
+                         <input type="text" class="form-control" id="doctor_spec" name="specialization" placeholder="e.g. Cardiology" required>
+                    </div>
+                    <div class="form-group">
+                         <label for="doctor_phone">Contact Mobile Number</label>
+                         <input type="tel" class="form-control" id="doctor_phone" name="phone">
+                    </div>
+                    <div class="form-group">
+                         <label for="doctor_email">Email Address</label>
+                         <input type="email" class="form-control" id="doctor_email" name="email">
+                    </div>
+                    <div class="form-group">
+                         <label for="doctor_fee">Consultation Fee (₹) <span class="req">*</span></label>
+                         <input type="number" class="form-control" id="doctor_fee" name="fee" value="500" min="0" required>
+                    </div>
+                    <div class="modal-footer" style="margin-top: 24px;">
+                         <button type="button" class="btn btn-outline" data-close="doctorModal">Cancel</button>
+                         <button type="submit" class="btn btn-primary">Save Doctor</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 8. Room Modal -->
+    <div class="modal-overlay" id="roomModal">
+        <div class="modal" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2 id="roomModalTitle">Add Clinical Room</h2>
+                <button class="modal-close" data-close="roomModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="roomForm" autocomplete="off">
+                    <input type="hidden" id="room_id" name="id">
+                    <div class="form-group">
+                        <label for="room_no_input">Room Number <span class="req">*</span></label>
+                        <input type="text" class="form-control" id="room_no_input" name="room_no" placeholder="e.g. Room 105" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="room_type_select">Room Type <span class="req">*</span></label>
+                        <select class="form-control" id="room_type_select" name="room_type" required>
+                            <option value="Private">Private Room</option>
+                            <option value="Semi-Private">Semi-Private Room</option>
+                            <option value="ICU">ICU Ward</option>
+                            <option value="General Ward">General Ward</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="room_status_select">Room Status</label>
+                        <select class="form-control" id="room_status_select" name="status">
+                            <option value="available">Available</option>
+                            <option value="maintenance">Under Maintenance</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="room_price">Price Per Day (₹) <span class="req">*</span></label>
+                        <input type="number" class="form-control" id="room_price" name="price_per_day" value="500" min="0" required>
+                    </div>
+                    <div class="modal-footer" style="margin-top: 24px;">
+                        <button type="button" class="btn btn-outline" data-close="roomModal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Room</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 9. Room Allocation Modal -->
+    <div class="modal-overlay" id="allocationModal">
+        <div class="modal" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2>Admit Patient to Room</h2>
+                <button class="modal-close" data-close="allocationModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="allocationForm" autocomplete="off">
+                    <div class="form-group">
+                        <label for="alloc_patient_select">Select Patient <span class="req">*</span></label>
+                        <select class="form-control" id="alloc_patient_select" name="patient_id" required>
+                            <!-- Dynamically populated -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="alloc_room_select">Select Room (Available Only) <span class="req">*</span></label>
+                        <select class="form-control" id="alloc_room_select" name="room_id" required>
+                            <!-- Dynamically populated -->
+                        </select>
+                    </div>
+                    <div class="modal-footer" style="margin-top: 24px;">
+                        <button type="button" class="btn btn-outline" data-close="allocationModal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Admit Patient</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 10. Doctor Visit Modal -->
+    <div class="modal-overlay" id="visitModal">
+        <div class="modal" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Log Doctor checkup visit</h2>
+                <button class="modal-close" data-close="visitModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="visitForm" autocomplete="off">
+                    <div class="form-group">
+                        <label for="visit_alloc_select">Admitted Patient & Room <span class="req">*</span></label>
+                        <select class="form-control" id="visit_alloc_select" name="allocation_id" required>
+                            <!-- Dynamically populated -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="visit_doctor_select">Attending Doctor <span class="req">*</span></label>
+                        <select class="form-control" id="visit_doctor_select" name="doctor_id" required>
+                            <!-- Dynamically populated -->
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="visit_temp">Temperature (°F)</label>
+                            <input type="text" class="form-control" id="visit_temp" name="temperature" placeholder="e.g. 98.6">
+                        </div>
+                        <div class="form-group">
+                            <label for="visit_bp">Blood Pressure</label>
+                            <input type="text" class="form-control" id="visit_bp" name="blood_pressure" placeholder="e.g. 120/80">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="visit_hr">Heart Rate (bpm)</label>
+                        <input type="text" class="form-control" id="visit_hr" name="heart_rate" placeholder="e.g. 72">
+                    </div>
+                    <div class="form-group">
+                        <label for="visit_notes">Clinical / Checking Notes</label>
+                        <textarea class="form-control" id="visit_notes" name="clinical_notes" rows="3" placeholder="Enter clinical observations..."></textarea>
+                    </div>
+                    <div class="modal-footer" style="margin-top: 24px;">
+                        <button type="button" class="btn btn-outline" data-close="visitModal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Log Visit</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

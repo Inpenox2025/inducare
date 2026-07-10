@@ -85,6 +85,26 @@ app.all('/api/auth/me', (req, res, next) => {
 app.all('/api/users/:id', runHandler('./api/users'));
 app.all('/api/users', runHandler('./api/users'));
 
+// Doctors CRUD
+app.all('/api/doctors/:id', runHandler('./api/doctors'));
+app.all('/api/doctors', runHandler('./api/doctors'));
+
+// Rooms, Allocations, and Visits
+app.all('/api/rooms/allocations/:id', (req, res, next) => {
+  req.query.action = 'allocation';
+  next();
+}, runHandler('./api/rooms'));
+app.all('/api/rooms/allocations', (req, res, next) => {
+  req.query.action = 'allocation';
+  next();
+}, runHandler('./api/rooms'));
+app.all('/api/rooms/visits', (req, res, next) => {
+  req.query.action = 'visit';
+  next();
+}, runHandler('./api/rooms'));
+app.all('/api/rooms/:id', runHandler('./api/rooms'));
+app.all('/api/rooms', runHandler('./api/rooms'));
+
 // Patients CRUD
 app.all('/api/patients/:id', runHandler('./api/patients'));
 app.all('/api/patients', runHandler('./api/patients'));
