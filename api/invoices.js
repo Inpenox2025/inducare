@@ -114,19 +114,87 @@ module.exports = async function handler(req, res) {
   const id = req.query.id;
   const sql = getSQL();
 
-  // ══════ ACTION: List receipts for an invoice (GET) ══════
+  // ══════ ACTION: List receipts (GET) ══════
   if (action === "receipts") {
+    const user = verifyToken(req);
+    if (!user) return res.status(401).json({ error: "Unauthorized" });
+    const targetHospitalId = user.role === 'super_admin' ? (req.query.hospital_id ? parseInt(req.query.hospital_id) : null) : user.hospital_id;
+
     const invoiceId = req.query.invoice_id;
-    if (!invoiceId) return res.status(400).json({ error: "Invoice ID parameter is required" });
+    const search = req.query.search || "";
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 15;
+    const offset = (page - 1) * limit;
+
     try {
-      const rows = await sql`
-        SELECT r.*, i.invoice_no 
-        FROM receipts r
-        JOIN invoices i ON r.invoice_id = i.id
-        WHERE r.invoice_id = ${parseInt(invoiceId)}
-        ORDER BY r.created_at ASC
-      `;
-      return res.status(200).json({ success: true, receipts: rows });
+      if (invoiceId) {
+        // Fetch receipts log for a specific invoice (in Pay Now modal log)
+        const rows = await sql`
+          SELECT r.*, i.invoice_no 
+          FROM receipts r
+          JOIN invoices i ON r.invoice_id = i.id
+          WHERE r.invoice_id = ${parseInt(invoiceId)}
+          ORDER BY r.created_at ASC
+        `;
+        return res.status(200).json({ success: true, receipts: rows });
+      } else {
+        // Fetch all receipts with tenant isolation & search filtering
+        const searchPattern = `%${search}%`;
+        let countRows, dataRows;
+        
+        if (targetHospitalId !== null) {
+          countRows = await sql`
+            SELECT COUNT(*) as total 
+            FROM receipts r
+            JOIN invoices i ON r.invoice_id = i.id
+            JOIN patients p ON i.patient_id = p.id
+            WHERE i.hospital_id = ${targetHospitalId}
+              AND (r.receipt_no ILIKE ${searchPattern} OR i.invoice_no ILIKE ${searchPattern} OR p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern})
+          `;
+          
+          dataRows = await sql`
+            SELECT r.*, i.invoice_no, p.full_name as patient_name
+            FROM receipts r
+            JOIN invoices i ON r.invoice_id = i.id
+            JOIN patients p ON i.patient_id = p.id
+            WHERE i.hospital_id = ${targetHospitalId}
+              AND (r.receipt_no ILIKE ${searchPattern} OR i.invoice_no ILIKE ${searchPattern} OR p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern})
+            ORDER BY r.created_at DESC
+            LIMIT ${limit} OFFSET ${offset}
+          `;
+        } else {
+          // Super Admin can list all cross-tenant
+          countRows = await sql`
+            SELECT COUNT(*) as total 
+            FROM receipts r
+            JOIN invoices i ON r.invoice_id = i.id
+            JOIN patients p ON i.patient_id = p.id
+            WHERE r.receipt_no ILIKE ${searchPattern} OR i.invoice_no ILIKE ${searchPattern} OR p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern}
+          `;
+          
+          dataRows = await sql`
+            SELECT r.*, i.invoice_no, p.full_name as patient_name
+            FROM receipts r
+            JOIN invoices i ON r.invoice_id = i.id
+            JOIN patients p ON i.patient_id = p.id
+            WHERE r.receipt_no ILIKE ${searchPattern} OR i.invoice_no ILIKE ${searchPattern} OR p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern}
+            ORDER BY r.created_at DESC
+            LIMIT ${limit} OFFSET ${offset}
+          `;
+        }
+        
+        const total = parseInt(countRows[0].total);
+        return res.status(200).json({
+          success: true,
+          receipts: dataRows,
+          pagination: {
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit)
+          }
+        });
+      }
     } catch (error) {
       return res.status(500).json({ error: "Failed to fetch receipts list", details: error.message });
     }

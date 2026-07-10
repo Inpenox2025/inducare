@@ -33,7 +33,10 @@
                 <span class="nav-icon">📅</span> Appointments
             </a>
             <a href="#" class="nav-item" data-tab="invoices" id="navInvoices">
-                <span class="nav-icon">💳</span> Billing & Receipts
+                <span class="nav-icon">💳</span> Billing & Invoices
+            </a>
+            <a href="#" class="nav-item" data-tab="receipts-panel" id="navReceiptsPanel">
+                <span class="nav-icon">🧾</span> Payment Receipts
             </a>
             <a href="#" class="nav-item" data-tab="doctors" id="navDoctors">
                 <span class="nav-icon">👨‍⚕️</span> Doctors Management
@@ -292,6 +295,37 @@
                 </table>
             </div>
             <div class="pagination" id="invoicesPagination"></div>
+        </section>
+
+        <!-- ═══════ SECTION: PAYMENT RECEIPTS (INSTALLMENTS REGISTRY) ═══════ -->
+        <section id="tab-receipts-panel" class="tab-panel">
+            <div class="toolbar">
+                <div class="toolbar-left" style="flex: 1;">
+                    <input type="text" class="search-input" id="searchReceiptInput"
+                        placeholder="🔍 Search payment receipts by Receipt No, Invoice No, Patient name, mobile..." style="width: 100%; max-width: 450px;">
+                </div>
+            </div>
+            <div class="table-container minimal" style="overflow: auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Receipt No</th>
+                            <th>Invoice No</th>
+                            <th>Patient Name</th>
+                            <th>Amount Paid</th>
+                            <th>Payment Date</th>
+                            <th>Payment Mode</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="receiptsTableBody">
+                        <tr>
+                            <td colspan="7" class="loading-cell"><span class="spinner"></span> Loading payment receipts log...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination" id="receiptsPagination"></div>
         </section>
 
         <!-- ═══════ SECTION: STAFF ═══════ -->
