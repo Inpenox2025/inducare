@@ -42,7 +42,7 @@
                 <span class="nav-icon">🏨</span> Rooms & Allocations
             </a>
             <a href="#" class="nav-item" data-tab="staff" id="navStaff">
-                <span class="nav-icon">👩‍⚕️</span> Staff Management
+                <span class="nav-icon">🔑</span> User Accounts & Passwords
             </a>
             <a href="#" class="nav-item" data-tab="hospital-setup" id="navHospitalSetup" style="display:none;">
                 <span class="nav-icon">⚙️</span> Hospital Setup
@@ -486,6 +486,79 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Hospital Admin Roles & Menu Configurator -->
+            <div class="overview-details-grid" style="grid-template-columns: 0.4fr 0.6fr; gap: 24px; margin-top: 24px;">
+                <!-- Hospital Custom Roles Directory -->
+                <div class="details-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3>🔑 Hospital Custom Roles</h3>
+                        <button class="btn btn-primary" id="hospCreateRoleBtn" style="padding:6px 12px; font-size:12px;">+ Create Role</button>
+                    </div>
+                    <div class="table-container minimal" style="margin-top: 16px; max-height: 250px; overflow-y:auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Role Name</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hospRolesTableBody">
+                                <tr>
+                                    <td colspan="2" class="empty-cell">No custom roles.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Hospital Menu Configurator -->
+                <div class="details-card">
+                    <h3>🛡️ Role Menu Privileges Configuration</h3>
+                    <div class="form-row" style="margin-top: 16px; align-items: flex-end;">
+                        <div class="form-group" style="flex: 0.5;">
+                            <label for="hosp_menu_role_select">Select Role Account <span class="req">*</span></label>
+                            <select class="form-control" id="hosp_menu_role_select">
+                                <!-- Populated dynamically -->
+                            </select>
+                        </div>
+                        <div style="flex: 0.5; display: flex; gap: 12px;">
+                            <button class="btn btn-outline" id="hospLoadMenuConfigBtn" type="button">Fetch Menus</button>
+                            <button class="btn btn-primary" id="hospSaveMenuConfigBtn" type="button" style="background-color: var(--success); box-shadow: 0 4px 12px rgba(16,185,129,0.2);">Save Mapping</button>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 16px; border-top: 1.5px solid var(--border); padding-top: 12px;">
+                        <h4>Active Sidebar Tabs:</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-top: 12px;">
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor:pointer;">
+                                <input type="checkbox" name="hosp_menu_tab" value="overview" data-label="Overview Panel" data-icon="📊"> 📊 Overview Panel
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor:pointer;">
+                                <input type="checkbox" name="hosp_menu_tab" value="patients" data-label="Patients Registry" data-icon="👥"> 👥 Patients Registry
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor:pointer;">
+                                <input type="checkbox" name="hosp_menu_tab" value="appointments" data-label="Appointments" data-icon="📅"> 📅 Appointments
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor:pointer;">
+                                <input type="checkbox" name="hosp_menu_tab" value="invoices" data-label="Billing & Receipts" data-icon="💳"> 💳 Billing & Receipts
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor:pointer;">
+                                <input type="checkbox" name="hosp_menu_tab" value="doctors" data-label="Doctors Registry" data-icon="👨‍⚕️"> 👨‍⚕️ Doctors Registry
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor:pointer;">
+                                <input type="checkbox" name="hosp_menu_tab" value="rooms" data-label="Rooms & Allocations" data-icon="🏨"> 🏨 Rooms & Allocations
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor:pointer;">
+                                <input type="checkbox" name="hosp_menu_tab" value="staff" data-label="Staff Settings" data-icon="🔑"> 🔑 User Accounts
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor:pointer;">
+                                <input type="checkbox" name="hosp_menu_tab" value="hospital-setup" data-label="Hospital Setup" data-icon="⚙️"> ⚙️ Hospital Setup
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <!-- ═══════ SECTION: SUPER ADMIN PANEL ═══════ -->
@@ -544,7 +617,13 @@
             <div class="details-card" style="margin-top: 24px;">
                 <h3>🛡️ Dynamic Menu Privileges Router</h3>
                 <div class="form-row" style="margin-top: 16px; align-items: flex-end;">
-                    <div class="form-group" style="flex: 0.4;">
+                    <div class="form-group" style="flex: 0.3;" id="super_menu_hosp_group">
+                        <label for="super_menu_hospital_select">Select Hospital <span class="req">*</span></label>
+                        <select class="form-control" id="super_menu_hospital_select">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 0.3;">
                         <label for="menu_role_select">Select Role Account <span class="req">*</span></label>
                         <select class="form-control" id="menu_role_select">
                             <!-- Populated dynamically -->
@@ -1459,6 +1538,12 @@
             </div>
             <div class="modal-body">
                 <form id="superRoleForm" autocomplete="off">
+                    <div class="form-group" id="super_role_hosp_group" style="display:none;">
+                        <label for="super_role_hosp_select">Target Hospital <span class="req">*</span></label>
+                        <select class="form-control" id="super_role_hosp_select">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
                     <div class="form-group">
                         <label for="super_role_name">Role Code (lowercase, e.g. pharmacist) <span class="req">*</span></label>
                         <input type="text" class="form-control" id="super_role_name" name="role_name" required>

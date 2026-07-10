@@ -468,7 +468,21 @@ module.exports = async function handler(req, res) {
           }
 
           const hostId = targetHospitalId || 1;
-          const invNo = `INV-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+          
+          const today = new Date();
+          const year = today.getFullYear();
+          const month = String(today.getMonth() + 1).padStart(2, '0');
+          const day = String(today.getDate()).padStart(2, '0');
+          const dateStr = `${year}${month}${day}`;
+
+          const countRes = await sql`
+            SELECT COUNT(*) as total 
+            FROM invoices 
+            WHERE hospital_id = ${hostId} 
+              AND created_at >= CURRENT_DATE
+          `;
+          const countVal = parseInt(countRes[0].total);
+          const invNo = `INSP${hostId}${dateStr}${countVal}`;
           const totalAmt = parseFloat(amount);
 
           let paidAmt = 0.0;
