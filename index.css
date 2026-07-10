@@ -18,7 +18,7 @@
   --bg-card-hover: rgba(255, 255, 255, 0.06);
   --border: rgba(255, 255, 255, 0.08);
   --border-glow: rgba(8, 214, 255, 0.25);
-  
+
   --text-primary: #f0f6ff;
   --text-secondary: #8ba4c8;
   --text-muted: #4a6080;
@@ -33,7 +33,7 @@
   --radius-sm: 8px;
   --radius-md: 14px;
   --radius-lg: 24px;
-  
+
   --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.5);
   --shadow-glow: 0 0 40px rgba(8, 214, 255, 0.12);
@@ -60,9 +60,11 @@ body {
 ::-webkit-scrollbar {
   width: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: var(--bg-primary);
 }
+
 ::-webkit-scrollbar-thumb {
   background: var(--cyan);
   border-radius: 10px;
@@ -76,7 +78,10 @@ body {
 }
 
 /* Typography */
-h1, h2, h3, h4 {
+h1,
+h2,
+h3,
+h4 {
   font-family: 'Outfit', sans-serif;
   color: var(--text-primary);
   font-weight: 700;
@@ -215,7 +220,8 @@ a {
   transition: all 0.2s;
 }
 
-.nav-links a:hover, .nav-links a.active {
+.nav-links a:hover,
+.nav-links a.active {
   color: var(--cyan);
   background: rgba(8, 214, 255, 0.06);
 }
@@ -247,8 +253,8 @@ a {
   padding: 140px 0 80px 0;
   overflow: hidden;
   background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(8, 214, 255, 0.12) 0%, transparent 70%),
-              radial-gradient(ellipse 50% 40% at 85% 30%, rgba(79, 70, 229, 0.08) 0%, transparent 60%),
-              linear-gradient(180deg, #020810 0%, #060e1e 100%);
+    radial-gradient(ellipse 50% 40% at 85% 30%, rgba(79, 70, 229, 0.08) 0%, transparent 60%),
+    linear-gradient(180deg, #020810 0%, #060e1e 100%);
 }
 
 .hero .container {
@@ -357,9 +363,17 @@ a {
   background-color: rgba(255, 255, 255, 0.2);
 }
 
-.browser-dots span:nth-child(1) { background-color: #ff5f56; }
-.browser-dots span:nth-child(2) { background-color: #ffbd2e; }
-.browser-dots span:nth-child(3) { background-color: #27c93f; }
+.browser-dots span:nth-child(1) {
+  background-color: #ff5f56;
+}
+
+.browser-dots span:nth-child(2) {
+  background-color: #ffbd2e;
+}
+
+.browser-dots span:nth-child(3) {
+  background-color: #27c93f;
+}
 
 .browser-url {
   flex-grow: 1;
@@ -474,7 +488,10 @@ a {
   font-weight: bold;
 }
 
-.sim-stat-trend.green { color: var(--success); }
+.sim-stat-trend.green {
+  color: var(--success);
+}
+
 .sim-stat-trend.current {
   background-color: rgba(8, 214, 255, 0.1);
   padding: 1px 4px;
@@ -690,11 +707,26 @@ a {
   color: #c9d1d9;
 }
 
-.c-keyword { color: #ff7b72; }
-.c-def { color: #d2a6ff; }
-.c-str { color: #a5d6ff; }
-.c-comment { color: #8b949e; font-style: italic; }
-.c-call { color: #79c0ff; }
+.c-keyword {
+  color: #ff7b72;
+}
+
+.c-def {
+  color: #d2a6ff;
+}
+
+.c-str {
+  color: #a5d6ff;
+}
+
+.c-comment {
+  color: #8b949e;
+  font-style: italic;
+}
+
+.c-call {
+  color: #79c0ff;
+}
 
 .wcu-image-container {
   position: relative;
@@ -751,7 +783,7 @@ a {
   margin-bottom: 20px;
 }
 
-.wcu-content > p {
+.wcu-content>p {
   color: var(--text-secondary);
   margin-bottom: 36px;
 }
@@ -1105,32 +1137,71 @@ select.form-control option {
 
 /* ═══════════ ANIMATIONS ═══════════ */
 @keyframes floatAnim {
-  0%, 100% { transform: perspective(1000px) rotateY(-8deg) rotateX(4deg) translateY(0); }
-  50% { transform: perspective(1000px) rotateY(-8deg) rotateX(4deg) translateY(-12px); }
+
+  0%,
+  100% {
+    transform: perspective(1000px) rotateY(-8deg) rotateX(4deg) translateY(0);
+  }
+
+  50% {
+    transform: perspective(1000px) rotateY(-8deg) rotateX(4deg) translateY(-12px);
+  }
 }
 
 @keyframes barGrow {
-  from { height: 0; }
+  from {
+    height: 0;
+  }
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.4); }
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(1.4);
+  }
 }
 
 @keyframes badgeFloat1 {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-6px);
+  }
 }
 
 @keyframes badgeFloat2 {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(6px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(6px);
+  }
 }
 
 @keyframes slideIn {
-  from { transform: translateY(100px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(100px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
@@ -1140,31 +1211,39 @@ select.form-control option {
     text-align: center;
     padding-top: 40px;
   }
+
   .hero h1 {
     font-size: clamp(2rem, 8vw, 3rem);
   }
+
   .hero p {
     margin: 0 auto 32px auto;
   }
+
   .hero-actions {
     justify-content: center;
   }
+
   .hero-image-wrapper {
     margin-top: 60px;
     max-width: 500px;
     margin-left: auto;
     margin-right: auto;
   }
+
   .why-choose-us .container {
     grid-template-columns: 1fr;
   }
+
   .wcu-image-container {
     max-width: 500px;
     margin: 0 auto;
   }
+
   .registration-section .container {
     grid-template-columns: 1fr;
   }
+
   .footer-top-brand {
     flex-direction: column;
     align-items: flex-start;
@@ -1184,30 +1263,71 @@ select.form-control option {
     padding: 24px;
     gap: 12px;
   }
+
   .nav-links.open {
     display: flex;
   }
+
   .nav-toggle {
     display: flex;
   }
+
   .nav-links .btn {
     width: 100%;
     justify-content: center;
   }
+
   .nav-toggle.open span:nth-child(1) {
     transform: rotate(45deg) translate(5px, 5px);
   }
+
   .nav-toggle.open span:nth-child(2) {
     opacity: 0;
   }
+
   .nav-toggle.open span:nth-child(3) {
     transform: rotate(-45deg) translate(5px, -5px);
   }
+
   .form-row {
     grid-template-columns: 1fr;
     gap: 0;
   }
+
   .enquiry-card {
     padding: 24px;
   }
+
+  /* Stacking pillars on mobile */
+  .wcu-pillars {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .wcu-experience-card {
+    position: relative !important;
+    right: auto !important;
+    bottom: auto !important;
+    margin: 20px auto 0 auto !important;
+    max-width: 100% !important;
+  }
+
+  .badge-doctor {
+    left: 0 !important;
+  }
+
+  .badge-experience {
+    right: 0 !important;
+  }
+
+  .sim-code-preview pre {
+    white-space: pre-wrap !important;
+    word-break: break-all !important;
+  }
+}
+
+html, body {
+  overflow-x: hidden !important;
+  width: 100%;
+  max-width: 100%;
 }
