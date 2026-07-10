@@ -65,12 +65,12 @@ module.exports = async function handler(req, res) {
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="${invoice.patient_name} - Ozonature.pdf"`,
+        `attachment; filename="${invoice.patient_name} - Inducare.pdf"`,
       );
       doc.pipe(res);
 
       // Hospital Header
-      const logoPath = path.join(__dirname, "../assets/ozonature logo.jpg");
+      const logoPath = path.join(__dirname, "../assets/inducare logo.jpg");
       if (fs.existsSync(logoPath)) {
         // Draw centered logo image
         doc.image(logoPath, {
@@ -83,13 +83,13 @@ module.exports = async function handler(req, res) {
           .fontSize(22)
           .font("Helvetica-Bold")
           .fillColor("#00bba8")
-          .text("OZONATURE", { align: "center" });
+          .text("INDUCARE", { align: "center" });
       }
       doc
         .fontSize(9)
         .font("Helvetica")
         .fillColor("#607377")
-        .text("THE HOLISTIC CARE", {
+        .text("SMART CLINIC & HOSPITAL ERP", {
           align: "center",
         });
       doc.fontSize(9).text("Contact: +91 8688932150", {
@@ -354,7 +354,7 @@ module.exports = async function handler(req, res) {
         .fontSize(8)
         .font("Helvetica")
         .fillColor("#94a3b8")
-        .text("This is a verified digital payment receipt from Ozonature.", {
+        .text("This is a verified digital payment receipt from Inducare.", {
           align: "center",
         });
       doc.moveDown(0.3);
