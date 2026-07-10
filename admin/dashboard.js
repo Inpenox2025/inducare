@@ -1620,6 +1620,10 @@ window.editStaff = async function (id) {
       document.getElementById("staffPassHint").style.display = "block";
       document.getElementById("staffPassLabel").innerHTML = "Reset Password";
 
+      // Populate custom roles dropdown for the user's hospital
+      const hospId = u.hospital_id || 1;
+      await populateStaffRoleDropdown(hospId);
+
       document.getElementById("staff_role").value = u.role;
       document.getElementById("saveStaffBtn").textContent =
         "Update Credentials";
@@ -1754,9 +1758,15 @@ function initEventListeners() {
 
   const superMenuHospitalSelect = document.getElementById("super_menu_hospital_select");
   if (superMenuHospitalSelect) {
-    superMenuHospitalSelect.addEventListener("change", () => {
-      const role = document.getElementById("menu_role_select").value;
-      loadRoleMenusConfig(role);
+    superMenuHospitalSelect.addEventListener("change", (e) => {
+      loadSuperRoles(e.target.value);
+    });
+  }
+
+  const menuRoleSelect = document.getElementById("menu_role_select");
+  if (menuRoleSelect) {
+    menuRoleSelect.addEventListener("change", (e) => {
+      loadRoleMenusConfig(e.target.value);
     });
   }
 
@@ -1914,7 +1924,7 @@ function initEventListeners() {
       openModal("invoiceModal");
     });
 
-  document.getElementById("addStaffBtn").addEventListener("click", () => {
+  document.getElementById("addStaffBtn").addEventListener("click", async () => {
     document.getElementById("staffForm").reset();
     document.getElementById("staff_id").value = "";
     document.getElementById("staffModalTitle").textContent =
@@ -1923,6 +1933,9 @@ function initEventListeners() {
     // Hide target hospital selector for regular admins
     const staffHospGroup = document.getElementById("staff_hosp_group");
     if (staffHospGroup) staffHospGroup.style.display = "none";
+
+    const u = getUser();
+    await populateStaffRoleDropdown(u ? u.hospital_id : 1);
 
     document.getElementById("staff_password").required = true;
     document.getElementById("staff_password").placeholder =
@@ -1937,7 +1950,7 @@ function initEventListeners() {
 
   const superAddUserBtn = document.getElementById("superAddUserBtn");
   if (superAddUserBtn) {
-    superAddUserBtn.addEventListener("click", () => {
+    superAddUserBtn.addEventListener("click", async () => {
       document.getElementById("staffForm").reset();
       document.getElementById("staff_id").value = "";
       document.getElementById("staffModalTitle").textContent =
@@ -1950,6 +1963,9 @@ function initEventListeners() {
       // Match selected hospital dropdown option
       const superUserHospSelect = document.getElementById("super_user_hospital_select");
       const staffHospSelect = document.getElementById("staff_hospital_id");
+      const targetHospId = superUserHospSelect ? superUserHospSelect.value : 1;
+      await populateStaffRoleDropdown(targetHospId);
+
       if (superUserHospSelect && staffHospSelect) {
         staffHospSelect.value = superUserHospSelect.value;
       }

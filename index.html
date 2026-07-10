@@ -30,7 +30,6 @@
                 <li><a href="#home" class="active">Home</a></li>
                 <li><a href="#features">Features</a></li>
                 <li><a href="#why-choose-us">Why Inducare</a></li>
-                <li><a href="#interactive-demo">Interactive Demo</a></li>
                 <li><a href="admin/" class="btn btn-primary"
                         style="color:#fff; padding: 8px 18px; font-size:13px;">Staff Portal ➔</a></li>
             </ul>
@@ -56,10 +55,10 @@
                     Streamline patient onboarding, appointment schedules, digital billing, staff privileges, and financial reconciliation in a single secure cloud workspace. Engineered for operational speed and HIPAA compliance.
                 </p>
                 <div class="hero-actions">
-                    <a href="#interactive-demo" class="btn btn-primary">
-                        <span>🚀</span> Try Interactive Demo
+                    <a href="admin/" class="btn btn-primary">
+                        Go to Staff Portal ➔
                     </a>
-                    <a href="admin/" class="btn btn-outline">Staff Login</a>
+                    <a href="#features" class="btn btn-outline">Explore Features</a>
                 </div>
             </div>
 
@@ -244,85 +243,6 @@ console.log(<span class="c-str">`Status: ${report.status}`</span>);
         </div>
     </section>
 
-    <!-- ═══════════ INTERACTIVE DEMO / PRE-REGISTRATION ═══════════ -->
-    <section class="registration-section" id="interactive-demo">
-        <div class="container">
-            <div class="demo-intro">
-                <div class="hero-subtitle">Interactive Sandbox</div>
-                <h2>Try the Patient Portal</h2>
-                <p>Experience Inducare's instant synchronization. Submit details through this sandbox form as a simulated patient. Once submitted, log in to the <a href="admin/">Staff Portal</a> (or initialize database) and check the Patients Registry tab—you will find the record instantly populated!</p>
-                <div class="demo-help-box">
-                    <div class="demo-help-title">💡 Staff Portal Testing Credentials</div>
-                    <div class="demo-help-text">
-                        If the database is initialized, you can log in to the <strong>Staff Portal</strong> using:<br>
-                        <strong>Username:</strong> <code>admin</code> &nbsp;|&nbsp; <strong>Password:</strong> <code>admin123</code>
-                    </div>
-                </div>
-            </div>
-            <div class="enquiry-card">
-                <div id="registrationFormContent">
-                    <h2>📋 Patient Registration Form</h2>
-                    <p class="form-desc">Complete the profile below to simulate a patient check-in.</p>
-                    <form id="registrationForm" autocomplete="off">
-                        <div class="form-group">
-                            <label for="reg_name">Patient's Full Name <span style="color:var(--error)">*</span></label>
-                            <input type="text" class="form-control" id="reg_name" name="full_name"
-                                placeholder="Enter patient's full name" required>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="reg_dob">Date of Birth <span style="color:var(--error)">*</span></label>
-                                <input type="date" class="form-control" id="reg_dob" name="date_of_birth" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="reg_gender">Gender <span style="color:var(--error)">*</span></label>
-                                <select class="form-control" id="reg_gender" name="gender" required>
-                                    <option value="">Select Gender</option>
-                                    <option value="Male">Male</option>
-                                    <option value="Female">Female</option>
-                                    <option value="Other">Other</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="reg_mobile">Mobile Number <span style="color:var(--error)">*</span></label>
-                                <input type="tel" class="form-control" id="reg_mobile" name="mobile_no"
-                                    placeholder="e.g. 9876543210" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="reg_email">Email Address <span style="color:var(--error)">*</span></label>
-                                <input type="email" class="form-control" id="reg_email" name="email"
-                                    placeholder="e.g. name@email.com" required>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="reg_address">Residential Address</label>
-                            <input type="text" class="form-control" id="reg_address" name="address"
-                                placeholder="Enter current street address">
-                        </div>
-                        <div class="form-group">
-                            <label for="reg_history">Primary Symptoms / Medical History</label>
-                            <textarea class="form-control" id="reg_history" name="medical_history"
-                                placeholder="Describe symptoms or ongoing treatments..." rows="3"></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-primary btn-submit" id="submitBtn">
-                            Submit Patient Record
-                        </button>
-                    </form>
-                </div>
-                <div class="form-success" id="formSuccess">
-                    <div class="check-icon">✓</div>
-                    <h3>Record Synchronized!</h3>
-                    <p>The patient profile has been successfully injected into the clinic database. Log in to the <strong>Staff Portal</strong> to schedule a consultation, manage invoices, or generate receipt PDFs for this patient.</p>
-                    <div class="success-actions">
-                        <a href="admin/" class="btn btn-primary">Go to Staff Portal ➔</a>
-                        <button class="btn btn-outline" onclick="resetForm()">Register Another</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
 
     <!-- ═══════════ FOOTER ═══════════ -->
     <footer class="hospital-footer">
@@ -350,7 +270,6 @@ console.log(<span class="c-str">`Status: ${report.status}`</span>);
                         <li><a href="#home">Home</a></li>
                         <li><a href="#features">Features</a></li>
                         <li><a href="#why-choose-us">The Stack</a></li>
-                        <li><a href="#interactive-demo">Interactive Demo</a></li>
                         <li><a href="admin/">Staff Login</a></li>
                     </ul>
                 </div>
