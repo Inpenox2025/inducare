@@ -27,61 +27,114 @@ module.exports = async function handler(req, res) {
 
   try {
     const sql = getSQL();
+    const targetHospitalId = user.role === 'super_admin' ? (req.query.hospital_id ? parseInt(req.query.hospital_id) : null) : user.hospital_id;
 
-    // 1. Total Invoice Amount, Paid Amount, and Dues
-    const aggregates = await sql`
-      SELECT 
-        COALESCE(SUM(amount), 0) as total_invoiced,
-        COALESCE(SUM(paid_amount), 0) as total_collected,
-        COALESCE(SUM(due_amount), 0) as total_due
-      FROM invoices
-    `;
+    // Build queries with hospital isolation
+    let aggregates, cashCollected, onlineCollected, statusCounts, patientCount, appointmentCount, todayAppointments, doctorStats, recentInvoices;
 
-    // 2. Cash vs Online breakdown
-    const cashCollected = await sql`
-      SELECT COALESCE(SUM(paid_amount), 0) as total 
-      FROM invoices 
-      WHERE payment_mode = 'cash'
-    `;
+    if (targetHospitalId !== null) {
+      aggregates = await sql`
+        SELECT 
+          COALESCE(SUM(amount), 0) as total_invoiced,
+          COALESCE(SUM(paid_amount), 0) as total_collected,
+          COALESCE(SUM(due_amount), 0) as total_due
+        FROM invoices
+        WHERE hospital_id = ${targetHospitalId}
+      `;
 
-    const onlineCollected = await sql`
-      SELECT COALESCE(SUM(paid_amount), 0) as total 
-      FROM invoices 
-      WHERE payment_mode = 'online'
-    `;
+      cashCollected = await sql`
+        SELECT COALESCE(SUM(paid_amount), 0) as total 
+        FROM invoices 
+        WHERE payment_mode = 'cash' AND hospital_id = ${targetHospitalId}
+      `;
 
-    // 3. Invoice status counts
-    const statusCounts = await sql`
-      SELECT status, COUNT(*) as count 
-      FROM invoices 
-      GROUP BY status
-    `;
+      onlineCollected = await sql`
+        SELECT COALESCE(SUM(paid_amount), 0) as total 
+        FROM invoices 
+        WHERE payment_mode = 'online' AND hospital_id = ${targetHospitalId}
+      `;
 
-    // 4. Quick Hospital counts
-    const patientCount = await sql`SELECT COUNT(*) as total FROM patients`;
-    const appointmentCount = await sql`SELECT COUNT(*) as total FROM appointments`;
-    const todayAppointments = await sql`
-      SELECT COUNT(*) as total 
-      FROM appointments 
-      WHERE appointment_date = CURRENT_DATE
-    `;
+      statusCounts = await sql`
+        SELECT status, COUNT(*) as count 
+        FROM invoices 
+        WHERE hospital_id = ${targetHospitalId}
+        GROUP BY status
+      `;
 
-    // 5. Doctor productivity breakdown
-    const doctorStats = await sql`
-      SELECT doctor_name, COUNT(*) as visit_count, COALESCE(SUM(fee), 0) as total_revenue
-      FROM appointments 
-      GROUP BY doctor_name
-      ORDER BY total_revenue DESC
-    `;
+      patientCount = await sql`SELECT COUNT(*) as total FROM patients WHERE hospital_id = ${targetHospitalId}`;
+      appointmentCount = await sql`SELECT COUNT(*) as total FROM appointments WHERE hospital_id = ${targetHospitalId}`;
+      todayAppointments = await sql`
+        SELECT COUNT(*) as total 
+        FROM appointments 
+        WHERE appointment_date = CURRENT_DATE AND hospital_id = ${targetHospitalId}
+      `;
 
-    // 6. Recent invoices
-    const recentInvoices = await sql`
-      SELECT i.*, p.full_name as patient_name 
-      FROM invoices i
-      JOIN patients p ON i.patient_id = p.id
-      ORDER BY i.updated_at DESC
-      LIMIT 5
-    `;
+      doctorStats = await sql`
+        SELECT doctor_name, COUNT(*) as visit_count, COALESCE(SUM(fee), 0) as total_revenue
+        FROM appointments 
+        WHERE hospital_id = ${targetHospitalId}
+        GROUP BY doctor_name
+        ORDER BY total_revenue DESC
+      `;
+
+      recentInvoices = await sql`
+        SELECT i.*, p.full_name as patient_name 
+        FROM invoices i
+        JOIN patients p ON i.patient_id = p.id
+        WHERE i.hospital_id = ${targetHospitalId}
+        ORDER BY i.updated_at DESC
+        LIMIT 5
+      `;
+    } else {
+      aggregates = await sql`
+        SELECT 
+          COALESCE(SUM(amount), 0) as total_invoiced,
+          COALESCE(SUM(paid_amount), 0) as total_collected,
+          COALESCE(SUM(due_amount), 0) as total_due
+        FROM invoices
+      `;
+
+      cashCollected = await sql`
+        SELECT COALESCE(SUM(paid_amount), 0) as total 
+        FROM invoices 
+        WHERE payment_mode = 'cash'
+      `;
+
+      onlineCollected = await sql`
+        SELECT COALESCE(SUM(paid_amount), 0) as total 
+        FROM invoices 
+        WHERE payment_mode = 'online'
+      `;
+
+      statusCounts = await sql`
+        SELECT status, COUNT(*) as count 
+        FROM invoices 
+        GROUP BY status
+      `;
+
+      patientCount = await sql`SELECT COUNT(*) as total FROM patients`;
+      appointmentCount = await sql`SELECT COUNT(*) as total FROM appointments`;
+      todayAppointments = await sql`
+        SELECT COUNT(*) as total 
+        FROM appointments 
+        WHERE appointment_date = CURRENT_DATE
+      `;
+
+      doctorStats = await sql`
+        SELECT doctor_name, COUNT(*) as visit_count, COALESCE(SUM(fee), 0) as total_revenue
+        FROM appointments 
+        GROUP BY doctor_name
+        ORDER BY total_revenue DESC
+      `;
+
+      recentInvoices = await sql`
+        SELECT i.*, p.full_name as patient_name 
+        FROM invoices i
+        JOIN patients p ON i.patient_id = p.id
+        ORDER BY i.updated_at DESC
+        LIMIT 5
+      `;
+    }
 
     const summary = {
       totalInvoiced: parseFloat(aggregates[0].total_invoiced),
@@ -104,12 +157,9 @@ module.exports = async function handler(req, res) {
       recentActivity: recentInvoices
     };
 
-    return res.status(200).json({
-      success: true,
-      summary
-    });
+    return res.status(200).json({ success: true, summary });
   } catch (error) {
-    console.error('Reconciliation summary error:', error);
-    return res.status(500).json({ error: 'Failed to fetch reconciliation metrics', details: error.message });
+    console.error('Reconciliation summary aggregation error:', error);
+    return res.status(500).json({ error: 'Reconciliation aggregation failed', details: error.message });
   }
 };

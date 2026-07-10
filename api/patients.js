@@ -36,7 +36,9 @@ module.exports = async function handler(req, res) {
     // GET: View single patient
     if (req.method === 'GET') {
       try {
-        const rows = await sql`SELECT * FROM patients WHERE id = ${parseInt(id)}`;
+        const rows = user.role === 'super_admin' 
+          ? await sql`SELECT * FROM patients WHERE id = ${parseInt(id)}`
+          : await sql`SELECT * FROM patients WHERE id = ${parseInt(id)} AND hospital_id = ${user.hospital_id}`;
         if (rows.length === 0) return res.status(404).json({ error: 'Patient not found' });
         return res.status(200).json({ success: true, patient: rows[0] });
       } catch (error) {
@@ -52,20 +54,35 @@ module.exports = async function handler(req, res) {
           return res.status(400).json({ error: 'Full name is required' });
         }
 
-        const rows = await sql`
-          UPDATE patients SET
-            full_name = ${full_name},
-            date_of_birth = ${date_of_birth || null},
-            gender = ${gender || null},
-            mobile_no = ${mobile_no || null},
-            email = ${email || null},
-            address = ${address || null},
-            medical_history = ${medical_history || null},
-            case_sheet_data = ${case_sheet_data || null},
-            updated_at = NOW()
-          WHERE id = ${parseInt(id)}
-          RETURNING *
-        `;
+        const rows = user.role === 'super_admin'
+          ? await sql`
+            UPDATE patients SET
+              full_name = ${full_name},
+              date_of_birth = ${date_of_birth || null},
+              gender = ${gender || null},
+              mobile_no = ${mobile_no || null},
+              email = ${email || null},
+              address = ${address || null},
+              medical_history = ${medical_history || null},
+              case_sheet_data = ${case_sheet_data || null},
+              updated_at = NOW()
+            WHERE id = ${parseInt(id)}
+            RETURNING *
+          `
+          : await sql`
+            UPDATE patients SET
+              full_name = ${full_name},
+              date_of_birth = ${date_of_birth || null},
+              gender = ${gender || null},
+              mobile_no = ${mobile_no || null},
+              email = ${email || null},
+              address = ${address || null},
+              medical_history = ${medical_history || null},
+              case_sheet_data = ${case_sheet_data || null},
+              updated_at = NOW()
+            WHERE id = ${parseInt(id)} AND hospital_id = ${user.hospital_id}
+            RETURNING *
+          `;
 
         if (rows.length === 0) return res.status(404).json({ error: 'Patient not found' });
         return res.status(200).json({ success: true, patient: rows[0] });
@@ -76,12 +93,14 @@ module.exports = async function handler(req, res) {
 
     // DELETE: Delete patient (Admin Only)
     if (req.method === 'DELETE') {
-      if (user.role !== 'admin') {
-        return res.status(403).json({ error: 'Access denied. Only administrators can delete patient files.' });
+      if (user.role !== 'admin' && user.role !== 'super_admin') {
+        return res.status(403).json({ error: 'Access denied. Administrator privileges required.' });
       }
 
       try {
-        const rows = await sql`DELETE FROM patients WHERE id = ${parseInt(id)} RETURNING id`;
+        const rows = user.role === 'super_admin'
+          ? await sql`DELETE FROM patients WHERE id = ${parseInt(id)} RETURNING id`
+          : await sql`DELETE FROM patients WHERE id = ${parseInt(id)} AND hospital_id = ${user.hospital_id} RETURNING id`;
         if (rows.length === 0) return res.status(404).json({ error: 'Patient not found' });
         return res.status(200).json({ success: true, message: 'Patient profile deleted successfully' });
       } catch (error) {
@@ -102,12 +121,13 @@ module.exports = async function handler(req, res) {
           return res.status(400).json({ error: 'Full name is required' });
         }
 
+        const hostId = user ? user.hospital_id : (req.body.hospital_id ? parseInt(req.body.hospital_id) : 1);
         const rows = await sql`
           INSERT INTO patients (
-            full_name, date_of_birth, gender, mobile_no, email, address, medical_history, case_sheet_data, created_by
+            full_name, date_of_birth, gender, mobile_no, email, address, medical_history, case_sheet_data, created_by, hospital_id
           ) VALUES (
             ${full_name}, ${date_of_birth || null}, ${gender || null}, ${mobile_no || null}, 
-            ${email || null}, ${address || null}, ${medical_history || null}, ${case_sheet_data || null}, ${user ? user.id : null}
+            ${email || null}, ${address || null}, ${medical_history || null}, ${case_sheet_data || null}, ${user ? user.id : null}, ${hostId}
           ) RETURNING *
         `;
 
@@ -127,30 +147,60 @@ module.exports = async function handler(req, res) {
         const search = req.query.search || '';
 
         let countRows, dataRows;
+        const targetHospitalId = user.role === 'super_admin' ? (req.query.hospital_id ? parseInt(req.query.hospital_id) : null) : user.hospital_id;
 
         if (search) {
           const searchPattern = `%${search}%`;
-          countRows = await sql`
-            SELECT COUNT(*) as total FROM patients 
-            WHERE full_name ILIKE ${searchPattern} 
-               OR mobile_no ILIKE ${searchPattern} 
-               OR medical_history ILIKE ${searchPattern}
-          `;
-          dataRows = await sql`
-            SELECT * FROM patients 
-            WHERE full_name ILIKE ${searchPattern} 
-               OR mobile_no ILIKE ${searchPattern} 
-               OR medical_history ILIKE ${searchPattern}
-            ORDER BY created_at DESC 
-            LIMIT ${limit} OFFSET ${offset}
-          `;
+          if (targetHospitalId !== null) {
+            countRows = await sql`
+              SELECT COUNT(*) as total FROM patients 
+              WHERE (full_name ILIKE ${searchPattern} 
+                 OR mobile_no ILIKE ${searchPattern} 
+                 OR medical_history ILIKE ${searchPattern})
+                 AND hospital_id = ${targetHospitalId}
+            `;
+            dataRows = await sql`
+              SELECT * FROM patients 
+              WHERE (full_name ILIKE ${searchPattern} 
+                 OR mobile_no ILIKE ${searchPattern} 
+                 OR medical_history ILIKE ${searchPattern})
+                 AND hospital_id = ${targetHospitalId}
+              ORDER BY created_at DESC 
+              LIMIT ${limit} OFFSET ${offset}
+            `;
+          } else {
+            countRows = await sql`
+              SELECT COUNT(*) as total FROM patients 
+              WHERE full_name ILIKE ${searchPattern} 
+                 OR mobile_no ILIKE ${searchPattern} 
+                 OR medical_history ILIKE ${searchPattern}
+            `;
+            dataRows = await sql`
+              SELECT * FROM patients 
+              WHERE full_name ILIKE ${searchPattern} 
+                 OR mobile_no ILIKE ${searchPattern} 
+                 OR medical_history ILIKE ${searchPattern}
+              ORDER BY created_at DESC 
+              LIMIT ${limit} OFFSET ${offset}
+            `;
+          }
         } else {
-          countRows = await sql`SELECT COUNT(*) as total FROM patients`;
-          dataRows = await sql`
-            SELECT * FROM patients 
-            ORDER BY created_at DESC 
-            LIMIT ${limit} OFFSET ${offset}
-          `;
+          if (targetHospitalId !== null) {
+            countRows = await sql`SELECT COUNT(*) as total FROM patients WHERE hospital_id = ${targetHospitalId}`;
+            dataRows = await sql`
+              SELECT * FROM patients 
+              WHERE hospital_id = ${targetHospitalId}
+              ORDER BY created_at DESC 
+              LIMIT ${limit} OFFSET ${offset}
+            `;
+          } else {
+            countRows = await sql`SELECT COUNT(*) as total FROM patients`;
+            dataRows = await sql`
+              SELECT * FROM patients 
+              ORDER BY created_at DESC 
+              LIMIT ${limit} OFFSET ${offset}
+            `;
+          }
         }
 
         const total = parseInt(countRows[0].total);

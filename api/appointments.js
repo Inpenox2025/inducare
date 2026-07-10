@@ -29,12 +29,19 @@ module.exports = async function handler(req, res) {
     // GET: View single appointment details (joined with patient info)
     if (req.method === 'GET') {
       try {
-        const rows = await sql`
-          SELECT a.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
-          FROM appointments a
-          JOIN patients p ON a.patient_id = p.id
-          WHERE a.id = ${parseInt(id)}
-        `;
+        const rows = user.role === 'super_admin'
+          ? await sql`
+            SELECT a.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+            FROM appointments a
+            JOIN patients p ON a.patient_id = p.id
+            WHERE a.id = ${parseInt(id)}
+          `
+          : await sql`
+            SELECT a.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+            FROM appointments a
+            JOIN patients p ON a.patient_id = p.id
+            WHERE a.id = ${parseInt(id)} AND a.hospital_id = ${user.hospital_id}
+          `;
         if (rows.length === 0) return res.status(404).json({ error: 'Appointment not found' });
         return res.status(200).json({ success: true, appointment: rows[0] });
       } catch (error) {
@@ -50,18 +57,31 @@ module.exports = async function handler(req, res) {
           return res.status(400).json({ error: 'Doctor name, date and time are required' });
         }
 
-        const rows = await sql`
-          UPDATE appointments SET
-            doctor_name = ${doctor_name},
-            appointment_date = ${appointment_date},
-            appointment_time = ${appointment_time},
-            status = ${status || 'scheduled'},
-            purpose = ${purpose || null},
-            fee = ${fee || 0.00},
-            updated_at = NOW()
-          WHERE id = ${parseInt(id)}
-          RETURNING *
-        `;
+        const rows = user.role === 'super_admin'
+          ? await sql`
+            UPDATE appointments SET
+              doctor_name = ${doctor_name},
+              appointment_date = ${appointment_date},
+              appointment_time = ${appointment_time},
+              status = ${status || 'scheduled'},
+              purpose = ${purpose || null},
+              fee = ${fee || 0.00},
+              updated_at = NOW()
+            WHERE id = ${parseInt(id)}
+            RETURNING *
+          `
+          : await sql`
+            UPDATE appointments SET
+              doctor_name = ${doctor_name},
+              appointment_date = ${appointment_date},
+              appointment_time = ${appointment_time},
+              status = ${status || 'scheduled'},
+              purpose = ${purpose || null},
+              fee = ${fee || 0.00},
+              updated_at = NOW()
+            WHERE id = ${parseInt(id)} AND hospital_id = ${user.hospital_id}
+            RETURNING *
+          `;
 
         if (rows.length === 0) return res.status(404).json({ error: 'Appointment not found' });
 
@@ -76,7 +96,7 @@ module.exports = async function handler(req, res) {
               ELSE 'unpaid'::varchar 
             END,
             updated_at = NOW()
-          WHERE appointment_id = ${parseInt(id)}
+          WHERE appointment_id = ${parseInt(id)} AND (hospital_id = ${user.hospital_id} OR ${user.role === 'super_admin'})
         `;
 
         return res.status(200).json({ success: true, appointment: rows[0] });
@@ -87,12 +107,14 @@ module.exports = async function handler(req, res) {
 
     // DELETE: Delete appointment (Admin Only)
     if (req.method === 'DELETE') {
-      if (user.role !== 'admin') {
+      if (user.role !== 'admin' && user.role !== 'super_admin') {
         return res.status(403).json({ error: 'Access denied. Only administrators can delete appointments.' });
       }
 
       try {
-        const rows = await sql`DELETE FROM appointments WHERE id = ${parseInt(id)} RETURNING id`;
+        const rows = user.role === 'super_admin'
+          ? await sql`DELETE FROM appointments WHERE id = ${parseInt(id)} RETURNING id`
+          : await sql`DELETE FROM appointments WHERE id = ${parseInt(id)} AND hospital_id = ${user.hospital_id} RETURNING id`;
         if (rows.length === 0) return res.status(404).json({ error: 'Appointment not found' });
         return res.status(200).json({ success: true, message: 'Appointment deleted successfully' });
       } catch (error) {
@@ -114,13 +136,14 @@ module.exports = async function handler(req, res) {
         }
 
         const patientIdInt = parseInt(patient_id);
+        const hostId = user.role === 'super_admin' ? (req.body.hospital_id ? parseInt(req.body.hospital_id) : 1) : user.hospital_id;
 
         const rows = await sql`
           INSERT INTO appointments (
-            patient_id, doctor_name, appointment_date, appointment_time, status, purpose, fee, created_by
+            patient_id, doctor_name, appointment_date, appointment_time, status, purpose, fee, created_by, hospital_id
           ) VALUES (
             ${patientIdInt}, ${doctor_name}, ${appointment_date}, ${appointment_time}, 
-            ${status || 'scheduled'}, ${purpose || null}, ${fee || 0.00}, ${user.id}
+            ${status || 'scheduled'}, ${purpose || null}, ${fee || 0.00}, ${user.id}, ${hostId}
           ) RETURNING *
         `;
 
@@ -132,9 +155,9 @@ module.exports = async function handler(req, res) {
           const desc = `Consultation Fee receipt for appointment with ${doctor_name}`;
           await sql`
             INSERT INTO invoices (
-              invoice_no, patient_id, appointment_id, description, amount, paid_amount, due_amount, status, created_by
+              invoice_no, patient_id, appointment_id, description, amount, paid_amount, due_amount, status, created_by, hospital_id
             ) VALUES (
-              ${invNo}, ${patientIdInt}, ${appointment.id}, ${desc}, ${fee || 0.00}, 0.00, ${fee || 0.00}, 'unpaid', ${user.id}
+              ${invNo}, ${patientIdInt}, ${appointment.id}, ${desc}, ${fee || 0.00}, 0.00, ${fee || 0.00}, 'unpaid', ${user.id}, ${hostId}
             )
           `;
         }
@@ -155,87 +178,152 @@ module.exports = async function handler(req, res) {
         const limit = parseInt(req.query.limit) || 15;
         const offset = (page - 1) * limit;
 
-        let query = sql`
-          SELECT a.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
-          FROM appointments a
-          JOIN patients p ON a.patient_id = p.id
-          WHERE 1=1
-        `;
-
-        // We construct the query logic.
-        // For Neon driver, since we can't easily concatenate dynamic where clauses securely with raw template strings without standard builder pattern, we handle the simple variants directly.
         let countRows, dataRows;
+        const targetHospitalId = user.role === 'super_admin' ? (req.query.hospital_id ? parseInt(req.query.hospital_id) : null) : user.hospital_id;
 
         if (dateFilter === 'today') {
           if (search) {
             const searchPattern = `%${search}%`;
-            countRows = await sql`
-              SELECT COUNT(*) as total FROM appointments a JOIN patients p ON a.patient_id = p.id
-              WHERE a.appointment_date = CURRENT_DATE AND (p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern} OR a.doctor_name ILIKE ${searchPattern})
-            `;
-            dataRows = await sql`
-              SELECT a.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
-              FROM appointments a JOIN patients p ON a.patient_id = p.id
-              WHERE a.appointment_date = CURRENT_DATE AND (p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern} OR a.doctor_name ILIKE ${searchPattern})
-              ORDER BY a.appointment_time ASC LIMIT ${limit} OFFSET ${offset}
-            `;
+            if (targetHospitalId !== null) {
+              countRows = await sql`
+                SELECT COUNT(*) as total FROM appointments a JOIN patients p ON a.patient_id = p.id
+                WHERE a.appointment_date = CURRENT_DATE AND (p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern} OR a.doctor_name ILIKE ${searchPattern}) AND a.hospital_id = ${targetHospitalId}
+              `;
+              dataRows = await sql`
+                SELECT a.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                FROM appointments a JOIN patients p ON a.patient_id = p.id
+                WHERE a.appointment_date = CURRENT_DATE AND (p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern} OR a.doctor_name ILIKE ${searchPattern}) AND a.hospital_id = ${targetHospitalId}
+                ORDER BY a.appointment_time ASC LIMIT ${limit} OFFSET ${offset}
+              `;
+            } else {
+              countRows = await sql`
+                SELECT COUNT(*) as total FROM appointments a JOIN patients p ON a.patient_id = p.id
+                WHERE a.appointment_date = CURRENT_DATE AND (p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern} OR a.doctor_name ILIKE ${searchPattern})
+              `;
+              dataRows = await sql`
+                SELECT a.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                FROM appointments a JOIN patients p ON a.patient_id = p.id
+                WHERE a.appointment_date = CURRENT_DATE AND (p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern} OR a.doctor_name ILIKE ${searchPattern})
+                ORDER BY a.appointment_time ASC LIMIT ${limit} OFFSET ${offset}
+              `;
+            }
           } else {
-            countRows = await sql`
-              SELECT COUNT(*) as total FROM appointments WHERE appointment_date = CURRENT_DATE
-            `;
-            dataRows = await sql`
-              SELECT a.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
-              FROM appointments a JOIN patients p ON a.patient_id = p.id
-              WHERE a.appointment_date = CURRENT_DATE
-              ORDER BY a.appointment_time ASC LIMIT ${limit} OFFSET ${offset}
-            `;
+            if (targetHospitalId !== null) {
+              countRows = await sql`
+                SELECT COUNT(*) as total FROM appointments WHERE appointment_date = CURRENT_DATE AND hospital_id = ${targetHospitalId}
+              `;
+              dataRows = await sql`
+                SELECT a.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                FROM appointments a JOIN patients p ON a.patient_id = p.id
+                WHERE a.appointment_date = CURRENT_DATE AND a.hospital_id = ${targetHospitalId}
+                ORDER BY a.appointment_time ASC LIMIT ${limit} OFFSET ${offset}
+              `;
+            } else {
+              countRows = await sql`
+                SELECT COUNT(*) as total FROM appointments WHERE appointment_date = CURRENT_DATE
+              `;
+              dataRows = await sql`
+                SELECT a.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                FROM appointments a JOIN patients p ON a.patient_id = p.id
+                WHERE a.appointment_date = CURRENT_DATE
+                ORDER BY a.appointment_time ASC LIMIT ${limit} OFFSET ${offset}
+              `;
+            }
           }
         } else if (dateFilter && dateFilter !== '') {
           // Specific date
           if (search) {
             const searchPattern = `%${search}%`;
-            countRows = await sql`
-              SELECT COUNT(*) as total FROM appointments a JOIN patients p ON a.patient_id = p.id
-              WHERE a.appointment_date = ${dateFilter}::date AND (p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern} OR a.doctor_name ILIKE ${searchPattern})
-            `;
-            dataRows = await sql`
-              SELECT a.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
-              FROM appointments a JOIN patients p ON a.patient_id = p.id
-              WHERE a.appointment_date = ${dateFilter}::date AND (p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern} OR a.doctor_name ILIKE ${searchPattern})
-              ORDER BY a.appointment_time ASC LIMIT ${limit} OFFSET ${offset}
-            `;
+            if (targetHospitalId !== null) {
+              countRows = await sql`
+                SELECT COUNT(*) as total FROM appointments a JOIN patients p ON a.patient_id = p.id
+                WHERE a.appointment_date = ${dateFilter}::date AND (p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern} OR a.doctor_name ILIKE ${searchPattern}) AND a.hospital_id = ${targetHospitalId}
+              `;
+              dataRows = await sql`
+                SELECT a.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                FROM appointments a JOIN patients p ON a.patient_id = p.id
+                WHERE a.appointment_date = ${dateFilter}::date AND (p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern} OR a.doctor_name ILIKE ${searchPattern}) AND a.hospital_id = ${targetHospitalId}
+                ORDER BY a.appointment_time ASC LIMIT ${limit} OFFSET ${offset}
+              `;
+            } else {
+              countRows = await sql`
+                SELECT COUNT(*) as total FROM appointments a JOIN patients p ON a.patient_id = p.id
+                WHERE a.appointment_date = ${dateFilter}::date AND (p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern} OR a.doctor_name ILIKE ${searchPattern})
+              `;
+              dataRows = await sql`
+                SELECT a.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                FROM appointments a JOIN patients p ON a.patient_id = p.id
+                WHERE a.appointment_date = ${dateFilter}::date AND (p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern} OR a.doctor_name ILIKE ${searchPattern})
+                ORDER BY a.appointment_time ASC LIMIT ${limit} OFFSET ${offset}
+              `;
+            }
           } else {
-            countRows = await sql`
-              SELECT COUNT(*) as total FROM appointments WHERE appointment_date = ${dateFilter}::date
-            `;
-            dataRows = await sql`
-              SELECT a.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
-              FROM appointments a JOIN patients p ON a.patient_id = p.id
-              WHERE a.appointment_date = ${dateFilter}::date
-              ORDER BY a.appointment_time ASC LIMIT ${limit} OFFSET ${offset}
-            `;
+            if (targetHospitalId !== null) {
+              countRows = await sql`
+                SELECT COUNT(*) as total FROM appointments WHERE appointment_date = ${dateFilter}::date AND hospital_id = ${targetHospitalId}
+              `;
+              dataRows = await sql`
+                SELECT a.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                FROM appointments a JOIN patients p ON a.patient_id = p.id
+                WHERE a.appointment_date = ${dateFilter}::date AND a.hospital_id = ${targetHospitalId}
+                ORDER BY a.appointment_time ASC LIMIT ${limit} OFFSET ${offset}
+              `;
+            } else {
+              countRows = await sql`
+                SELECT COUNT(*) as total FROM appointments WHERE appointment_date = ${dateFilter}::date
+              `;
+              dataRows = await sql`
+                SELECT a.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                FROM appointments a JOIN patients p ON a.patient_id = p.id
+                WHERE a.appointment_date = ${dateFilter}::date
+                ORDER BY a.appointment_time ASC LIMIT ${limit} OFFSET ${offset}
+              `;
+            }
           }
         } else {
           // No date filter
           if (search) {
             const searchPattern = `%${search}%`;
-            countRows = await sql`
-              SELECT COUNT(*) as total FROM appointments a JOIN patients p ON a.patient_id = p.id
-              WHERE p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern} OR a.doctor_name ILIKE ${searchPattern}
-            `;
-            dataRows = await sql`
-              SELECT a.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
-              FROM appointments a JOIN patients p ON a.patient_id = p.id
-              WHERE p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern} OR a.doctor_name ILIKE ${searchPattern}
-              ORDER BY a.appointment_date DESC, a.appointment_time DESC LIMIT ${limit} OFFSET ${offset}
-            `;
+            if (targetHospitalId !== null) {
+              countRows = await sql`
+                SELECT COUNT(*) as total FROM appointments a JOIN patients p ON a.patient_id = p.id
+                WHERE (p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern} OR a.doctor_name ILIKE ${searchPattern}) AND a.hospital_id = ${targetHospitalId}
+              `;
+              dataRows = await sql`
+                SELECT a.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                FROM appointments a JOIN patients p ON a.patient_id = p.id
+                WHERE (p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern} OR a.doctor_name ILIKE ${searchPattern}) AND a.hospital_id = ${targetHospitalId}
+                ORDER BY a.appointment_date DESC, a.appointment_time DESC LIMIT ${limit} OFFSET ${offset}
+              `;
+            } else {
+              countRows = await sql`
+                SELECT COUNT(*) as total FROM appointments a JOIN patients p ON a.patient_id = p.id
+                WHERE p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern} OR a.doctor_name ILIKE ${searchPattern}
+              `;
+              dataRows = await sql`
+                SELECT a.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                FROM appointments a JOIN patients p ON a.patient_id = p.id
+                WHERE p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern} OR a.doctor_name ILIKE ${searchPattern}
+                ORDER BY a.appointment_date DESC, a.appointment_time DESC LIMIT ${limit} OFFSET ${offset}
+              `;
+            }
           } else {
-            countRows = await sql`SELECT COUNT(*) as total FROM appointments`;
-            dataRows = await sql`
-              SELECT a.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
-              FROM appointments a JOIN patients p ON a.patient_id = p.id
-              ORDER BY a.appointment_date DESC, a.appointment_time DESC LIMIT ${limit} OFFSET ${offset}
-            `;
+            if (targetHospitalId !== null) {
+              countRows = await sql`SELECT COUNT(*) as total FROM appointments WHERE hospital_id = ${targetHospitalId}`;
+              dataRows = await sql`
+                SELECT a.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                FROM appointments a JOIN patients p ON a.patient_id = p.id
+                WHERE a.hospital_id = ${targetHospitalId}
+                ORDER BY a.appointment_date DESC, a.appointment_time DESC LIMIT ${limit} OFFSET ${offset}
+              `;
+            } else {
+              countRows = await sql`SELECT COUNT(*) as total FROM appointments`;
+              dataRows = await sql`
+                SELECT a.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                FROM appointments a JOIN patients p ON a.patient_id = p.id
+                ORDER BY a.appointment_date DESC, a.appointment_time DESC LIMIT ${limit} OFFSET ${offset}
+              `;
+            }
           }
         }
 

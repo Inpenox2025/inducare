@@ -22,10 +22,12 @@ module.exports = async function handler(req, res) {
       const sql = getSQL();
       const identifier = username.trim();
       const rows = await sql`
-        SELECT * FROM users 
-        WHERE username = ${identifier} 
-           OR phone = ${identifier} 
-           OR email = ${identifier}
+        SELECT u.*, h.name as hospital_name, h.logo_data as hospital_logo 
+        FROM users u
+        LEFT JOIN hospitals h ON u.hospital_id = h.id
+        WHERE u.username = ${identifier} 
+           OR u.phone = ${identifier} 
+           OR u.email = ${identifier}
       `;
       if (rows.length === 0) {
         return res.status(401).json({ error: 'Invalid credentials' });
@@ -38,7 +40,7 @@ module.exports = async function handler(req, res) {
       }
 
       const token = jwt.sign(
-        { id: user.id, username: user.username, role: user.role },
+        { id: user.id, username: user.username, role: user.role, hospital_id: user.hospital_id },
         JWT_SECRET,
         { expiresIn: '24h' }
       );
@@ -46,7 +48,14 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({
         success: true,
         token,
-        user: { id: user.id, username: user.username, role: user.role }
+        user: { 
+          id: user.id, 
+          username: user.username, 
+          role: user.role, 
+          hospital_id: user.hospital_id,
+          hospital_name: user.hospital_name || (user.role === 'super_admin' ? 'Super Admin Portal' : 'Inducare Portal'),
+          hospital_logo: user.hospital_logo || ''
+        }
       });
     } catch (error) {
       console.error('Login error:', error);
@@ -67,9 +76,28 @@ module.exports = async function handler(req, res) {
       const token = authHeader.split(' ')[1];
       const decoded = jwt.verify(token, JWT_SECRET);
 
+      const sql = getSQL();
+      const userRows = await sql`
+        SELECT u.*, h.name as hospital_name, h.logo_data as hospital_logo 
+        FROM users u
+        LEFT JOIN hospitals h ON u.hospital_id = h.id
+        WHERE u.id = ${decoded.id}
+      `;
+      if (userRows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      const user = userRows[0];
+
       return res.status(200).json({
         success: true,
-        user: { id: decoded.id, username: decoded.username, role: decoded.role }
+        user: { 
+          id: user.id, 
+          username: user.username, 
+          role: user.role, 
+          hospital_id: user.hospital_id,
+          hospital_name: user.hospital_name || (user.role === 'super_admin' ? 'Super Admin Portal' : 'Inducare Portal'),
+          hospital_logo: user.hospital_logo || ''
+        }
       });
     } catch (error) {
       return res.status(401).json({ error: 'Invalid or expired token' });

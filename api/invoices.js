@@ -1,11 +1,8 @@
 const { getSQL } = require("../shared/db");
 const jwt = require("jsonwebtoken");
 const PDFDocument = require("pdfkit");
-const path = require("path");
-const fs = require("fs");
 
-const JWT_SECRET =
-  process.env.JWT_SECRET || "hospital-management-jwt-secret-key-2026";
+const JWT_SECRET = process.env.JWT_SECRET || "hospital-management-jwt-secret-key-2026";
 
 function verifyToken(req) {
   const authHeader = req.headers.authorization;
@@ -44,21 +41,25 @@ module.exports = async function handler(req, res) {
   // ══════ ACTION: Export PDF Receipt (GET) ══════
   if (action === "export-pdf") {
     const pdfId = req.query.id;
-    if (!pdfId)
+    if (!pdfId) {
       return res.status(400).json({ error: "Invoice ID is required (?id=X)" });
+    }
 
     try {
       const rows = await sql`
         SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile, p.address as patient_address,
-               a.doctor_name, a.appointment_date, a.appointment_time
+               a.doctor_name, a.appointment_date, a.appointment_time,
+               h.name as hospital_name, h.logo_data as hospital_logo
         FROM invoices i
         JOIN patients p ON i.patient_id = p.id
         LEFT JOIN appointments a ON i.appointment_id = a.id
+        LEFT JOIN hospitals h ON i.hospital_id = h.id
         WHERE i.id = ${parseInt(pdfId)}
       `;
 
-      if (rows.length === 0)
+      if (rows.length === 0) {
         return res.status(404).json({ error: "Invoice not found" });
+      }
       const invoice = rows[0];
 
       const doc = new PDFDocument({ margin: 50, size: "A4" });
@@ -69,27 +70,36 @@ module.exports = async function handler(req, res) {
       );
       doc.pipe(res);
 
-      // Hospital Header
-      const logoPath = path.join(__dirname, "../assets/inducare logo.jpg");
-      if (fs.existsSync(logoPath)) {
-        // Draw centered logo image
-        doc.image(logoPath, {
-          fit: [140, 50],
-          align: "center",
-        });
-        doc.moveDown(0.4);
-      } else {
+      // Hospital Header (Custom Dynamic Branding)
+      let logoWritten = false;
+      if (invoice.hospital_logo && invoice.hospital_logo.startsWith("data:image")) {
+        try {
+          const base64Data = invoice.hospital_logo.split(",")[1];
+          const imgBuffer = Buffer.from(base64Data, "base64");
+          doc.image(imgBuffer, {
+            fit: [140, 50],
+            align: "center",
+          });
+          doc.moveDown(0.4);
+          logoWritten = true;
+        } catch (e) {
+          console.error("Failed to render custom base64 logo in PDF:", e);
+        }
+      }
+
+      if (!logoWritten) {
         doc
           .fontSize(22)
           .font("Helvetica-Bold")
           .fillColor("#00bba8")
-          .text("INDUCARE", { align: "center" });
+          .text(invoice.hospital_name ? invoice.hospital_name.toUpperCase() : "INDUCARE", { align: "center" });
       }
+
       doc
         .fontSize(9)
         .font("Helvetica")
         .fillColor("#607377")
-        .text("SMART CLINIC & HOSPITAL ERP", {
+        .text(invoice.hospital_name ? "SMART CUSTOM RECEIPT" : "SMART CLINIC & HOSPITAL ERP", {
           align: "center",
         });
       doc.fontSize(9).text("Contact: +91 8688932150", {
@@ -101,152 +111,76 @@ module.exports = async function handler(req, res) {
       doc
         .moveTo(50, doc.y)
         .lineTo(545, doc.y)
-        .strokeColor("#00bba8")
-        .lineWidth(2)
+        .strokeColor("#cbd5e1")
+        .lineWidth(1.5)
         .stroke();
-      doc.moveDown(1.2);
+      doc.moveDown(1);
 
-      // Receipt Title
+      // Title & Date
       doc
         .fontSize(14)
         .font("Helvetica-Bold")
-        .fillColor("#1e293b")
-        .text("FEES RECEIPT / INVOICE", { align: "center" });
-      doc.moveDown(1);
-
-      // Metainfo columns (left and right)
-      const currentY = doc.y;
-      doc.fontSize(10).font("Helvetica-Bold").fillColor("#334155");
-      doc.text("PATIENT DETAILS", 50, currentY);
-      doc.text("INVOICE METADATA", 320, currentY);
-
-      doc
-        .moveTo(50, doc.y + 2)
-        .lineTo(250, doc.y + 2)
-        .strokeColor("#cbd5e1")
-        .lineWidth(1)
-        .stroke();
-      doc
-        .moveTo(320, doc.y + 2)
-        .lineTo(545, doc.y + 2)
-        .strokeColor("#cbd5e1")
-        .lineWidth(1)
-        .stroke();
-      doc.moveDown(0.6);
-
-      // Patient details left column
-      const detailsY = doc.y;
-      doc.fontSize(10).font("Helvetica-Bold").fillColor("#475569");
-      doc
-        .text("Name: ", 50, detailsY, { continued: true })
-        .font("Helvetica")
         .fillColor("#0f172a")
-        .text(invoice.patient_name);
+        .text("INVOICE RECEIPT", { align: "left" });
+      doc.moveDown(0.5);
+
+      const infoY = doc.y;
+
+      // Invoice info (Left Column)
+      doc.fontSize(9.5).font("Helvetica-Bold").text("Invoice Details:", 50, infoY);
       doc
-        .font("Helvetica-Bold")
+        .font("Helvetica")
         .fillColor("#475569")
-        .text("Mobile: ", { continued: true })
-        .font("Helvetica")
-        .fillColor("#0f172a")
-        .text(invoice.patient_mobile || "—");
-      doc
-        .font("Helvetica-Bold")
-        .fillColor("#475569")
-        .text("Address: ", { continued: true })
-        .font("Helvetica")
-        .fillColor("#0f172a")
-        .text(invoice.patient_address || "—");
+        .text(`Receipt No: ${invoice.invoice_no}`, 50, infoY + 16)
+        .text(`Issued Date: ${formatDate(invoice.created_at)}`, 50, infoY + 28);
 
-      // Invoice details right column
-      doc
-        .text("Receipt No: ", 320, detailsY, { continued: true })
-        .font("Helvetica")
-        .fillColor("#0f172a")
-        .text(invoice.invoice_no);
-      doc
-        .font("Helvetica-Bold")
-        .fillColor("#475569")
-        .text("Date Issued: ", { continued: true })
-        .font("Helvetica")
-        .fillColor("#0f172a")
-        .text(formatDate(invoice.created_at));
-
-      const pMode = invoice.payment_mode
-        ? invoice.payment_mode.toUpperCase()
-        : "PENDING";
-      doc
-        .font("Helvetica-Bold")
-        .fillColor("#475569")
-        .text("Payment Mode: ", { continued: true })
-        .font("Helvetica")
-        .fillColor("#0f172a")
-        .text(pMode);
-
-      const pDate = invoice.payment_date
-        ? formatDate(invoice.payment_date)
-        : "—";
-      doc
-        .font("Helvetica-Bold")
-        .fillColor("#475569")
-        .text("Payment Date: ", { continued: true })
-        .font("Helvetica")
-        .fillColor("#0f172a")
-        .text(pDate);
-
-      doc.moveDown(1.5);
-
-      // Medical Details (if appointment exists)
-      if (invoice.doctor_name) {
-        doc
-          .fontSize(10)
-          .font("Helvetica-Bold")
-          .fillColor("#334155")
-          .text("CLINICAL VISIT DETAILS", 50);
-        doc
-          .moveTo(50, doc.y + 2)
-          .lineTo(545, doc.y + 2)
-          .strokeColor("#cbd5e1")
-          .lineWidth(1)
-          .stroke();
-        doc.moveDown(0.6);
-
-        const clinicalY = doc.y;
-        doc
-          .font("Helvetica-Bold")
-          .fillColor("#475569")
-          .text("Consultant: ", 50, clinicalY, { continued: true })
-          .font("Helvetica")
-          .fillColor("#0f172a")
-          .text(invoice.doctor_name);
-        doc
-          .font("Helvetica-Bold")
-          .fillColor("#475569")
-          .text("Visit Date: ", { continued: true })
-          .font("Helvetica")
-          .fillColor("#0f172a")
-          .text(
-            formatDate(invoice.appointment_date) +
-              " " +
-              (invoice.appointment_time || ""),
-          );
-        doc.moveDown(1.5);
+      if (invoice.payment_date) {
+        doc.text(`Payment Date: ${formatDate(invoice.payment_date)}`, 50, infoY + 40);
       }
 
-      // Invoice Items Table
+      // Patient Info (Right Column)
       doc
-        .fontSize(10)
         .font("Helvetica-Bold")
-        .fillColor("#334155")
-        .text("BILLING DESCRIPTION & CHARGES", 50);
+        .fillColor("#0f172a")
+        .text("Billed To:", 300, infoY);
       doc
-        .moveTo(50, doc.y + 2)
-        .lineTo(545, doc.y + 2)
-        .strokeColor("#cbd5e1")
+        .font("Helvetica")
+        .fillColor("#475569")
+        .text(`Patient Name: ${invoice.patient_name}`, 300, infoY + 16)
+        .text(`Contact: ${invoice.patient_mobile || "—"}`, 300, infoY + 28)
+        .text(`Address: ${invoice.patient_address || "—"}`, 300, infoY + 40, {
+          width: 240,
+        });
+
+      doc.moveDown(3);
+
+      // Appointment check context
+      if (invoice.doctor_name) {
+        const checkupY = doc.y;
+        doc
+          .font("Helvetica-Bold")
+          .fillColor("#0f172a")
+          .text("Clinical Consultation Visit Info:", 50, checkupY);
+        doc
+          .font("Helvetica")
+          .fillColor("#475569")
+          .text(
+            `Doctor: ${invoice.doctor_name} | Date: ${formatDate(invoice.appointment_date)} | Time: ${invoice.appointment_time || "—"}`,
+            50,
+            checkupY + 14,
+          );
+        doc.moveDown(2);
+      }
+
+      // Table Header
+      const tableHeaderY = doc.y;
+      doc
+        .moveTo(50, tableHeaderY - 4)
+        .lineTo(545, tableHeaderY - 4)
+        .strokeColor("#94a3b8")
         .lineWidth(1)
         .stroke();
-      doc.moveDown(0.6);
 
-      const tableHeaderY = doc.y;
       doc.font("Helvetica-Bold").fillColor("#475569");
       doc.text("Description", 50, tableHeaderY);
       doc.text("Amount", 450, tableHeaderY, { align: "right", width: 95 });
@@ -298,10 +232,10 @@ module.exports = async function handler(req, res) {
       doc
         .font("Helvetica-Bold")
         .fillColor("#475569")
-        .text("Paid Amount:", 320, totalsY + 16);
+        .text("Amount Paid:", 320, totalsY + 16);
       doc
-        .font("Helvetica-Bold")
-        .fillColor("#10b981")
+        .font("Helvetica")
+        .fillColor("#0f172a")
         .text(formatCurrency(invoice.paid_amount), 450, totalsY + 16, {
           align: "right",
           width: 95,
@@ -311,33 +245,42 @@ module.exports = async function handler(req, res) {
         .font("Helvetica-Bold")
         .fillColor("#475569")
         .text("Outstanding Due:", 320, totalsY + 32);
-      const dueColor =
-        parseFloat(invoice.due_amount) > 0 ? "#ef4444" : "#10b981";
       doc
         .font("Helvetica-Bold")
-        .fillColor(dueColor)
+        .fillColor("#ef4444")
         .text(formatCurrency(invoice.due_amount), 450, totalsY + 32, {
           align: "right",
           width: 95,
         });
 
-      doc.moveDown(3);
-
-      // Reconciliation Status Banner
+      // Highlight Status Banner
+      doc.moveDown(3.5);
       const bannerY = doc.y;
-      doc.rect(50, bannerY, 495, 40).fill("#f8fafc");
-      doc.font("Helvetica-Bold").fillColor("#334155");
+      doc
+        .rect(50, bannerY, 495, 30)
+        .fill(invoice.status === "paid" ? "#d1fae5" : "#fee2e2");
+
+      doc
+        .fontSize(9.5)
+        .font("Helvetica-Bold")
+        .fillColor(invoice.status === "paid" ? "#065f46" : "#991b1b");
+      const pMode = invoice.payment_mode
+        ? invoice.payment_mode.toUpperCase()
+        : "N/A";
+      const pDate = invoice.payment_date
+        ? formatDate(invoice.payment_date)
+        : "N/A";
       const bannerText =
         invoice.status === "paid"
           ? `STATUS: FULLY PAID VIA ${pMode} ON ${pDate}`
           : `STATUS: PAYMENT OUTSTANDING — DUE AMOUNT ${formatCurrency(invoice.due_amount)}`;
-      doc.text(bannerText, 70, bannerY + 14, { align: "center", width: 455 });
+      doc.text(bannerText, 70, bannerY + 10, { align: "center", width: 455 });
 
       // Footer signature space
       doc.moveDown(3);
       const signatureY = doc.y;
       doc.fontSize(9).font("Helvetica").fillColor("#64748b");
-      doc.text("Prepared By: Staff/Nurse Desk", 50, signatureY);
+      doc.text("Prepared By: Staff Desk", 50, signatureY);
       doc.text("Authorized Signature", 400, signatureY, {
         align: "right",
         width: 145,
@@ -354,7 +297,7 @@ module.exports = async function handler(req, res) {
         .fontSize(8)
         .font("Helvetica")
         .fillColor("#94a3b8")
-        .text("This is a verified digital payment receipt from Inducare.", {
+        .text("This is a verified digital payment receipt.", {
           align: "center",
         });
       doc.moveDown(0.3);
@@ -380,18 +323,26 @@ module.exports = async function handler(req, res) {
   else {
     const user = verifyToken(req);
     if (!user) return res.status(401).json({ error: "Unauthorized" });
+    const targetHospitalId = user.role === 'super_admin' ? (req.query.hospital_id ? parseInt(req.query.hospital_id) : null) : user.hospital_id;
 
     // ══════ SINGLE INVOICE ACTIONS ══════
     if (id) {
       // GET: Fetch single invoice
       if (req.method === "GET") {
         try {
-          const rows = await sql`
-            SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
-            FROM invoices i
-            JOIN patients p ON i.patient_id = p.id
-            WHERE i.id = ${parseInt(id)}
-          `;
+          const rows = targetHospitalId !== null
+            ? await sql`
+              SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+              FROM invoices i
+              JOIN patients p ON i.patient_id = p.id
+              WHERE i.id = ${parseInt(id)} AND i.hospital_id = ${targetHospitalId}
+            `
+            : await sql`
+              SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+              FROM invoices i
+              JOIN patients p ON i.patient_id = p.id
+              WHERE i.id = ${parseInt(id)}
+            `;
           if (rows.length === 0)
             return res.status(404).json({ error: "Invoice not found" });
           return res.status(200).json({ success: true, invoice: rows[0] });
@@ -425,17 +376,29 @@ module.exports = async function handler(req, res) {
               ? new Date().toISOString().split("T")[0]
               : null;
 
-          const rows = await sql`
-            UPDATE invoices SET
-              status = ${updatedStatus},
-              payment_mode = ${payment_mode || null},
-              paid_amount = ${totalPaid},
-              due_amount = ${dueAmount},
-              payment_date = ${paymentDateVal},
-              updated_at = NOW()
-            WHERE id = ${parseInt(id)}
-            RETURNING *
-          `;
+          const rows = targetHospitalId !== null
+            ? await sql`
+              UPDATE invoices SET
+                status = ${updatedStatus},
+                payment_mode = ${payment_mode || null},
+                paid_amount = ${totalPaid},
+                due_amount = ${dueAmount},
+                payment_date = ${paymentDateVal},
+                updated_at = NOW()
+              WHERE id = ${parseInt(id)} AND hospital_id = ${targetHospitalId}
+              RETURNING *
+            `
+            : await sql`
+              UPDATE invoices SET
+                status = ${updatedStatus},
+                payment_mode = ${payment_mode || null},
+                paid_amount = ${totalPaid},
+                due_amount = ${dueAmount},
+                payment_date = ${paymentDateVal},
+                updated_at = NOW()
+              WHERE id = ${parseInt(id)}
+              RETURNING *
+            `;
 
           if (rows.length === 0)
             return res.status(404).json({ error: "Invoice not found" });
@@ -451,7 +414,7 @@ module.exports = async function handler(req, res) {
           return res.status(200).json({ success: true, invoice: rows[0] });
         } catch (error) {
           return res.status(500).json({
-            error: "Failed to update invoice reconciliation",
+            error: "Failed to update invoice status",
             details: error.message,
           });
         }
@@ -459,15 +422,16 @@ module.exports = async function handler(req, res) {
 
       // DELETE: Delete invoice (Admin Only)
       if (req.method === "DELETE") {
-        if (user.role !== "admin") {
+        if (user.role !== "admin" && user.role !== "super_admin") {
           return res
             .status(403)
             .json({ error: "Access denied. Administrators only." });
         }
 
         try {
-          const rows =
-            await sql`DELETE FROM invoices WHERE id = ${parseInt(id)} RETURNING id`;
+          const rows = targetHospitalId !== null
+            ? await sql`DELETE FROM invoices WHERE id = ${parseInt(id)} AND hospital_id = ${targetHospitalId} RETURNING id`
+            : await sql`DELETE FROM invoices WHERE id = ${parseInt(id)} RETURNING id`;
           if (rows.length === 0)
             return res.status(404).json({ error: "Invoice not found" });
           return res
@@ -503,6 +467,7 @@ module.exports = async function handler(req, res) {
               .json({ error: "Patient, Description and Amount are required" });
           }
 
+          const hostId = targetHospitalId || 1;
           const invNo = `INV-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
           const totalAmt = parseFloat(amount);
 
@@ -522,10 +487,10 @@ module.exports = async function handler(req, res) {
 
           const rows = await sql`
             INSERT INTO invoices (
-              invoice_no, patient_id, appointment_id, description, amount, paid_amount, due_amount, status, payment_mode, payment_date, created_by
+              invoice_no, patient_id, appointment_id, description, amount, paid_amount, due_amount, status, payment_mode, payment_date, created_by, hospital_id
             ) VALUES (
               ${invNo}, ${patientIdInt}, ${appointmentIdInt}, ${description}, ${totalAmt}, ${paidAmt}, ${dueAmt}, ${isPaid},
-              ${payment_mode || null}, ${paymentDateVal}, ${user.id}
+              ${payment_mode || null}, ${paymentDateVal}, ${user.id}, ${hostId}
             ) RETURNING *
           `;
 
@@ -554,45 +519,93 @@ module.exports = async function handler(req, res) {
             const searchPattern = `%${search}%`;
 
             if (search && status) {
-              countRows = await sql`
-                SELECT COUNT(*) as total FROM invoices i JOIN patients p ON i.patient_id = p.id
-                WHERE i.status = ${status} AND (p.full_name ILIKE ${searchPattern} OR i.invoice_no ILIKE ${searchPattern})
-              `;
-              dataRows = await sql`
-                SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
-                FROM invoices i JOIN patients p ON i.patient_id = p.id
-                WHERE i.status = ${status} AND (p.full_name ILIKE ${searchPattern} OR i.invoice_no ILIKE ${searchPattern})
-                ORDER BY i.created_at DESC LIMIT ${limit} OFFSET ${offset}
-              `;
+              if (targetHospitalId !== null) {
+                countRows = await sql`
+                  SELECT COUNT(*) as total FROM invoices i JOIN patients p ON i.patient_id = p.id
+                  WHERE i.status = ${status} AND (p.full_name ILIKE ${searchPattern} OR i.invoice_no ILIKE ${searchPattern}) AND i.hospital_id = ${targetHospitalId}
+                `;
+                dataRows = await sql`
+                  SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                  FROM invoices i JOIN patients p ON i.patient_id = p.id
+                  WHERE i.status = ${status} AND (p.full_name ILIKE ${searchPattern} OR i.invoice_no ILIKE ${searchPattern}) AND i.hospital_id = ${targetHospitalId}
+                  ORDER BY i.created_at DESC LIMIT ${limit} OFFSET ${offset}
+                `;
+              } else {
+                countRows = await sql`
+                  SELECT COUNT(*) as total FROM invoices i JOIN patients p ON i.patient_id = p.id
+                  WHERE i.status = ${status} AND (p.full_name ILIKE ${searchPattern} OR i.invoice_no ILIKE ${searchPattern})
+                `;
+                dataRows = await sql`
+                  SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                  FROM invoices i JOIN patients p ON i.patient_id = p.id
+                  WHERE i.status = ${status} AND (p.full_name ILIKE ${searchPattern} OR i.invoice_no ILIKE ${searchPattern})
+                  ORDER BY i.created_at DESC LIMIT ${limit} OFFSET ${offset}
+                `;
+              }
             } else if (search) {
-              countRows = await sql`
-                SELECT COUNT(*) as total FROM invoices i JOIN patients p ON i.patient_id = p.id
-                WHERE p.full_name ILIKE ${searchPattern} OR i.invoice_no ILIKE ${searchPattern}
-              `;
+              if (targetHospitalId !== null) {
+                countRows = await sql`
+                  SELECT COUNT(*) as total FROM invoices i JOIN patients p ON i.patient_id = p.id
+                  WHERE (p.full_name ILIKE ${searchPattern} OR i.invoice_no ILIKE ${searchPattern}) AND i.hospital_id = ${targetHospitalId}
+                `;
+                dataRows = await sql`
+                  SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                  FROM invoices i JOIN patients p ON i.patient_id = p.id
+                  WHERE (p.full_name ILIKE ${searchPattern} OR i.invoice_no ILIKE ${searchPattern}) AND i.hospital_id = ${targetHospitalId}
+                  ORDER BY i.created_at DESC LIMIT ${limit} OFFSET ${offset}
+                `;
+              } else {
+                countRows = await sql`
+                  SELECT COUNT(*) as total FROM invoices i JOIN patients p ON i.patient_id = p.id
+                  WHERE p.full_name ILIKE ${searchPattern} OR i.invoice_no ILIKE ${searchPattern}
+                `;
+                dataRows = await sql`
+                  SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                  FROM invoices i JOIN patients p ON i.patient_id = p.id
+                  WHERE p.full_name ILIKE ${searchPattern} OR i.invoice_no ILIKE ${searchPattern}
+                  ORDER BY i.created_at DESC LIMIT ${limit} OFFSET ${offset}
+                `;
+              }
+            } else {
+              if (targetHospitalId !== null) {
+                countRows = await sql`
+                  SELECT COUNT(*) as total FROM invoices WHERE status = ${status} AND hospital_id = ${targetHospitalId}
+                `;
+                dataRows = await sql`
+                  SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                  FROM invoices i JOIN patients p ON i.patient_id = p.id
+                  WHERE i.status = ${status} AND i.hospital_id = ${targetHospitalId}
+                  ORDER BY i.created_at DESC LIMIT ${limit} OFFSET ${offset}
+                `;
+              } else {
+                countRows = await sql`
+                  SELECT COUNT(*) as total FROM invoices WHERE status = ${status}
+                `;
+                dataRows = await sql`
+                  SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                  FROM invoices i JOIN patients p ON i.patient_id = p.id
+                  WHERE i.status = ${status}
+                  ORDER BY i.created_at DESC LIMIT ${limit} OFFSET ${offset}
+                `;
+              }
+            }
+          } else {
+            if (targetHospitalId !== null) {
+              countRows = await sql`SELECT COUNT(*) as total FROM invoices WHERE hospital_id = ${targetHospitalId}`;
               dataRows = await sql`
                 SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
                 FROM invoices i JOIN patients p ON i.patient_id = p.id
-                WHERE p.full_name ILIKE ${searchPattern} OR i.invoice_no ILIKE ${searchPattern}
+                WHERE i.hospital_id = ${targetHospitalId}
                 ORDER BY i.created_at DESC LIMIT ${limit} OFFSET ${offset}
               `;
             } else {
-              countRows = await sql`
-                SELECT COUNT(*) as total FROM invoices WHERE status = ${status}
-              `;
+              countRows = await sql`SELECT COUNT(*) as total FROM invoices`;
               dataRows = await sql`
                 SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
                 FROM invoices i JOIN patients p ON i.patient_id = p.id
-                WHERE i.status = ${status}
                 ORDER BY i.created_at DESC LIMIT ${limit} OFFSET ${offset}
               `;
             }
-          } else {
-            countRows = await sql`SELECT COUNT(*) as total FROM invoices`;
-            dataRows = await sql`
-              SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
-              FROM invoices i JOIN patients p ON i.patient_id = p.id
-              ORDER BY i.created_at DESC LIMIT ${limit} OFFSET ${offset}
-            `;
           }
 
           const total = parseInt(countRows[0].total);
@@ -611,6 +624,8 @@ module.exports = async function handler(req, res) {
           });
         }
       }
+
+      return res.status(405).json({ error: "Method not allowed" });
     }
   }
 };

@@ -70,40 +70,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (user) {
     document.getElementById("userName").textContent = user.username;
     document.getElementById("userRole").textContent = user.role;
+    
+    // Update logo/branding headers dynamically
+    const logoBox = document.getElementById("logoBox");
+    const brandText = document.getElementById("brandText");
+    if (user.hospital_logo) {
+      logoBox.innerHTML = `<img src="${user.hospital_logo}" style="width:100%; height:100%; object-fit:cover; border-radius:6px;">`;
+      logoBox.style.backgroundColor = "transparent";
+      logoBox.style.boxShadow = "none";
+    } else {
+      logoBox.innerHTML = (user.hospital_name || "I").charAt(0).toUpperCase();
+      logoBox.style.backgroundColor = "#00bba8";
+    }
+    if (brandText) {
+      brandText.innerHTML = `${esc(user.hospital_name || 'Inducare')} <span>Staff Portal</span>`;
+    }
+    
     document.getElementById("headerAvatar").textContent = user.username
       .charAt(0)
       .toUpperCase();
 
-    // Role-Based Menu Access Configuration
-    const navOverview = document.getElementById("navOverview");
-    const navPatients = document.getElementById("navPatients");
-    const navAppointments = document.getElementById("navAppointments");
-    const navInvoices = document.getElementById("navInvoices");
-    const navStaff = document.getElementById("navStaff");
-    const navDoctors = document.getElementById("navDoctors");
-    const navRooms = document.getElementById("navRooms");
-
-    if (user.role === "admin") {
-      if (navStaff) navStaff.style.display = "";
-      if (navInvoices) navInvoices.style.display = "";
-      if (navAppointments) navAppointments.style.display = "";
-      if (navDoctors) navDoctors.style.display = "";
-      if (navRooms) navRooms.style.display = "";
-    } else if (user.role === "doctor") {
-      if (navStaff) navStaff.style.display = "none";
-      if (navInvoices) navInvoices.style.display = "none";
-      if (navAppointments) navAppointments.style.display = "none";
-      if (navDoctors) navDoctors.style.display = "none";
-      if (navRooms) navRooms.style.display = "";
-      document.body.classList.add("doctor-restricted");
-    } else if (user.role === "nurse") {
-      if (navStaff) navStaff.style.display = "none";
-      if (navInvoices) navInvoices.style.display = "none"; // remove billing to nurse
-      if (navAppointments) navAppointments.style.display = "";
-      if (navDoctors) navDoctors.style.display = "none";
-      if (navRooms) navRooms.style.display = "";
-      document.body.classList.add("nurse-restricted");
-    }
+    // Load dynamic menu items based on roles
+    loadDynamicNavigation();
   }
 
   initDateTime();
@@ -142,47 +130,29 @@ function switchTab(tabName) {
   const user = getUser();
   if (!user) return;
 
-  // Enforce role-based access guards on tabs
-  if (user.role === "nurse") {
-    const allowed = ["overview", "patients", "appointments", "rooms"];
-    if (!allowed.includes(tabName)) {
-      showToast("Access Denied. Nurse permissions restricted.", "error");
+  // Enforce dynamic sidebar visible navigation checks
+  if (user.role !== 'super_admin') {
+    const navLink = document.getElementById(`nav${tabName.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('')}`);
+    if (navLink && navLink.style.display === 'none') {
+      showToast("Access Denied. Restricted panel view.", "error");
       return;
     }
-  } else if (user.role === "doctor") {
-    const allowed = ["overview", "patients", "rooms"];
-    if (!allowed.includes(tabName)) {
-      showToast("Access Denied. Doctor permissions restricted.", "error");
-      return;
-    }
-  } else if (user.role !== "admin") {
-    showToast("Access Denied.", "error");
-    return;
   }
 
-  activeTab = tabName;
-
-  // Update navigation classes
-  document.querySelectorAll(".sidebar-nav [data-tab]").forEach((item) => {
+  // Update tabs active state class
+  document.querySelectorAll(".nav-item").forEach((item) => {
     item.classList.toggle("active", item.getAttribute("data-tab") === tabName);
   });
 
-  // Update panel displays
   document.querySelectorAll(".tab-panel").forEach((panel) => {
     panel.classList.toggle("active", panel.id === `tab-${tabName}`);
   });
 
-  // Update Page Title
-  const titles = {
-    overview:
-      'Inducare <span style="font-size: 12px; font-weight: 500; color: var(--text-muted || var(--text3)); margin-left: 10px; opacity: 0.85;">Powered by Inspenox</span>',
-    patients: "Inducare Patients Registry",
-    appointments: "Inducare Consultation Appointments",
-    invoices: "Inducare Billing & Invoice Receipts",
-    staff: "Inducare Staff Management",
-  };
-  document.getElementById("pageTitle").innerHTML =
-    titles[tabName] || "Dashboard";
+  // Update Topbar page title
+  const pageTitle = document.getElementById("pageTitle");
+  if (pageTitle) {
+    pageTitle.textContent = tabName.charAt(0).toUpperCase() + tabName.slice(1).replace("-", " ");
+  }
 
   // Load correct tab contents
   if (tabName === "overview") loadOverview();
@@ -192,6 +162,8 @@ function switchTab(tabName) {
   else if (tabName === "staff") loadStaff();
   else if (tabName === "doctors") loadDoctors();
   else if (tabName === "rooms") loadRooms();
+  else if (tabName === "hospital-setup") loadHospitalSetup();
+  else if (tabName === "super-panel") loadSuperPanel();
 
   // Close mobile sidebar on navigate
   document.getElementById("sidebar").classList.remove("open");
@@ -723,10 +695,12 @@ function renderCaseSheetHTML(p) {
             </tr>
           `).join("");
 
+          const dynHospTitle = user && user.hospital_name ? user.hospital_name.toUpperCase() : "INDUCARE";
+
           return `
             <div class="case-sheet-page-break"></div>
             <div class="case-sheet-header" style="margin-top: 40px;">
-              <div style="font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; color: #00bba8; letter-spacing: 0.5px; text-align: center; margin-bottom: 8px;">INDUCARE</div>
+              ${user && user.hospital_logo ? `<img src="${user.hospital_logo}" style="max-height:50px; display:block; margin: 0 auto 8px auto;">` : `<div style="font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; color: #00bba8; letter-spacing: 0.5px; text-align: center; margin-bottom: 8px;">${dynHospTitle}</div>`}
               <div class="case-sheet-title">Patient Progress & Doctor Visits Sheet</div>
             </div>
 
@@ -1682,6 +1656,49 @@ function initEventListeners() {
   document.getElementById("roomForm").addEventListener("submit", saveRoom);
   document.getElementById("allocationForm").addEventListener("submit", saveAllocation);
   document.getElementById("visitForm").addEventListener("submit", saveDoctorVisit);
+  document.getElementById("hospitalSetupForm").addEventListener("submit", saveHospitalSetup);
+  document.getElementById("superHospitalForm").addEventListener("submit", saveSuperHospital);
+  document.getElementById("superRoleForm").addEventListener("submit", saveSuperRole);
+
+  // File logo upload read DataURL base64
+  document.getElementById("hosp_logo_file").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const preview = document.getElementById("hosp_logo_preview");
+        const emptyText = document.getElementById("hosp_logo_empty_text");
+        preview.src = evt.target.result;
+        preview.style.display = "block";
+        if (emptyText) emptyText.style.display = "none";
+        window.tempHospitalLogoBase64 = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  // Dynamic menu mapper updates
+  document.getElementById("menu_role_select").addEventListener("change", (e) => {
+    loadRoleMenusConfig(e.target.value);
+  });
+
+  document.getElementById("loadMenuConfigBtn").addEventListener("click", () => {
+    const role = document.getElementById("menu_role_select").value;
+    loadRoleMenusConfig(role);
+  });
+
+  document.getElementById("saveMenuConfigBtn").addEventListener("click", saveRoleMenu);
+
+  document.getElementById("addHospBtn").addEventListener("click", () => {
+    document.getElementById("superHospitalForm").reset();
+    window.tempHospitalLogoBase64 = "";
+    openModal("superHospitalModal");
+  });
+
+  document.getElementById("createRoleBtn").addEventListener("click", () => {
+    document.getElementById("superRoleForm").reset();
+    openModal("superRoleModal");
+  });
 
   // Add triggers
   document.getElementById("addDoctorBtn").addEventListener("click", () => {
@@ -2447,5 +2464,323 @@ async function saveDoctorVisit(e) {
     }
   } catch (err) {
     showToast("Network error recording visit log", "error");
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// DYNAMIC NAVIGATION AND SaaS CUSTOM ROLES
+// ══════════════════════════════════════════════════════════
+async function loadDynamicNavigation() {
+  const user = getUser();
+  if (!user) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/super?action=menus`, {
+      headers: authHeaders()
+    });
+    const data = await res.json();
+    if (res.ok && data.success && data.menus) {
+      const allNavLinks = [
+        { key: 'overview', id: 'navOverview' },
+        { key: 'patients', id: 'navPatients' },
+        { key: 'appointments', id: 'navAppointments' },
+        { key: 'invoices', id: 'navInvoices' },
+        { key: 'doctors', id: 'navDoctors' },
+        { key: 'rooms', id: 'navRooms' },
+        { key: 'staff', id: 'navStaff' },
+        { key: 'hospital-setup', id: 'navHospitalSetup' },
+        { key: 'super-overview', id: 'navOverview' },
+        { key: 'super-roles', id: 'navSuperPanel' },
+        { key: 'super-hospitals', id: 'navSuperPanel' }
+      ];
+
+      allNavLinks.forEach(item => {
+        const el = document.getElementById(item.id);
+        if (el) el.style.display = 'none';
+      });
+
+      if (user.role === 'super_admin') {
+        const superOverview = document.getElementById("navOverview");
+        if (superOverview) {
+          superOverview.style.display = "";
+          superOverview.innerHTML = '<span class="nav-icon">🏢</span> Dashboard';
+          superOverview.setAttribute("data-tab", "overview");
+        }
+        const superPanel = document.getElementById("navSuperPanel");
+        if (superPanel) {
+          superPanel.style.display = "";
+          superPanel.innerHTML = '<span class="nav-icon">🔑</span> Super Panel';
+          superPanel.setAttribute("data-tab", "super-panel");
+        }
+        switchTab("super-panel");
+        return;
+      }
+
+      let firstTab = "";
+      data.menus.forEach(menu => {
+        const mapped = allNavLinks.find(item => item.key === menu.menu_key);
+        if (mapped) {
+          const el = document.getElementById(mapped.id);
+          if (el) {
+            el.style.display = '';
+            el.innerHTML = `<span class="nav-icon">${menu.menu_icon}</span> ${menu.menu_label}`;
+            el.setAttribute("data-tab", menu.menu_key);
+            if (!firstTab) firstTab = menu.menu_key;
+          }
+        }
+      });
+
+      if (firstTab) {
+        switchTab(firstTab);
+      }
+    }
+  } catch (err) {
+    console.error("Failed to load dynamic nav menus:", err);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// HOSPITAL SETUP (ADMIN BRANDING SETTINGS)
+// ══════════════════════════════════════════════════════════
+async function loadHospitalSetup() {
+  try {
+    const res = await fetch(`${API_BASE}/super?action=hospital`, { headers: authHeaders() });
+    const data = await res.json();
+    if (res.ok && data.success && data.hospital) {
+      const h = data.hospital;
+      document.getElementById("hosp_name_input").value = h.name || "";
+      const preview = document.getElementById("hosp_logo_preview");
+      const emptyText = document.getElementById("hosp_logo_empty_text");
+      if (h.logo_data) {
+        preview.src = h.logo_data;
+        preview.style.display = "block";
+        if (emptyText) emptyText.style.display = "none";
+        window.tempHospitalLogoBase64 = h.logo_data;
+      } else {
+        preview.style.display = "none";
+        if (emptyText) emptyText.style.display = "block";
+        window.tempHospitalLogoBase64 = "";
+      }
+    }
+
+    // Load setup statistics
+    const statsRes = await fetch(`${API_BASE}/super?action=stats`, { headers: authHeaders() });
+    const statsData = await statsRes.json();
+    if (statsRes.ok && statsData.success) {
+      document.getElementById("setupStatsDoctors").textContent = statsData.stats.doctors;
+      document.getElementById("setupStatsRooms").textContent = statsData.stats.rooms;
+    }
+  } catch (err) {
+    showToast("Failed to load hospital settings", "error");
+  }
+}
+
+async function saveHospitalSetup(e) {
+  e.preventDefault();
+  const name = document.getElementById("hosp_name_input").value;
+  const logo = window.tempHospitalLogoBase64 || "";
+
+  try {
+    const res = await fetch(`${API_BASE}/super?action=hospital`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ name, logo_data: logo })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast("Hospital profile saved! Re-logging in will sync custom logos.", "success");
+      
+      // Dynamic updates to current local context
+      const u = getUser();
+      if (u) {
+        u.hospital_name = name;
+        u.hospital_logo = logo;
+        localStorage.setItem("hospital_user", JSON.stringify(u));
+        
+        // Re-run header display update
+        const logoBox = document.getElementById("logoBox");
+        const brandText = document.getElementById("brandText");
+        if (logo) {
+          logoBox.innerHTML = `<img src="${logo}" style="width:100%; height:100%; object-fit:cover; border-radius:6px;">`;
+          logoBox.style.backgroundColor = "transparent";
+          logoBox.style.boxShadow = "none";
+        } else {
+          logoBox.innerHTML = name.charAt(0).toUpperCase();
+          logoBox.style.backgroundColor = "#00bba8";
+        }
+        if (brandText) {
+          brandText.innerHTML = `${esc(name)} <span>Staff Portal</span>`;
+        }
+      }
+    } else {
+      showToast(data.error || "Save failed", "error");
+    }
+  } catch (err) {
+    showToast("Connection error saving settings", "error");
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// SUPER ADMIN TELEMETRY PANELS
+// ══════════════════════════════════════════════════════════
+async function loadSuperPanel() {
+  const superHospitalsTableBody = document.getElementById("superHospitalsTableBody");
+  const superRolesTableBody = document.getElementById("superRolesTableBody");
+  const menuRoleSelect = document.getElementById("menu_role_select");
+
+  superHospitalsTableBody.innerHTML = '<tr><td colspan="4" class="loading-cell">Loading hospitals...</td></tr>';
+  superRolesTableBody.innerHTML = '<tr><td colspan="2" class="loading-cell">Loading custom roles...</td></tr>';
+
+  try {
+    // 1. Fetch hospitals
+    const resHosp = await fetch(`${API_BASE}/super?action=hospitals`, { headers: authHeaders() });
+    const dataHosp = await resHosp.json();
+    if (resHosp.ok && dataHosp.success) {
+      if (dataHosp.hospitals.length === 0) {
+        superHospitalsTableBody.innerHTML = '<tr><td colspan="4" class="empty-cell">No hospitals registered yet.</td></tr>';
+      } else {
+        superHospitalsTableBody.innerHTML = dataHosp.hospitals.map(h => `
+          <tr>
+            <td>#${h.id}</td>
+            <td>
+              ${h.logo_data ? `<img src="${h.logo_data}" style="height:20px; vertical-align:middle; margin-right:6px; border-radius:3px;">` : ""}
+              <strong>${esc(h.name)}</strong>
+            </td>
+            <td>${h.doctors_count} registered</td>
+            <td>${h.rooms_count} inventory</td>
+          </tr>
+        `).join("");
+      }
+    }
+
+    // 2. Fetch roles
+    const resRoles = await fetch(`${API_BASE}/super?action=roles`, { headers: authHeaders() });
+    const dataRoles = await resRoles.json();
+    if (resRoles.ok && dataRoles.success) {
+      // Standard roles + custom ones
+      const defaultRoles = [
+        { role_name: 'nurse', description: 'Default Staff Nurse access' },
+        { role_name: 'doctor', description: 'Default attending clinician access' },
+        { role_name: 'admin', description: 'Hospital manager full tenant control' }
+      ];
+      
+      const allRoles = [...defaultRoles];
+      dataRoles.roles.forEach(r => {
+        if (!allRoles.some(ar => ar.role_name === r.role_name)) {
+          allRoles.push(r);
+        }
+      });
+
+      superRolesTableBody.innerHTML = allRoles.map(r => `
+        <tr>
+          <td><code style="background-color:var(--bg-primary); padding:2px 6px; border-radius:4px; font-weight:700;">${esc(r.role_name)}</code></td>
+          <td>${esc(r.description || "N/A")}</td>
+        </tr>
+      `).join("");
+
+      // Populating dynamic menu selects
+      menuRoleSelect.innerHTML = allRoles.map(r => `
+        <option value="${r.role_name}">${esc(r.role_name.toUpperCase())}</option>
+      `).join("");
+
+      // Initial load mapping config
+      if (allRoles.length > 0) {
+        loadRoleMenusConfig(allRoles[0].role_name);
+      }
+    }
+  } catch (err) {
+    showToast("Failed to query Super parameters", "error");
+  }
+}
+
+async function saveSuperHospital(e) {
+  e.preventDefault();
+  const name = document.getElementById("super_hosp_name").value;
+  const logo = window.tempHospitalLogoBase64 || "";
+
+  try {
+    const res = await fetch(`${API_BASE}/super?action=hospitals`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ name, logo_data: logo })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast("Hospital registration successful!", "success");
+      closeModal("superHospitalModal");
+      loadSuperPanel();
+    } else {
+      showToast(data.error || "Failed to add hospital", "error");
+    }
+  } catch (err) {
+    showToast("Network error saving hospital profile", "error");
+  }
+}
+
+async function saveSuperRole(e) {
+  e.preventDefault();
+  const roleName = document.getElementById("super_role_name").value;
+  const desc = document.getElementById("super_role_desc").value;
+
+  try {
+    const res = await fetch(`${API_BASE}/super?action=roles`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ role_name: roleName, description: desc })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast("Custom role registered successfully!", "success");
+      closeModal("superRoleModal");
+      loadSuperPanel();
+    } else {
+      showToast(data.error || "Role creation failed", "error");
+    }
+  } catch (err) {
+    showToast("Network error creating role profile", "error");
+  }
+}
+
+async function loadRoleMenusConfig(role) {
+  // Clear checkboxes
+  document.querySelectorAll('input[name="menu_tab"]').forEach(cb => cb.checked = false);
+
+  try {
+    const res = await fetch(`${API_BASE}/super?action=menus&role=${role}`, { headers: authHeaders() });
+    const data = await res.json();
+    if (res.ok && data.success && data.menus) {
+      data.menus.forEach(m => {
+        const checkbox = document.querySelector(`input[name="menu_tab"][value="${m.menu_key}"]`);
+        if (checkbox) checkbox.checked = true;
+      });
+    }
+  } catch (err) {
+    console.error("Failed to load mapped role menus config:", err);
+  }
+}
+
+async function saveRoleMenu() {
+  const role = document.getElementById("menu_role_select").value;
+  const checked = document.querySelectorAll('input[name="menu_tab"]:checked');
+  const menus = Array.from(checked).map(cb => ({
+    menu_key: cb.value,
+    menu_label: cb.getAttribute("data-label"),
+    menu_icon: cb.getAttribute("data-icon")
+  }));
+
+  try {
+    const res = await fetch(`${API_BASE}/super?action=menu-mapping`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ role_name: role, menus })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast(`Privilege menu mappings updated for role: ${role.toUpperCase()}`, "success");
+    } else {
+      showToast(data.error || "Save configuration failed", "error");
+    }
+  } catch (err) {
+    showToast("Network connection mapping config failed", "error");
   }
 }

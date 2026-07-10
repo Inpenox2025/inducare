@@ -105,6 +105,9 @@ app.all('/api/rooms/visits', (req, res, next) => {
 app.all('/api/rooms/:id', runHandler('./api/rooms'));
 app.all('/api/rooms', runHandler('./api/rooms'));
 
+// Super Admin Operations
+app.all('/api/super', runHandler('./api/super'));
+
 // Patients CRUD
 app.all('/api/patients/:id', runHandler('./api/patients'));
 app.all('/api/patients', runHandler('./api/patients'));
