@@ -140,11 +140,11 @@ function switchTab(tabName) {
   // Update Page Title
   const titles = {
     overview:
-      'Ozonature <span style="font-size: 12px; font-weight: 500; color: var(--text-muted || var(--text3)); margin-left: 10px; opacity: 0.85;">Powered by Inspenox</span>',
-    patients: "Ozonature Patients Registry",
-    appointments: "Ozonature Consultation Appointments",
-    invoices: "Ozonature Billing & Invoice Receipts",
-    staff: "Ozonature Staff Management",
+      'Inducare <span style="font-size: 12px; font-weight: 500; color: var(--text-muted || var(--text3)); margin-left: 10px; opacity: 0.85;">Powered by Inspenox</span>',
+    patients: "Inducare Patients Registry",
+    appointments: "Inducare Consultation Appointments",
+    invoices: "Inducare Billing & Invoice Receipts",
+    staff: "Inducare Staff Management",
   };
   document.getElementById("pageTitle").innerHTML =
     titles[tabName] || "Dashboard";
@@ -439,7 +439,7 @@ function renderCaseSheetHTML(p) {
     <div class="case-sheet-view">
       <!-- 📄 PAGE 1: CLINICAL CASE SHEET -->
       <div class="case-sheet-header">
-        <img src="/assets/ozonature%20logo.jpg" alt="Ozonature Logo" style="height: 65px; display: block; margin: 0 auto 12px auto; object-fit: contain;">
+        <div style="font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; color: #00bba8; letter-spacing: 0.5px; text-align: center; margin-bottom: 8px;">INDUCARE</div>
         <div class="case-sheet-title">Patient Case Sheet</div>
       </div>
 
@@ -564,7 +564,7 @@ function renderCaseSheetHTML(p) {
       <div class="case-sheet-section" style="margin-top: 20px;">
         <div class="case-sheet-section-title">Declaration & Signatures</div>
         <p style="font-size: 11.5px; line-height: 1.5; color: var(--text2); font-style: italic; margin-bottom: 20px;">
-          I hereby declare that the medical information provided by me is true and complete to the best of my knowledge. I understand that withholding relevant medical information may affect the safety and effectiveness of my treatment. I authorize the healthcare professionals at Ozonature the Holistic Care to evaluate, examine, and provide appropriate wellness therapies and treatment procedures as clinically indicated.
+          I hereby declare that the medical information provided by me is true and complete to the best of my knowledge. I understand that withholding relevant medical information may affect the safety and effectiveness of my treatment. I authorize the healthcare professionals at Inducare Clinic ERP and associated practitioners to evaluate, examine, and provide appropriate wellness therapies and treatment procedures as clinically indicated.
         </p>
         
         <div style="font-size: 13px; margin-bottom: 24px; background-color:#f8fafc; border:1px solid var(--border); border-radius:6px; padding:12px;">
@@ -592,7 +592,7 @@ function renderCaseSheetHTML(p) {
 
       <!-- 📄 PAGE 2: CLINICAL PROTOCOL & TREATMENT PLAN -->
       <div class="case-sheet-header">
-        <img src="/assets/ozonature%20logo.jpg" alt="Ozonature Logo" style="height: 65px; display: block; margin: 0 auto 12px auto; object-fit: contain;">
+        <div style="font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; color: #00bba8; letter-spacing: 0.5px; text-align: center; margin-bottom: 8px;">INDUCARE</div>
         <div class="case-sheet-title">Patient Protocol & Treatment Plan</div>
       </div>
 
@@ -694,7 +694,7 @@ window.viewCaseSheet = async function (id) {
         printBtn.onclick = () => {
           const originalTitle = document.title;
           const patientNameClean = p.full_name ? p.full_name.trim() : "Patient";
-          document.title = `${patientNameClean} - Ozonature`;
+          document.title = `${patientNameClean} - Inducare`;
           window.print();
           setTimeout(() => {
             document.title = originalTitle;
@@ -1355,7 +1355,7 @@ window.downloadInvoiceReceipt = async function (id, patientName) {
     const blob = await res.blob();
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `${patientName || "Patient"} - Ozonature.pdf`;
+    a.download = `${patientName || "Patient"} - Inducare.pdf`;
     a.click();
     URL.revokeObjectURL(a.href);
     showToast("Receipt PDF downloaded!", "success");
