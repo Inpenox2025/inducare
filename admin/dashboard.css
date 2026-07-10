@@ -1161,3 +1161,23 @@ textarea.form-control {
   filter: brightness(0.9);
 }
 
+/* Sleek custom scrollbars for sidebar navigation block */
+.sidebar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar::-webkit-scrollbar-thumb {
+  background: rgba(20, 184, 166, 0.25);
+  border-radius: 4px;
+}
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(20, 184, 166, 0.5);
+}
+.sidebar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(20, 184, 166, 0.25) transparent;
+}
+

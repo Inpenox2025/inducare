@@ -1358,15 +1358,15 @@ window.openReconciliationModal = function (id, invNo, amount, due) {
   document.getElementById("recon_paid_amount").value = due;
   document.getElementById("recon_paid_amount").max = due;
 
+  // Load transaction receipts log dynamically
+  loadInvoiceReceiptsLog(id);
+
   openModal("reconciliationModal");
 };
 
 async function processReconciliation(e) {
   e.preventDefault();
   const id = document.getElementById("recon_invoice_id").value;
-  const totalAmount = parseFloat(
-    document.getElementById("recon_invoice_amount").value,
-  );
   const payAmount = parseFloat(
     document.getElementById("recon_paid_amount").value,
   );
@@ -1378,26 +1378,11 @@ async function processReconciliation(e) {
   }
 
   try {
-    // 1. Fetch current invoice values first to add to existing paid amounts
-    const fetchRes = await fetch(`${API_BASE}/invoices/${id}`, {
-      headers: authHeaders(),
-    });
-    const fetchVal = await fetchRes.json();
-    if (!fetchRes.ok || !fetchVal.success) {
-      showToast("Error validating current invoice dues", "error");
-      return;
-    }
-
-    const currentPaid = parseFloat(fetchVal.invoice.paid_amount) || 0;
-    const finalPaid = currentPaid + payAmount;
-
-    // 2. Perform reconciliation update
     const updateRes = await fetch(`${API_BASE}/invoices/${id}`, {
       method: "PUT",
       headers: authHeaders(),
       body: JSON.stringify({
-        amount: totalAmount,
-        paid_amount: finalPaid,
+        amount_paid: payAmount,
         payment_mode: mode,
       }),
     });
@@ -1405,13 +1390,18 @@ async function processReconciliation(e) {
     const result = await updateRes.json();
     if (updateRes.ok && result.success) {
       showToast(
-        `Reconciled ₹ ${payAmount} paid in ${mode.toUpperCase()}!`,
-        "success",
+        `Recorded ₹ ${payAmount} paid in ${mode.toUpperCase()}!`,
+        "success"
       );
-      closeModal("reconciliationModal");
+      loadInvoiceReceiptsLog(id);
+      document.getElementById("recon_paid_amount").value = "";
+      const newInvoice = result.invoice;
+      document.getElementById("reconCurrentDue").textContent = formatCurrency(newInvoice.due_amount);
+      document.getElementById("recon_paid_amount").value = newInvoice.due_amount;
+      document.getElementById("recon_paid_amount").max = newInvoice.due_amount;
       loadInvoices();
     } else {
-      showToast(result.error || "Reconciliation failed", "error");
+      showToast(result.error || "Payment processing failed", "error");
     }
   } catch (err) {
     showToast("Reconciliation API network error", "error");
@@ -2050,6 +2040,51 @@ function initEventListeners() {
       invoicePage = 1;
       loadInvoices();
     });
+
+  const superExportPatientsBtn = document.getElementById("superExportPatientsBtn");
+  if (superExportPatientsBtn) {
+    superExportPatientsBtn.addEventListener("click", async () => {
+      try {
+        const token = getToken();
+        const response = await fetch(`${API_BASE}/super?action=export-patients`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error("Export failed");
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "Patients_Directory.xlsx";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        showToast("Spreadsheet downloaded successfully!", "success");
+      } catch (err) {
+        showToast("Failed to export patient registry spreadsheet", "error");
+      }
+    });
+  }
+
+  const superPatientSearchInput = document.getElementById("super_patient_search");
+  if (superPatientSearchInput) {
+    superPatientSearchInput.addEventListener("input", (e) => {
+      const search = e.target.value.toLowerCase().trim();
+      if (!search) {
+        renderSuperPatientsTable(superPatientsList);
+        return;
+      }
+      const filtered = superPatientsList.filter(p => 
+        (p.full_name && p.full_name.toLowerCase().includes(search)) ||
+        (p.mobile_no && p.mobile_no.toLowerCase().includes(search)) ||
+        (p.email && p.email.toLowerCase().includes(search)) ||
+        (p.hospital_name && p.hospital_name.toLowerCase().includes(search)) ||
+        p.id.toString() === search
+      );
+      renderSuperPatientsTable(filtered);
+    });
+  }
 
   // Modal Closures
   document.querySelectorAll("[data-close]").forEach((btn) => {
@@ -2926,11 +2961,139 @@ async function loadSuperPanel() {
       if (allRoles.length > 0) {
         loadRoleMenusConfig(allRoles[0].role_name);
       }
+
+      // Load cross-tenant patients list
+      await loadSuperPatients();
     }
   } catch (err) {
     showToast("Failed to query Super parameters", "error");
   }
 }
+
+let superPatientsList = [];
+
+async function loadSuperPatients() {
+  const superPatientsTableBody = document.getElementById("superPatientsTableBody");
+  if (!superPatientsTableBody) return;
+  superPatientsTableBody.innerHTML = '<tr><td colspan="6" class="loading-cell">Loading patients directory...</td></tr>';
+  
+  try {
+    const res = await fetch(`${API_BASE}/super?action=patients`, { headers: authHeaders() });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      superPatientsList = data.patients || [];
+      renderSuperPatientsTable(superPatientsList);
+    } else {
+      superPatientsTableBody.innerHTML = `<tr><td colspan="6" class="empty-cell" style="color:var(--error);">${esc(data.error || "Failed to load directory")}</td></tr>`;
+    }
+  } catch (err) {
+    superPatientsTableBody.innerHTML = '<tr><td colspan="6" class="empty-cell" style="color:var(--error);">Connection error loading patients</td></tr>';
+  }
+}
+
+function renderSuperPatientsTable(list) {
+  const superPatientsTableBody = document.getElementById("superPatientsTableBody");
+  if (!superPatientsTableBody) return;
+  
+  if (list.length === 0) {
+    superPatientsTableBody.innerHTML = '<tr><td colspan="6" class="empty-cell">No patients found.</td></tr>';
+    return;
+  }
+  
+  superPatientsTableBody.innerHTML = list.map(p => `
+    <tr>
+      <td>#${p.id}</td>
+      <td><strong>${esc(p.full_name)}</strong></td>
+      <td>${esc(p.mobile_no || "—")}</td>
+      <td>${esc(p.email || "—")}</td>
+      <td><span style="background-color: var(--primary-glow); color: var(--primary); padding: 4px 8px; border-radius: 4px; font-size:11px; font-weight:700;">${esc(p.hospital_name || "Unassigned")}</span></td>
+      <td>${formatDate(p.created_at)}</td>
+    </tr>
+  `).join("");
+}
+
+async function loadInvoiceReceiptsLog(invoiceId) {
+  const body = document.getElementById("reconReceiptsBody");
+  if (!body) return;
+  body.innerHTML = '<tr><td colspan="5" class="loading-cell">Loading receipts...</td></tr>';
+  
+  try {
+    const res = await fetch(`${API_BASE}/invoices?action=receipts&invoice_id=${invoiceId}`, {
+      headers: authHeaders()
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      const receipts = data.receipts || [];
+      if (receipts.length === 0) {
+        body.innerHTML = '<tr><td colspan="5" class="empty-cell">No transactions logged yet.</td></tr>';
+      } else {
+        body.innerHTML = receipts.map(r => `
+          <tr>
+            <td><code>${esc(r.receipt_no)}</code></td>
+            <td>${formatDate(r.payment_date)}</td>
+            <td><strong>${formatCurrency(r.amount_paid)}</strong></td>
+            <td><span class="badge badge-info" style="background-color:var(--primary-glow); color:var(--primary); padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700;">${esc(r.payment_mode.toUpperCase())}</span></td>
+            <td>
+              <div style="display:flex; gap:4px;">
+                <button type="button" class="action-btn btn-edit" onclick="printReceiptSlips(${r.id})" style="padding:2px 6px !important; font-size:10px !important;">Print</button>
+                <button type="button" class="action-btn btn-edit" onclick="downloadReceiptSlips(${r.id}, '${esc(r.receipt_no)}')" style="padding:2px 6px !important; font-size:10px !important; background-color: var(--primary) !important;">Download</button>
+              </div>
+            </td>
+          </tr>
+        `).join("");
+      }
+    } else {
+      body.innerHTML = `<tr><td colspan="5" class="empty-cell" style="color:var(--error);">${esc(data.error || "Failed to load")}</td></tr>`;
+    }
+  } catch (err) {
+    body.innerHTML = '<tr><td colspan="5" class="empty-cell" style="color:var(--error);">Connection error</td></tr>';
+  }
+}
+
+window.printReceiptSlips = async function (receiptId) {
+  try {
+    const res = await fetch(`${API_BASE}/invoices?action=export-receipt-pdf&receipt_id=${receiptId}`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    });
+
+    if (!res.ok) throw new Error("Receipt PDF render failed");
+
+    const blob = await res.blob();
+    const fileURL = URL.createObjectURL(blob);
+
+    const printWindow = window.open(fileURL, "_blank");
+    if (!printWindow) {
+      showToast(
+        "Popup blocker prevented opening print window. Please allow popups.",
+        "error",
+      );
+    } else {
+      showToast("Opening print view...", "success");
+    }
+  } catch (err) {
+    showToast("Failed to compile print receipt", "error");
+  }
+};
+
+window.downloadReceiptSlips = async function (receiptId, receiptNo) {
+  try {
+    const res = await fetch(`${API_BASE}/invoices?action=export-receipt-pdf&receipt_id=${receiptId}`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    });
+
+    if (!res.ok) throw new Error("Receipt PDF render failed");
+
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${receiptNo || "Receipt"}.pdf`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast("Receipt PDF downloaded!", "success");
+  } catch (err) {
+    showToast("Failed to compile PDF receipt", "error");
+  }
+};
 
 async function saveSuperHospital(e) {
   e.preventDefault();

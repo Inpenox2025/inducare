@@ -687,6 +687,40 @@
                     </table>
                 </div>
             </div>
+
+            <!-- Hospital Patients Directory (Cross-Tenant) -->
+            <div class="details-card" style="margin-top: 24px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3>👥 Hospitals Patients Directory (Cross-Tenant)</h3>
+                    <button class="btn btn-primary" id="superExportPatientsBtn" style="padding:6px 12px; font-size:12px; display:flex; align-items:center; gap:6px;">
+                        📥 Export Directory to Excel
+                    </button>
+                </div>
+                
+                <div style="margin-top: 16px; display: flex; gap: 12px;">
+                    <input type="text" class="form-control" id="super_patient_search" placeholder="Search patients by name, mobile, email or hospital..." style="flex: 1;">
+                </div>
+
+                <div class="table-container minimal" style="margin-top: 16px; max-height: 400px; overflow: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Patient ID</th>
+                                <th>Full Name</th>
+                                <th>Mobile No</th>
+                                <th>Email</th>
+                                <th>Assigned Hospital</th>
+                                <th>Created At</th>
+                            </tr>
+                        </thead>
+                        <tbody id="superPatientsTableBody">
+                            <tr>
+                                <td colspan="6" class="loading-cell">Loading patients directory...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </section>
     </main>
 
@@ -1243,7 +1277,7 @@
     <div class="modal-overlay" id="reconciliationModal">
         <div class="modal" style="max-width: 450px;">
             <div class="modal-header">
-                <h2>Payment Reconciliation</h2>
+                <h2 id="reconModalTitle">Payment & Receipts Installments Log</h2>
                 <button class="modal-close" data-close="reconciliationModal">✕</button>
             </div>
             <div class="modal-body">
@@ -1262,22 +1296,43 @@
                             <strong id="reconTotalBilled" style="color:var(--text1);">₹ 0.00</strong>
                         </div>
                         <div style="display:flex; justify-content:space-between; font-size:14px;">
-                            <span style="color:var(--text3); font-weight:500;">Current Dues:</span>
+                            <span style="color:var(--text3); font-weight:500;">Current Outstanding Dues:</span>
                             <strong id="reconCurrentDue" style="color:var(--error); font-weight:700;">₹ 0.00</strong>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label for="recon_paid_amount">Collected Payment Amount (₹) <span class="req">*</span></label>
-                        <input type="number" class="form-control" id="recon_paid_amount" min="0" step="0.01" required>
+                        <label for="recon_paid_amount">Log Payment Installment Amount (₹) <span class="req">*</span></label>
+                        <input type="number" class="form-control" id="recon_paid_amount" min="0" step="0.01" placeholder="Enter amount to pay" required>
                     </div>
 
                     <div class="form-group">
-                        <label for="recon_payment_mode">Payment Mode Reconciliation <span class="req">*</span></label>
+                        <label for="recon_payment_mode">Payment Transaction Mode <span class="req">*</span></label>
                         <select class="form-control" id="recon_payment_mode" required>
-                            <option value="cash">Paid in Cash</option>
-                            <option value="online">Paid Online (UPI / Card / Net Banking)</option>
+                            <option value="cash">Cash</option>
+                            <option value="online">Online (UPI / Card / Net Banking)</option>
                         </select>
+                    </div>
+
+                    <!-- Payment Installments Log -->
+                    <div id="reconReceiptsContainer" style="margin-top: 20px;">
+                        <h4 style="margin-bottom: 8px; font-size: 13px; color: var(--text2); font-weight: 700;">💳 Transaction Receipts Log</h4>
+                        <div class="table-container minimal" style="max-height: 150px; overflow: auto; border: 1px solid var(--border); border-radius: 6px;">
+                            <table class="data-table" style="font-size:12px;">
+                                <thead>
+                                    <tr>
+                                        <th>Receipt No</th>
+                                        <th>Date</th>
+                                        <th>Amount</th>
+                                        <th>Mode</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reconReceiptsBody">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     <div class="modal-footer" style="margin-top: 24px;">

@@ -142,6 +142,22 @@ module.exports = async function handler(req, res) {
     await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS gst_rate NUMERIC(5,2)`;
     await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS tax_name VARCHAR(50) DEFAULT 'GST'`;
 
+    // Migration: Add allocation_id to invoices
+    await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS allocation_id INT REFERENCES room_allocations(id) ON DELETE SET NULL`;
+
+    // Migration: Create receipts table for partial payments
+    await sql`
+      CREATE TABLE IF NOT EXISTS receipts (
+        id SERIAL PRIMARY KEY,
+        receipt_no VARCHAR(100) UNIQUE NOT NULL,
+        invoice_id INT REFERENCES invoices(id) ON DELETE CASCADE,
+        amount_paid NUMERIC(15,2) NOT NULL,
+        payment_mode VARCHAR(50) NOT NULL,
+        payment_date DATE NOT NULL DEFAULT CURRENT_DATE,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
     // 4b. Create Doctors Table
     await sql`
       CREATE TABLE IF NOT EXISTS doctors (

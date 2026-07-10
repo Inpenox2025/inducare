@@ -225,7 +225,9 @@ module.exports = async function handler(req, res) {
 
   // ══════ Super Admin / Hospital Admin: Custom Roles CRUD (tenant-isolated) ══════
   if (action === 'roles') {
-    const hostId = user.role === 'super_admin' ? (req.query.hospital_id ? parseInt(req.query.hospital_id) : 1) : user.hospital_id;
+    const hostId = user.role === 'super_admin' 
+      ? (req.query.hospital_id ? parseInt(req.query.hospital_id) : (req.body && req.body.hospital_id ? parseInt(req.body.hospital_id) : 1)) 
+      : user.hospital_id;
     if (!hostId) return res.status(400).json({ error: 'Hospital ID is required' });
 
     if (req.method === 'GET') {
@@ -320,6 +322,58 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ success: true, message: 'Role menus mapped successfully!' });
       } catch (error) {
         return res.status(500).json({ error: 'Failed to configure role menus', details: error.message });
+      }
+    }
+  }
+
+  // ══════ Super Admin: Patients Directory (GET) ══════
+  if (action === 'patients') {
+    if (user.role !== 'super_admin') {
+      return res.status(403).json({ error: 'Access denied. Super Admin privileges required.' });
+    }
+    if (req.method === 'GET') {
+      try {
+        const rows = await sql`
+          SELECT p.*, h.name as hospital_name 
+          FROM patients p
+          LEFT JOIN hospitals h ON p.hospital_id = h.id
+          ORDER BY p.created_at DESC
+        `;
+        return res.status(200).json({ success: true, patients: rows });
+      } catch (error) {
+        return res.status(500).json({ error: 'Failed to fetch cross-tenant patients', details: error.message });
+      }
+    }
+  }
+
+  // ══════ Super Admin: Export Patients Directory to Excel (GET) ══════
+  if (action === 'export-patients') {
+    if (user.role !== 'super_admin') {
+      return res.status(403).json({ error: 'Access denied. Super Admin privileges required.' });
+    }
+    if (req.method === 'GET') {
+      try {
+        const rows = await sql`
+          SELECT p.id as "Patient ID", p.full_name as "Full Name", p.mobile_no as "Mobile No", 
+                 p.email as "Email", p.address as "Address", p.gender as "Gender", 
+                 p.age as "Age", h.name as "Assigned Hospital", p.created_at as "Created At"
+          FROM patients p
+          LEFT JOIN hospitals h ON p.hospital_id = h.id
+          ORDER BY p.id ASC
+        `;
+        
+        const XLSX = require('xlsx');
+        const worksheet = XLSX.utils.json_to_sheet(rows);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Patients');
+        
+        const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+        
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="Patients_Directory.xlsx"');
+        return res.status(200).send(buffer);
+      } catch (error) {
+        return res.status(500).json({ error: 'Failed to export patients', details: error.message });
       }
     }
   }

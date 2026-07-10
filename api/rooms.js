@@ -104,11 +104,50 @@ module.exports = async function handler(req, res) {
           return res.status(400).json({ error: 'Room is occupied or under maintenance' });
         }
 
+        // Retrieve room details for pricing
+        const roomRes = await sql`SELECT price_per_day, room_no, room_type FROM rooms WHERE id = ${parseInt(room_id)} AND hospital_id = ${hostId}`;
+        const room = roomRes[0];
+
+        // Retrieve hospital details for tax settings
+        const hospRes = await sql`SELECT gst_no, gst_percent, tax_name FROM hospitals WHERE id = ${hostId}`;
+        const hosp = hospRes[0];
+
+        const rawFee = parseFloat(room.price_per_day) || 0.00;
+        let taxableAmt = rawFee;
+        let gstAmt = 0.00;
+        let gstRate = 0.00;
+        let finalTotalAmt = rawFee;
+        const taxNameVal = hosp && hosp.tax_name ? hosp.tax_name.trim() : 'GST';
+
+        if (hosp && hosp.gst_no && hosp.gst_no.trim() !== "" && hosp.gst_percent && parseFloat(hosp.gst_percent) > 0) {
+          gstRate = parseFloat(hosp.gst_percent);
+          gstAmt = Math.round((rawFee * gstRate / 100) * 100) / 100;
+          finalTotalAmt = rawFee + gstAmt;
+        }
+
+        // Generate serial for room invoice
+        const countRes = await sql`SELECT count(*) as count FROM invoices WHERE hospital_id = ${hostId}`;
+        const countVal = parseInt(countRes[0].count) + 1;
+        const today = new Date();
+        const dateStr = today.toISOString().slice(0, 10).replace(/-/g, "");
+        const invNo = `INSP${hostId}${dateStr}${countVal}`;
+
         // Create allocation record
         const allocation = await sql`
           INSERT INTO room_allocations (room_id, patient_id, admitted_at, status, hospital_id)
           VALUES (${parseInt(room_id)}, ${parseInt(patient_id)}, NOW(), 'active', ${hostId})
           RETURNING *
+        `;
+        const allocId = allocation[0].id;
+
+        // Insert initial room invoice
+        const desc = `Room Charge (Active: 1 Day) - Room ${room.room_no} (${room.room_type})`;
+        await sql`
+          INSERT INTO invoices (
+            invoice_no, patient_id, description, amount, paid_amount, due_amount, status, created_by, hospital_id, taxable_amount, gst_amount, gst_rate, tax_name, allocation_id
+          ) VALUES (
+            ${invNo}, ${parseInt(patient_id)}, ${desc}, ${finalTotalAmt}, 0.00, ${finalTotalAmt}, 'unpaid', ${user.id}, ${hostId}, ${taxableAmt}, ${gstAmt}, ${gstRate}, ${taxNameVal}, ${allocId}
+          )
         `;
 
         // Update room status to occupied
@@ -147,6 +186,59 @@ module.exports = async function handler(req, res) {
           WHERE id = ${parseInt(id)}
           RETURNING *
         `;
+        const finalAlloc = updated[0];
+
+        // Update the room invoice to reflect final discharge state
+        const invRes = await sql`SELECT * FROM invoices WHERE allocation_id = ${finalAlloc.id}`;
+        if (invRes.length > 0) {
+          const inv = invRes[0];
+          const admit = new Date(finalAlloc.admitted_at);
+          const discharge = new Date(finalAlloc.discharged_at);
+          const diffMs = discharge - admit;
+          const days = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+
+          // Query room details for pricing
+          const roomRes = await sql`SELECT price_per_day, room_no, room_type FROM rooms WHERE id = ${finalAlloc.room_id}`;
+          const room = roomRes[0];
+
+          const pricePerDay = parseFloat(room.price_per_day) || 0.00;
+          const newRawFee = pricePerDay * days;
+          
+          let newTaxableAmt = newRawFee;
+          let newGstAmt = 0.00;
+          let newGstRate = parseFloat(inv.gst_rate) || 0.00;
+          let newFinalTotalAmt = newRawFee;
+
+          if (newGstRate > 0) {
+            newGstAmt = Math.round((newRawFee * newGstRate / 100) * 100) / 100;
+            newFinalTotalAmt = newRawFee + newGstAmt;
+          }
+
+          const paid = parseFloat(inv.paid_amount) || 0.00;
+          const newDue = Math.max(0.00, newFinalTotalAmt - paid);
+          let newStatus = inv.status;
+          if (newDue <= 0) {
+            newStatus = 'paid';
+          } else if (paid > 0) {
+            newStatus = 'partially_paid';
+          } else {
+            newStatus = 'unpaid';
+          }
+
+          const newDesc = `Room Charge (Final Discharge: ${days} ${days === 1 ? 'Day' : 'Days'}) - Room ${room.room_no} (${room.room_type})`;
+
+          await sql`
+            UPDATE invoices SET
+              amount = ${newFinalTotalAmt},
+              due_amount = ${newDue},
+              status = ${newStatus},
+              description = ${newDesc},
+              taxable_amount = ${newTaxableAmt},
+              gst_amount = ${newGstAmt},
+              updated_at = NOW()
+            WHERE id = ${inv.id}
+          `;
+        }
 
         // Revert room status to available
         await sql`UPDATE rooms SET status = 'available' WHERE id = ${alloc.room_id}`;
