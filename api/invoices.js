@@ -75,7 +75,7 @@ module.exports = async function handler(req, res) {
         // Draw centered logo image
         doc.image(logoPath, {
           fit: [140, 50],
-          align: "center"
+          align: "center",
         });
         doc.moveDown(0.4);
       } else {
@@ -92,11 +92,9 @@ module.exports = async function handler(req, res) {
         .text("THE HOLISTIC CARE", {
           align: "center",
         });
-      doc
-        .fontSize(9)
-        .text("Contact: +91 8688932150", {
-          align: "center",
-        });
+      doc.fontSize(9).text("Contact: +91 8688932150", {
+        align: "center",
+      });
       doc.moveDown(0.8);
 
       // Decorative divider
@@ -356,19 +354,17 @@ module.exports = async function handler(req, res) {
         .fontSize(8)
         .font("Helvetica")
         .fillColor("#94a3b8")
-        .text(
-          "This is a verified digital payment receipt from Ozonature.",
-          { align: "center" },
-        );
+        .text("This is a verified digital payment receipt from Ozonature.", {
+          align: "center",
+        });
       doc.moveDown(0.3);
       doc
         .fontSize(8.5)
         .font("Helvetica-Bold")
         .fillColor("#00bba8")
-        .text(
-          "Developed & Maintained by Inpenox (inpenox.in)",
-          { align: "center" },
-        );
+        .text("Developed & Maintained by inspenox (inspenox.in)", {
+          align: "center",
+        });
 
       doc.end();
     } catch (error) {
@@ -424,7 +420,10 @@ module.exports = async function handler(req, res) {
             updatedStatus = "unpaid";
           }
 
-          const paymentDateVal = (updatedStatus === "paid" || updatedStatus === "partially_paid") ? new Date().toISOString().split('T')[0] : null;
+          const paymentDateVal =
+            updatedStatus === "paid" || updatedStatus === "partially_paid"
+              ? new Date().toISOString().split("T")[0]
+              : null;
 
           const rows = await sql`
             UPDATE invoices SET
@@ -515,8 +514,11 @@ module.exports = async function handler(req, res) {
           const dueAmt = totalAmt - paidAmt;
 
           const patientIdInt = parseInt(patient_id);
-          const appointmentIdInt = appointment_id ? parseInt(appointment_id) : null;
-          const paymentDateVal = isPaid === "paid" ? new Date().toISOString().split('T')[0] : null;
+          const appointmentIdInt = appointment_id
+            ? parseInt(appointment_id)
+            : null;
+          const paymentDateVal =
+            isPaid === "paid" ? new Date().toISOString().split("T")[0] : null;
 
           const rows = await sql`
             INSERT INTO invoices (
