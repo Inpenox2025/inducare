@@ -168,6 +168,7 @@ function switchTab(tabName) {
   else if (tabName === "rooms") loadRooms();
   else if (tabName === "hospital-setup") loadHospitalSetup();
   else if (tabName === "super-panel") loadSuperPanel();
+  else if (tabName === "receipts-panel") loadReceiptsPanel();
 
   // Close mobile sidebar on navigate
   document.getElementById("sidebar").classList.remove("open");
@@ -2086,6 +2087,19 @@ function initEventListeners() {
     });
   }
 
+  let receiptsSearchTimeout;
+  const searchReceiptInput = document.getElementById("searchReceiptInput");
+  if (searchReceiptInput) {
+    searchReceiptInput.addEventListener("input", (e) => {
+      clearTimeout(receiptsSearchTimeout);
+      receiptsSearchTimeout = setTimeout(() => {
+        receiptSearch = e.target.value.trim();
+        receiptPage = 1;
+        loadReceiptsPanel(1);
+      }, 400);
+    });
+  }
+
   // Modal Closures
   document.querySelectorAll("[data-close]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -2716,6 +2730,7 @@ async function loadDynamicNavigation() {
         { key: 'patients', id: 'navPatients' },
         { key: 'appointments', id: 'navAppointments' },
         { key: 'invoices', id: 'navInvoices' },
+        { key: 'receipts-panel', id: 'navReceiptsPanel' },
         { key: 'doctors', id: 'navDoctors' },
         { key: 'rooms', id: 'navRooms' },
         { key: 'staff', id: 'navStaff' },
@@ -3094,6 +3109,60 @@ window.downloadReceiptSlips = async function (receiptId, receiptNo) {
     showToast("Failed to compile PDF receipt", "error");
   }
 };
+
+let receiptPage = 1;
+let receiptSearch = "";
+
+async function loadReceiptsPanel(page = 1) {
+  receiptPage = page;
+  const tbody = document.getElementById("receiptsTableBody");
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="7" class="loading-cell"><span class="spinner"></span> Loading receipts log...</td></tr>';
+  
+  try {
+    const res = await fetch(`${API_BASE}/invoices?action=receipts&search=${encodeURIComponent(receiptSearch)}&page=${receiptPage}&limit=15`, {
+      headers: authHeaders()
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      const receipts = data.receipts || [];
+      if (receipts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">No payment transactions found.</td></tr>';
+        document.getElementById("receiptsPagination").innerHTML = "";
+        return;
+      }
+      
+      tbody.innerHTML = receipts.map(r => `
+        <tr>
+          <td><code>${esc(r.receipt_no)}</code></td>
+          <td><code>${esc(r.invoice_no)}</code></td>
+          <td><strong>${esc(r.patient_name || "—")}</strong></td>
+          <td><strong>${formatCurrency(r.amount_paid)}</strong></td>
+          <td>${formatDate(r.payment_date)}</td>
+          <td><span class="badge badge-info" style="background-color:var(--primary-glow); color:var(--primary); padding:4px 8px; border-radius:4px; font-size:11px; font-weight:700;">${esc(r.payment_mode.toUpperCase())}</span></td>
+          <td>
+            <div style="display:flex; gap:6px;">
+              <button type="button" class="action-btn btn-edit" onclick="printReceiptSlips(${r.id})">Print</button>
+              <button type="button" class="action-btn btn-edit" onclick="downloadReceiptSlips(${r.id}, '${esc(r.receipt_no)}')" style="background-color: var(--primary) !important;">Download</button>
+            </div>
+          </td>
+        </tr>
+      `).join("");
+      
+      renderPagination(
+        "receiptsPagination",
+        data.pagination.page,
+        data.pagination.totalPages,
+        data.pagination.total,
+        (p) => loadReceiptsPanel(p)
+      );
+    } else {
+      tbody.innerHTML = `<tr><td colspan="7" class="empty-cell" style="color:var(--error);">${esc(data.error || "Failed to load receipts")}</td></tr>`;
+    }
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-cell" style="color:var(--error);">Connection error loading receipts</td></tr>';
+  }
+}
 
 async function saveSuperHospital(e) {
   e.preventDefault();

@@ -50,6 +50,8 @@ module.exports = async function handler(req, res) {
     await sql`ALTER TABLE custom_roles DROP CONSTRAINT IF EXISTS custom_roles_role_hosp_uniq`;
     await sql`ALTER TABLE custom_roles ADD CONSTRAINT custom_roles_role_hosp_uniq UNIQUE (role_name, hospital_id)`;
     await sql`ALTER TABLE role_menus ADD COLUMN IF NOT EXISTS hospital_id INT REFERENCES hospitals(id) ON DELETE CASCADE`;
+    await sql`ALTER TABLE role_menus DROP CONSTRAINT IF EXISTS role_menus_uniq`;
+    await sql`ALTER TABLE role_menus ADD CONSTRAINT role_menus_uniq UNIQUE (role_name, menu_key, hospital_id)`;
 
     // 1. Create Users Table
     await sql`
@@ -268,7 +270,8 @@ module.exports = async function handler(req, res) {
           { role_name: 'admin', menu_key: 'overview', menu_label: 'Overview Panel', menu_icon: '📊' },
           { role_name: 'admin', menu_key: 'patients', menu_label: 'Patients Registry', menu_icon: '👥' },
           { role_name: 'admin', menu_key: 'appointments', menu_label: 'Appointments', menu_icon: '📅' },
-          { role_name: 'admin', menu_key: 'invoices', menu_label: 'Billing & Receipts', menu_icon: '💳' },
+          { role_name: 'admin', menu_key: 'invoices', menu_label: 'Billing & Invoices', menu_icon: '💳' },
+          { role_name: 'admin', menu_key: 'receipts-panel', menu_label: 'Payment Receipts', menu_icon: '🧾' },
           { role_name: 'admin', menu_key: 'doctors', menu_label: 'Doctors Registry', menu_icon: '👨‍⚕️' },
           { role_name: 'admin', menu_key: 'rooms', menu_label: 'Rooms & Allocations', menu_icon: '🏨' },
           { role_name: 'admin', menu_key: 'hospital-setup', menu_label: 'Hospital Setup', menu_icon: '⚙️' },
@@ -277,6 +280,7 @@ module.exports = async function handler(req, res) {
           { role_name: 'nurse', menu_key: 'overview', menu_label: 'Overview Panel', menu_icon: '📊' },
           { role_name: 'nurse', menu_key: 'patients', menu_label: 'Patients Registry', menu_icon: '👥' },
           { role_name: 'nurse', menu_key: 'appointments', menu_label: 'Appointments', menu_icon: '📅' },
+          { role_name: 'nurse', menu_key: 'receipts-panel', menu_label: 'Payment Receipts', menu_icon: '🧾' },
           { role_name: 'nurse', menu_key: 'rooms', menu_label: 'Rooms & Allocations', menu_icon: '🏨' },
 
           // Doctor menus
@@ -288,8 +292,21 @@ module.exports = async function handler(req, res) {
           await sql`
             INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon, hospital_id)
             VALUES (${m.role_name}, ${m.menu_key}, ${m.menu_label}, ${m.menu_icon}, ${h.id})
+            ON CONFLICT DO NOTHING
           `;
         }
+      } else {
+        // Migration: Ensure receipts-panel menu is always configured for admin and nurse in existing setups
+        await sql`
+          INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon, hospital_id)
+          VALUES ('admin', 'receipts-panel', 'Payment Receipts', '🧾', ${h.id})
+          ON CONFLICT DO NOTHING
+        `;
+        await sql`
+          INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon, hospital_id)
+          VALUES ('nurse', 'receipts-panel', 'Payment Receipts', '🧾', ${h.id})
+          ON CONFLICT DO NOTHING
+        `;
       }
     }
 
