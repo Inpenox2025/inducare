@@ -4623,3 +4623,168 @@ window.deleteRoomBillingItem = async function(serviceId, allocationId) {
   }
 };
 
+// ══════════════════════════════════════════════════════════
+// SUPER ADMIN: HOSPTIAL CASE SHEET CONFIGURATION MODAL
+// ══════════════════════════════════════════════════════════
+window.currentConfigProtocols = [];
+
+function renderConfigProtocolsList() {
+  const tbody = document.getElementById("configProtocolsTableBody");
+  if (!tbody) return;
+  if (!window.currentConfigProtocols || window.currentConfigProtocols.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3" class="empty-cell">No protocols configured yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = window.currentConfigProtocols.map((p, idx) => `
+    <tr>
+      <td><strong>${esc(p.name)}</strong></td>
+      <td>${esc(p.description)}</td>
+      <td style="text-align: center;">
+        <button type="button" class="action-btn btn-delete" onclick="deleteConfigProtocol(${idx})" style="padding:4px 8px; font-size:11px;">Remove</button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+window.deleteConfigProtocol = function(idx) {
+  window.currentConfigProtocols.splice(idx, 1);
+  renderConfigProtocolsList();
+};
+
+window.configureHospitalCaseSheet = async function(hospitalId) {
+  document.getElementById("config_hosp_id").value = hospitalId;
+  
+  // Reset fields
+  document.getElementById("new_protocol_name").value = "";
+  document.getElementById("new_protocol_desc").value = "";
+  document.getElementById("config_past_history_options").value = "";
+  document.getElementById("config_family_history_options").value = "";
+  document.getElementById("config_rec_therapies_options").value = "";
+  document.getElementById("config_prev_treatments_options").value = "";
+  window.currentConfigProtocols = [];
+  renderConfigProtocolsList();
+
+  // Reset tab active state
+  document.querySelectorAll(".config-tab-btn").forEach((btn, idx) => {
+    btn.classList.toggle("active", idx === 0);
+    btn.classList.toggle("btn-primary", idx === 0);
+    btn.classList.toggle("btn-outline", idx !== 0);
+  });
+  document.querySelectorAll(".config-tab-pane").forEach((pane, idx) => {
+    pane.style.display = idx === 0 ? "block" : "none";
+  });
+
+  try {
+    const res = await fetch(`${API_BASE}/super?action=case-sheet-config&hospital_id=${hospitalId}`, {
+      headers: authHeaders()
+    });
+    const data = await res.json();
+    if (res.ok && data.success && data.config) {
+      const config = data.config;
+      window.currentConfigProtocols = config.protocols || [];
+      renderConfigProtocolsList();
+
+      document.getElementById("config_past_history_options").value = (config.past_medical_history || []).join("\n");
+      document.getElementById("config_family_history_options").value = (config.family_history || []).join("\n");
+      document.getElementById("config_rec_therapies_options").value = (config.recommended_therapies || []).join("\n");
+      document.getElementById("config_prev_treatments_options").value = (config.previous_treatments || []).join("\n");
+    }
+  } catch (err) {
+    showToast("Failed to retrieve hospital configuration", "error");
+  }
+
+  openModal("hospitalConfigModal");
+};
+
+// Bind configuration modal event listeners
+document.addEventListener("DOMContentLoaded", () => {
+  const addProtocolBtn = document.getElementById("addConfigProtocolBtn");
+  if (addProtocolBtn) {
+    addProtocolBtn.addEventListener("click", () => {
+      const nameInput = document.getElementById("new_protocol_name");
+      const descInput = document.getElementById("new_protocol_desc");
+      const name = nameInput.value.trim();
+      const desc = descInput.value.trim();
+      if (!name) {
+        showToast("Protocol Name is required", "error");
+        return;
+      }
+      if (window.currentConfigProtocols.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+        showToast("A protocol with this name already exists", "error");
+        return;
+      }
+      window.currentConfigProtocols.push({ name, description: desc });
+      nameInput.value = "";
+      descInput.value = "";
+      renderConfigProtocolsList();
+    });
+  }
+
+  document.querySelectorAll(".config-tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const targetTab = btn.getAttribute("data-config-tab");
+      document.querySelectorAll(".config-tab-btn").forEach(b => {
+        b.classList.toggle("active", b === btn);
+        b.classList.toggle("btn-primary", b === btn);
+        b.classList.toggle("btn-outline", b !== btn);
+      });
+      document.querySelectorAll(".config-tab-pane").forEach(pane => {
+        pane.style.display = pane.id === `config-tab-${targetTab}` ? "block" : "none";
+      });
+    });
+  });
+
+  const configForm = document.getElementById("hospitalConfigForm");
+  if (configForm) {
+    configForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const saveBtn = document.getElementById("saveHospitalConfigBtn");
+      const originalText = saveBtn.innerHTML;
+      saveBtn.innerHTML = "Saving...";
+      saveBtn.disabled = true;
+
+      const hospId = document.getElementById("config_hosp_id").value;
+      
+      const parseOptions = (id) => {
+        return document.getElementById(id).value
+          .split("\n")
+          .map(line => line.trim())
+          .filter(line => line.length > 0);
+      };
+
+      const config = {
+        protocols: window.currentConfigProtocols,
+        past_medical_history: parseOptions("config_past_history_options"),
+        family_history: parseOptions("config_family_history_options"),
+        recommended_therapies: parseOptions("config_rec_therapies_options"),
+        previous_treatments: parseOptions("config_prev_treatments_options")
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/super?action=case-sheet-config`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ hospital_id: parseInt(hospId), config })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showToast("Hospital configuration saved successfully!", "success");
+          closeModal("hospitalConfigModal");
+          
+          const user = getUser();
+          if (user && user.hospital_id === parseInt(hospId)) {
+            window.hospitalCaseSheetConfig = data.config;
+          }
+        } else {
+          showToast(data.error || "Failed to save configuration", "error");
+        }
+      } catch (err) {
+        showToast("Network error saving configuration", "error");
+      } finally {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+      }
+    });
+  }
+});
+
