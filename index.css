@@ -1332,3 +1332,36 @@ body {
   width: 100%;
   max-width: 100%;
 }
+
+.feature-bullets-list {
+  list-style: none;
+  margin-top: 20px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: left;
+}
+
+.feature-bullets-list li {
+  font-size: 13px;
+  color: var(--text-secondary);
+  position: relative;
+  padding-left: 22px;
+  line-height: 1.6;
+}
+
+.feature-bullets-list li::before {
+  content: "✦";
+  color: var(--cyan);
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 12px;
+}
+
+.feature-bullets-list li strong {
+  color: var(--text-primary);
+  display: block;
+  margin-bottom: 2px;
+}
