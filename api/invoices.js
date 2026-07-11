@@ -237,6 +237,7 @@ module.exports = async function handler(req, res) {
     try {
       const rows = await sql`
         SELECT r.*, i.invoice_no, i.amount as total_amount, i.paid_amount as total_paid, i.due_amount as total_due, i.description as invoice_desc,
+               i.allocation_id, i.taxable_amount, i.gst_amount, i.gst_rate,
                p.full_name as patient_name, p.mobile_no as patient_mobile, p.address as patient_address,
                h.name as hospital_name, h.logo_data as hospital_logo, h.gst_no as gst_no,
                COALESCE(i.tax_name, h.tax_name, 'GST') as tax_name
@@ -249,6 +250,7 @@ module.exports = async function handler(req, res) {
       if (rows.length === 0)
         return res.status(404).json({ error: "Receipt transaction not found" });
       const receipt = rows[0];
+
 
       const doc = new PDFDocument({ margin: 50, size: "A4" });
       res.setHeader("Content-Type", "application/pdf");
@@ -379,8 +381,8 @@ module.exports = async function handler(req, res) {
         .stroke();
 
       doc.font("Helvetica-Bold").fillColor("#475569");
-      doc.text("Transaction / Payment Mode", 50, tableHeaderY);
-      doc.text("Amount Paid", 450, tableHeaderY, { align: "right", width: 95 });
+      doc.text("Billed Description / Itemised Services", 50, tableHeaderY);
+      doc.text("Amount", 450, tableHeaderY, { align: "right", width: 95 });
       doc.moveDown(0.4);
       doc
         .moveTo(50, doc.y)
@@ -390,15 +392,95 @@ module.exports = async function handler(req, res) {
         .stroke();
       doc.moveDown(0.6);
 
-      const tableRowY = doc.y;
-      doc.font("Helvetica").fillColor("#0f172a");
-      doc.text(`Installment Payment (${receipt.payment_mode})`, 50, tableRowY);
-      doc.text(formatCurrency(receipt.amount_paid), 450, tableRowY, {
+      let currentY = doc.y;
+
+      // Draw itemized services table (same logic as invoice PDF)
+      const printRowAmt = receipt.taxable_amount
+        ? parseFloat(receipt.taxable_amount)
+        : parseFloat(receipt.total_amount);
+
+      if (receipt.allocation_id) {
+        try {
+          const allocRes = await sql`
+            SELECT ra.*, r.price_per_day, r.room_no, r.room_type
+            FROM room_allocations ra
+            JOIN rooms r ON ra.room_id = r.id
+            WHERE ra.id = ${parseInt(receipt.allocation_id)}
+          `;
+          if (allocRes.length > 0) {
+            const alloc = allocRes[0];
+            const now = alloc.status === 'discharged' && alloc.discharged_at ? new Date(alloc.discharged_at) : new Date();
+            const admit = new Date(alloc.admitted_at);
+            const diffMs = now - admit;
+            const days = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+            const pricePerDay = parseFloat(alloc.price_per_day) || 0.00;
+            const roomChargeBase = pricePerDay * days;
+
+            doc.font("Helvetica").fillColor("#0f172a");
+            const baseDesc = alloc.status === 'discharged' ? 'Discharge' : 'Active';
+            doc.text(`Room Charge (${baseDesc}: ${days} ${days === 1 ? 'Day' : 'Days'}) - Room ${alloc.room_no} (${alloc.room_type})`, 50, currentY, { width: 380 });
+            doc.text(formatCurrency(roomChargeBase), 450, currentY, { align: "right", width: 95 });
+            currentY += 18;
+
+            const services = await sql`
+              SELECT * FROM allocation_services 
+              WHERE allocation_id = ${alloc.id} 
+              ORDER BY id ASC
+            `;
+            for (const s of services) {
+              const qtyStr = s.quantity > 1 ? ` (Qty: ${s.quantity})` : '';
+              doc.text(`${s.service_name}${qtyStr}`, 50, currentY, { width: 380 });
+              doc.text(formatCurrency(parseFloat(s.price) * s.quantity), 450, currentY, { align: "right", width: 95 });
+              currentY += 18;
+            }
+          } else {
+            doc.font("Helvetica").fillColor("#0f172a");
+            doc.text(receipt.invoice_desc || "Room Charge", 50, currentY, { width: 380 });
+            doc.text(formatCurrency(printRowAmt), 450, currentY, { align: "right", width: 95 });
+            currentY += 18;
+          }
+        } catch (e) {
+          console.error("PDF receipt generation allocation check failed:", e);
+          doc.font("Helvetica").fillColor("#0f172a");
+          doc.text(receipt.invoice_desc || "Room Charge", 50, currentY, { width: 380 });
+          doc.text(formatCurrency(printRowAmt), 450, currentY, { align: "right", width: 95 });
+          currentY += 18;
+        }
+      } else {
+        doc.font("Helvetica").fillColor("#0f172a");
+        doc.text(
+          receipt.invoice_desc || "Medical Consultation Fee",
+          50,
+          currentY,
+          { width: 380 }
+        );
+        doc.text(formatCurrency(printRowAmt), 450, currentY, {
+          align: "right",
+          width: 95,
+        });
+        currentY += 18;
+      }
+
+      // Draw horizontal line separator
+      doc.y = currentY + 10;
+      doc
+        .moveTo(50, doc.y)
+        .lineTo(545, doc.y)
+        .strokeColor("#cbd5e1")
+        .lineWidth(1)
+        .stroke();
+      doc.moveDown(0.6);
+
+      // Draw transaction mode row
+      const transModeY = doc.y;
+      doc.font("Helvetica-Bold").fillColor("#0f172a");
+      doc.text(`Payment Receipt Logged (${receipt.payment_mode.toUpperCase()})`, 50, transModeY);
+      doc.text(formatCurrency(receipt.amount_paid), 450, transModeY, {
         align: "right",
         width: 95,
       });
-
       doc.moveDown(1.5);
+
       doc
         .moveTo(300, doc.y)
         .lineTo(545, doc.y)
@@ -407,7 +489,36 @@ module.exports = async function handler(req, res) {
         .stroke();
       doc.moveDown(0.6);
 
-      const totalsY = doc.y;
+      let totalsY = doc.y;
+
+      // Draw GST info if exists
+      const taxRate = parseFloat(receipt.gst_rate) || 0.00;
+      const taxAmt = parseFloat(receipt.gst_amount) || 0.00;
+      const taxable = parseFloat(receipt.taxable_amount) || parseFloat(receipt.total_amount);
+      const taxName = (receipt.tax_name || "GST").toUpperCase();
+
+      if (taxAmt > 0) {
+        doc
+          .font("Helvetica")
+          .fillColor("#475569")
+          .text(`Taxable Value:`, 320, totalsY);
+        doc
+          .font("Helvetica")
+          .fillColor("#0f172a")
+          .text(formatCurrency(taxable), 450, totalsY, { align: "right", width: 95 });
+        totalsY += 16;
+
+        doc
+          .font("Helvetica")
+          .fillColor("#475569")
+          .text(`${taxName} (${taxRate}%):`, 320, totalsY);
+        doc
+          .font("Helvetica")
+          .fillColor("#0f172a")
+          .text(formatCurrency(taxAmt), 450, totalsY, { align: "right", width: 95 });
+        totalsY += 16;
+      }
+
       doc
         .font("Helvetica-Bold")
         .fillColor("#475569")
@@ -448,6 +559,14 @@ module.exports = async function handler(req, res) {
         .font("Helvetica-Bold")
         .fillColor("#475569")
         .text("Remaining Balance Due:", 320, totalsY + 48);
+      doc
+        .font("Helvetica-Bold")
+        .fillColor("#ef4444")
+        .text(formatCurrency(receipt.total_due), 450, totalsY + 48, {
+          align: "right",
+          width: 95,
+        });
+
       doc
         .font("Helvetica-Bold")
         .fillColor("#ef4444")

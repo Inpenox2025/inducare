@@ -1371,7 +1371,7 @@ async function saveInvoice(e) {
   }
 }
 
-window.openReconciliationModal = function (id, invNo, amount, due) {
+window.openReconciliationModal = async function (id, invNo, amount, due) {
   document.getElementById("recon_invoice_id").value = id;
   document.getElementById("recon_invoice_amount").value = amount;
   document.getElementById("reconInvoiceNo").textContent = invNo;
@@ -1381,11 +1381,93 @@ window.openReconciliationModal = function (id, invNo, amount, due) {
   document.getElementById("recon_paid_amount").value = due;
   document.getElementById("recon_paid_amount").max = due;
 
+  // Clear previous details
+  const detailsBox = document.getElementById("reconItemsDetailsBox");
+  const itemsContainer = document.getElementById("reconBillItemsContainer");
+  if (detailsBox) detailsBox.style.display = "none";
+  if (itemsContainer) itemsContainer.innerHTML = "";
+
+  // Fetch detailed invoice info to populate items and GST details
+  try {
+    const res = await fetch(`${API_BASE}/invoices?id=${id}`, { headers: authHeaders() });
+    const data = await res.json();
+    if (res.ok && data.success && data.invoice) {
+      const inv = data.invoice;
+      
+      const taxRate = parseFloat(inv.gst_rate) || 0.00;
+      const taxAmt = parseFloat(inv.gst_amount) || 0.00;
+      const taxable = parseFloat(inv.taxable_amount) || parseFloat(inv.amount);
+      const taxName = (inv.tax_name || "GST").toUpperCase();
+
+      const taxableEl = document.getElementById("reconTaxableAmount");
+      const taxLabelEl = document.getElementById("reconTaxLabel");
+      const taxAmountEl = document.getElementById("reconTaxAmount");
+
+      if (taxableEl) taxableEl.textContent = formatCurrency(taxable);
+      if (taxLabelEl) taxLabelEl.textContent = `${taxName} (${taxRate}%):`;
+      if (taxAmountEl) taxAmountEl.textContent = formatCurrency(taxAmt);
+      if (detailsBox) detailsBox.style.display = "block";
+
+      if (inv.allocation_id && itemsContainer) {
+        try {
+          const resAll = await fetch(`${API_BASE}/rooms/allocations/${inv.allocation_id}`, { headers: authHeaders() });
+          const dataAll = await resAll.json();
+          if (resAll.ok && dataAll.success) {
+            const alloc = dataAll.allocation;
+            
+            const now = alloc.status === 'discharged' && alloc.discharged_at ? new Date(alloc.discharged_at) : new Date();
+            const admit = new Date(alloc.admitted_at);
+            const diffMs = now - admit;
+            const days = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+            const price = parseFloat(alloc.price_per_day) || 0;
+            const roomTotal = price * days;
+
+            let itemsHtml = `
+              <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-weight:600;">
+                <span>Room Stay (${days} ${days === 1 ? 'day' : 'days'})</span>
+                <span>${formatCurrency(roomTotal)}</span>
+              </div>
+            `;
+
+            const resSvc = await fetch(`${API_BASE}/rooms?action=services&allocation_id=${inv.allocation_id}`, { headers: authHeaders() });
+            const dataSvc = await resSvc.json();
+            if (resSvc.ok && dataSvc.success) {
+              const services = dataSvc.services || [];
+              services.forEach(s => {
+                const itemTotal = parseFloat(s.price) * s.quantity;
+                const qtyStr = s.quantity > 1 ? ` x${s.quantity}` : '';
+                itemsHtml += `
+                  <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                    <span>${esc(s.service_name)}${qtyStr}</span>
+                    <span>${formatCurrency(itemTotal)}</span>
+                  </div>
+                `;
+              });
+            }
+            itemsContainer.innerHTML = itemsHtml;
+          }
+        } catch (err) {
+          console.error("Failed to load allocation details for billing popup:", err);
+        }
+      } else if (itemsContainer) {
+        itemsContainer.innerHTML = `
+          <div style="display:flex; justify-content:space-between; font-weight:600;">
+            <span>${esc(inv.description || "Medical Consultation Fee")}</span>
+            <span>${formatCurrency(taxable)}</span>
+          </div>
+        `;
+      }
+    }
+  } catch (err) {
+    console.error("Failed to load billing breakdown details:", err);
+  }
+
   // Load transaction receipts log dynamically
   loadInvoiceReceiptsLog(id);
 
   openModal("reconciliationModal");
 };
+
 
 async function processReconciliation(e) {
   e.preventDefault();

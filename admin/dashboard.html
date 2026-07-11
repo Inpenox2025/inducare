@@ -1428,11 +1428,28 @@
                             <span style="color:var(--text3); font-weight:500;">Total Billed Amount:</span>
                             <strong id="reconTotalBilled" style="color:var(--text1);">₹ 0.00</strong>
                         </div>
-                        <div style="display:flex; justify-content:space-between; font-size:14px;">
+                        <div style="display:flex; justify-content:space-between; font-size:14px; margin-bottom:12px; border-bottom: 1.5px dashed var(--border); padding-bottom:8px;">
                             <span style="color:var(--text3); font-weight:500;">Current Outstanding Dues:</span>
                             <strong id="reconCurrentDue" style="color:var(--error); font-weight:700;">₹ 0.00</strong>
                         </div>
+
+                        <!-- Itemized Details & GST Breakdown Inside Billing Reconciliation -->
+                        <div id="reconItemsDetailsBox" style="font-size: 12px; color: var(--text2); display:none;">
+                            <h4 style="margin: 8px 0 6px 0; font-size:12px; color:var(--text1); font-weight:700;">📋 Itemized Bill Details</h4>
+                            <div id="reconBillItemsContainer" style="display:flex; flex-direction:column; gap:4px; max-height:120px; overflow-y:auto; margin-bottom:8px; padding-right:4px;">
+                                <!-- Dynamically populated list of items -->
+                            </div>
+                            <div style="display:flex; justify-content:space-between; color:var(--text3); font-size:11px; margin-top:6px;">
+                                <span>Taxable Amount:</span>
+                                <span id="reconTaxableAmount">₹ 0.00</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; color:var(--text3); font-size:11px;">
+                                <span id="reconTaxLabel">GST (0.0%):</span>
+                                <span id="reconTaxAmount">₹ 0.00</span>
+                            </div>
+                        </div>
                     </div>
+
 
                     <div class="form-group">
                         <label for="recon_paid_amount">Log Payment Installment Amount (₹) <span
