@@ -1427,6 +1427,21 @@ module.exports = async function handler(req, res) {
               return res.status(200).json({ success: true, invoices: [], pagination: { total: 0, page: 1, limit: 15, totalPages: 0 } });
             }
 
+            const queryPatientId = req.query.patient_id ? parseInt(req.query.patient_id) : null;
+            if (queryPatientId) {
+              const rows = await sql`
+                SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile
+                FROM invoices i
+                JOIN patients p ON i.patient_id = p.id
+                JOIN hospital_insurers hi ON i.hospital_id = hi.hospital_id
+                WHERE i.patient_id = ${queryPatientId}
+                  AND hi.insurance_company_id = ${insurerCompanyId}
+                  AND (i.status = 'unpaid' OR i.status = 'partially_paid')
+                ORDER BY i.created_at DESC
+              `;
+              return res.status(200).json({ success: true, invoices: rows });
+            }
+
             const search = req.query.search || "";
             const status = req.query.status || "";
             const page = parseInt(req.query.page) || 1;

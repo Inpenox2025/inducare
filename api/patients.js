@@ -167,6 +167,53 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ success: true, patients: [], pagination: { total: 0, page, limit, totalPages: 0 } });
           }
 
+          // Check if hospital_id is passed (e.g. for populating dropdown in claim filing)
+          const queryHospitalId = req.query.hospital_id ? parseInt(req.query.hospital_id) : null;
+          if (queryHospitalId) {
+            // Verify relationship mapping exists
+            const mappingRows = await sql`
+              SELECT 1 FROM hospital_insurers 
+              WHERE hospital_id = ${queryHospitalId} AND insurance_company_id = ${insurerCompanyId}
+            `;
+            if (mappingRows.length === 0) {
+              return res.status(200).json({ success: true, patients: [], pagination: { total: 0, page, limit, totalPages: 0 } });
+            }
+
+            if (search) {
+              const searchPattern = `%${search}%`;
+              countRows = await sql`
+                SELECT COUNT(*) as total FROM patients 
+                WHERE hospital_id = ${queryHospitalId}
+                  AND (full_name ILIKE ${searchPattern} OR mobile_no ILIKE ${searchPattern})
+              `;
+              dataRows = await sql`
+                SELECT * FROM patients 
+                WHERE hospital_id = ${queryHospitalId}
+                  AND (full_name ILIKE ${searchPattern} OR mobile_no ILIKE ${searchPattern})
+                ORDER BY full_name ASC 
+                LIMIT ${limit} OFFSET ${offset}
+              `;
+            } else {
+              countRows = await sql`SELECT COUNT(*) as total FROM patients WHERE hospital_id = ${queryHospitalId}`;
+              dataRows = await sql`
+                SELECT * FROM patients 
+                WHERE hospital_id = ${queryHospitalId}
+                ORDER BY full_name ASC 
+                LIMIT ${limit} OFFSET ${offset}
+              `;
+            }
+
+            const total = parseInt(countRows[0].total);
+            const totalPages = Math.ceil(total / limit);
+
+            return res.status(200).json({
+              success: true,
+              patients: dataRows,
+              pagination: { total, page, limit, totalPages }
+            });
+          }
+
+          // Otherwise, list only patients with claims
           if (search) {
             const searchPattern = `%${search}%`;
             countRows = await sql`

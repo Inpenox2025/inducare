@@ -5406,7 +5406,11 @@ async function loadInsurerClaims() {
       tbody.innerHTML = data.claims.map(c => `
         <tr>
           <td data-label="ID"><span style="color:var(--primary); font-weight:600;">#${c.id}</span></td>
-          <td data-label="Patient Name"><strong>${esc(c.patient_name)}</strong></td>
+          <td data-label="Patient Name">
+            <strong>${esc(c.patient_name)}</strong>
+            <br/>
+            <a href="#" onclick="viewCaseSheet(${c.patient_id}); return false;" style="font-size:11px; color:var(--primary); text-decoration:underline;">View Case Sheet</a>
+          </td>
           <td data-label="Hospital">${esc(c.hospital_name)}</td>
           <td data-label="Invoice No"><code>${esc(c.invoice_no)}</code></td>
           <td data-label="Policy No">${esc(c.policy_number || '—')}</td>
@@ -5482,7 +5486,11 @@ async function loadAdminClaims() {
         return `
           <tr>
             <td data-label="ID"><span style="color:var(--primary); font-weight:600;">#${c.id}</span></td>
-            <td data-label="Patient Name"><strong>${esc(c.patient_name)}</strong></td>
+            <td data-label="Patient Name">
+              <strong>${esc(c.patient_name)}</strong>
+              <br/>
+              <a href="#" onclick="viewCaseSheet(${c.patient_id}); return false;" style="font-size:11px; color:var(--primary); text-decoration:underline;">View Case Sheet</a>
+            </td>
             <td data-label="Insurer Company">${esc(c.insurance_company_name)}</td>
             <td data-label="Invoice No"><code>${esc(c.invoice_no)}</code></td>
             <td data-label="Policy No">${esc(c.policy_number || '—')}</td>
