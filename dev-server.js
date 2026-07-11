@@ -127,6 +127,9 @@ app.all('/api/invoices', runHandler('./api/invoices'));
 // Billing Payment Reconciliation
 app.all('/api/reconciliation', runHandler('./api/reconciliation'));
 
+// Claims Integration
+app.all('/api/claims', runHandler('./api/claims'));
+
 // 3. Serve Frontend Static Assets
 app.use(express.static(__dirname));
 
