@@ -133,10 +133,12 @@ module.exports = async function handler(req, res) {
   const id = req.query.id;
   const sql = getSQL();
 
+  // ══════ GLOBAL AUTH CHECK ══════
+  const user = verifyToken(req);
+  if (!user) return res.status(401).json({ error: "Unauthorized" });
+
   // ══════ ACTION: List receipts (GET) ══════
   if (action === "receipts") {
-    const user = verifyToken(req);
-    if (!user) return res.status(401).json({ error: "Unauthorized" });
     const targetHospitalId =
       user.role === "super_admin"
         ? req.query.hospital_id
@@ -1129,8 +1131,6 @@ module.exports = async function handler(req, res) {
 
   // ══════ VERIFY TOKEN FOR GENERAL CRUD ══════
   else {
-    const user = verifyToken(req);
-    if (!user) return res.status(401).json({ error: "Unauthorized" });
     const targetHospitalId =
       user.role === "super_admin"
         ? req.query.hospital_id

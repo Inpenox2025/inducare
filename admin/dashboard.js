@@ -1845,7 +1845,11 @@ window.downloadInvoiceReceipt = async function (id, patientName) {
       headers: { Authorization: `Bearer ${getToken()}` },
     });
 
-    if (!res.ok) throw new Error("PDF render failed");
+    if (!res.ok) {
+      let msg = "PDF render failed";
+      try { const e = await res.json(); msg = e.error || e.details || msg; } catch {}
+      throw new Error(msg);
+    }
 
     const blob = await res.blob();
     const a = document.createElement("a");
@@ -1853,9 +1857,9 @@ window.downloadInvoiceReceipt = async function (id, patientName) {
     a.download = `${patientName || "Patient"} - icare.pdf`;
     a.click();
     URL.revokeObjectURL(a.href);
-    showToast("Receipt PDF downloaded!", "success");
+    showToast("Invoice PDF downloaded!", "success");
   } catch (err) {
-    showToast("Failed to compile PDF receipt", "error");
+    showToast("Download failed: " + (err.message || "Unknown error"), "error");
   }
 };
 
@@ -1865,23 +1869,22 @@ window.printInvoiceReceipt = async function (id) {
       headers: { Authorization: `Bearer ${getToken()}` },
     });
 
-    if (!res.ok) throw new Error("PDF render failed");
+    if (!res.ok) {
+      let msg = "PDF render failed";
+      try { const e = await res.json(); msg = e.error || e.details || msg; } catch {}
+      throw new Error(msg);
+    }
 
     const blob = await res.blob();
     const fileURL = URL.createObjectURL(blob);
-
-    // Open in a new tab for direct browser viewing and printing
     const printWindow = window.open(fileURL, "_blank");
     if (!printWindow) {
-      showToast(
-        "Popup blocker prevented opening print window. Please allow popups.",
-        "error",
-      );
+      showToast("Popup blocker prevented opening print window. Please allow popups.", "error");
     } else {
       showToast("Opening print view...", "success");
     }
   } catch (err) {
-    showToast("Failed to compile print receipt", "error");
+    showToast("Print failed: " + (err.message || "Unknown error"), "error");
   }
 };
 
@@ -3913,41 +3916,45 @@ async function loadInvoiceReceiptsLog(invoiceId) {
 window.printReceiptSlips = async function (receiptId) {
   try {
     const res = await fetch(
-      `${API_BASE}/invoices?action=export-receipt-pdf&receipt_id=${receiptId}`,
+      `${API_BASE}/invoices/export-receipt-pdf?receipt_id=${receiptId}`,
       {
         headers: { Authorization: `Bearer ${getToken()}` },
       },
     );
 
-    if (!res.ok) throw new Error("Receipt PDF render failed");
+    if (!res.ok) {
+      let msg = "Receipt PDF render failed";
+      try { const e = await res.json(); msg = e.error || e.details || msg; } catch {}
+      throw new Error(msg);
+    }
 
     const blob = await res.blob();
     const fileURL = URL.createObjectURL(blob);
-
     const printWindow = window.open(fileURL, "_blank");
     if (!printWindow) {
-      showToast(
-        "Popup blocker prevented opening print window. Please allow popups.",
-        "error",
-      );
+      showToast("Popup blocker prevented opening print window. Please allow popups.", "error");
     } else {
       showToast("Opening print view...", "success");
     }
   } catch (err) {
-    showToast("Failed to compile print receipt", "error");
+    showToast("Print failed: " + (err.message || "Unknown error"), "error");
   }
 };
 
 window.downloadReceiptSlips = async function (receiptId, receiptNo) {
   try {
     const res = await fetch(
-      `${API_BASE}/invoices?action=export-receipt-pdf&receipt_id=${receiptId}`,
+      `${API_BASE}/invoices/export-receipt-pdf?receipt_id=${receiptId}`,
       {
         headers: { Authorization: `Bearer ${getToken()}` },
       },
     );
 
-    if (!res.ok) throw new Error("Receipt PDF render failed");
+    if (!res.ok) {
+      let msg = "Receipt PDF render failed";
+      try { const e = await res.json(); msg = e.error || e.details || msg; } catch {}
+      throw new Error(msg);
+    }
 
     const blob = await res.blob();
     const a = document.createElement("a");
@@ -3957,7 +3964,7 @@ window.downloadReceiptSlips = async function (receiptId, receiptNo) {
     URL.revokeObjectURL(a.href);
     showToast("Receipt PDF downloaded!", "success");
   } catch (err) {
-    showToast("Failed to compile PDF receipt", "error");
+    showToast("Download failed: " + (err.message || "Unknown error"), "error");
   }
 };
 

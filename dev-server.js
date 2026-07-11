@@ -121,6 +121,10 @@ app.all('/api/invoices/export-pdf', (req, res, next) => {
   req.query.action = 'export-pdf';
   next();
 }, runHandler('./api/invoices'));
+app.all('/api/invoices/export-receipt-pdf', (req, res, next) => {
+  req.query.action = 'export-receipt-pdf';
+  next();
+}, runHandler('./api/invoices'));
 app.all('/api/invoices/:id', runHandler('./api/invoices'));
 app.all('/api/invoices', runHandler('./api/invoices'));
 
