@@ -3,6 +3,64 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'hospital-management-jwt-secret-key-2026';
 
+const DEFAULT_CASE_SHEET_CONFIG = {
+  protocols: [
+    { name: "Ozone Therapy", description: "Ozone is a powerful healer it improves oxygen delivery, boosts immunity, reduces inflammation & fights infections." },
+    { name: "Acupuncture", description: "Ancient healing for modern life. Relieves pain, reduces stress and restores natural balance." },
+    { name: "Naturopathy & Detox", description: "Natural therapies to detoxify, rejuvenate and strengthen the body naturally." },
+    { name: "Diabetic Wound Care", description: "Advanced wound healing solutions for diabetic foot and chronic wounds." },
+    { name: "Pain Management", description: "Non-surgical, drug-free approach to manage acute and chronic pain effectively." },
+    { name: "Cupping Therapy", description: "Cupping Therapy improves blood circulation, relieves muscle tension, and supports natural detoxification." },
+    { name: "Kansya Therapy", description: "Kansya Therapy is a traditional Indian therapeutic massage performed using a specially crafted Kansa metal tool to promote relaxation, circulation, detoxification, and holistic rejuvenation naturally." },
+    { name: "Energy Medicine", description: "Energy Medicine focuses on restoring the body's natural energy balance to support physical, emotional, and holistic well-being." },
+    { name: "Therapeutic Wellness Baths", description: "Traditional naturopathy therapies designed to support detoxification, relaxation, circulation, and holistic wellness naturally." },
+    { name: "Therapeutic Massages", description: "Therapeutic massages designed to promote relaxation, improve circulation, relieve muscle tension, and support overall physical and mental wellness naturally." }
+  ],
+  past_medical_history: [
+    "Diabetes Mellitus",
+    "Hypertension",
+    "Thyroid Disorder",
+    "Cardiac Disease",
+    "Asthma / Respiratory",
+    "Arthritis / Joint Disorders",
+    "Neurological Disorder",
+    "Kidney Disease",
+    "Liver Disease",
+    "Skin Disorders",
+    "Autoimmune Disorders",
+    "Cancer History",
+    "Psychological Disorders"
+  ],
+  family_history: [
+    "Diabetes",
+    "Hypertension",
+    "Cardiac Disease",
+    "Cancer",
+    "Thyroid Disorders",
+    "Neurological Disorders",
+    "Genetic Disorders"
+  ],
+  recommended_therapies: [
+    "Ozone Therapy",
+    "IV Nutritional Therapy",
+    "Physiotherapy",
+    "Massage Therapy",
+    "Cupping Therapy",
+    "Detoxification Therapy",
+    "Pain Management Therapy",
+    "Rehabilitation Therapy",
+    "Lifestyle Modification Program"
+  ],
+  previous_treatments: [
+    "Allopathy",
+    "Ayurveda",
+    "Homeopathy",
+    "Physiotherapy",
+    "Alternative Therapy",
+    "None"
+  ]
+};
+
 function verifyToken(req) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
@@ -138,6 +196,59 @@ module.exports = async function handler(req, res) {
       }
     } catch (error) {
       return res.status(500).json({ error: 'Failed to aggregate statistics', details: error.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // Action: Retrieve or Update Case Sheet & Services Configuration
+  // ══════════════════════════════════════════════════════════
+  if (action === 'case-sheet-config') {
+    const hostId = user.role === 'super_admin' 
+      ? (req.query.hospital_id ? parseInt(req.query.hospital_id) : (req.body && req.body.hospital_id ? parseInt(req.body.hospital_id) : null)) 
+      : user.hospital_id;
+    if (!hostId) return res.status(400).json({ error: 'Hospital ID is required' });
+
+    if (req.method === 'GET') {
+      try {
+        const rows = await sql`SELECT case_sheet_config FROM hospitals WHERE id = ${hostId}`;
+        if (rows.length === 0) return res.status(404).json({ error: 'Hospital not found' });
+        
+        let config = DEFAULT_CASE_SHEET_CONFIG;
+        if (rows[0].case_sheet_config) {
+          try {
+            config = JSON.parse(rows[0].case_sheet_config);
+          } catch (e) {
+            console.error("Failed to parse config:", e);
+          }
+        }
+        return res.status(200).json({ success: true, config });
+      } catch (error) {
+        return res.status(500).json({ error: 'Failed to fetch config', details: error.message });
+      }
+    }
+
+    // POST/PUT: requires super_admin or admin
+    if (user.role !== 'super_admin' && user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Administrator privileges required.' });
+    }
+
+    if (req.method === 'POST' || req.method === 'PUT') {
+      try {
+        const { config } = req.body;
+        if (!config) return res.status(400).json({ error: 'Configuration data is required' });
+
+        const configStr = typeof config === 'string' ? config : JSON.stringify(config);
+        const rows = await sql`
+          UPDATE hospitals 
+          SET case_sheet_config = ${configStr} 
+          WHERE id = ${hostId} 
+          RETURNING case_sheet_config
+        `;
+        if (rows.length === 0) return res.status(404).json({ error: 'Hospital not found' });
+        return res.status(200).json({ success: true, config: JSON.parse(rows[0].case_sheet_config) });
+      } catch (error) {
+        return res.status(500).json({ error: 'Failed to save configuration', details: error.message });
+      }
     }
   }
 

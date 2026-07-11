@@ -937,35 +937,8 @@
                         </div>
 
                         <div class="form-section-header">Past Medical History — Conditions</div>
-                        <div class="checkbox-grid">
-                            <label class="checkbox-label"><input type="checkbox" name="cs_past_diabetes" value="true">
-                                Diabetes Mellitus</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_past_hypertension"
-                                    value="true"> Hypertension</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_past_thyroid" value="true">
-                                Thyroid Disorder</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_past_cardiac" value="true">
-                                Cardiac Disease</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_past_asthma" value="true">
-                                Asthma / Respiratory</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_past_arthritis" value="true">
-                                Arthritis / Joint Disorders</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_past_neuro" value="true">
-                                Neurological Disorder</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_past_kidney" value="true">
-                                Kidney Disease</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_past_liver" value="true">
-                                Liver Disease</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_past_skin" value="true"> Skin
-                                Disorders</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_past_autoimmune" value="true">
-                                Autoimmune Disorders</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_past_cancer" value="true">
-                                Cancer History</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_past_psychological"
-                                    value="true"> Psychological Disorders</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_past_other" value="true">
-                                Other</label>
+                        <div class="checkbox-grid" id="cs_past_conditions_grid">
+                            <!-- Dynamic Checkboxes populated on load/modal open -->
                         </div>
 
                         <div class="form-row">
@@ -1002,23 +975,8 @@
                         </div>
 
                         <div class="form-section-header">Family History</div>
-                        <div class="checkbox-grid">
-                            <label class="checkbox-label"><input type="checkbox" name="cs_fam_diabetes" value="true">
-                                Diabetes</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_fam_hypertension"
-                                    value="true"> Hypertension</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_fam_cardiac" value="true">
-                                Cardiac Disease</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_fam_cancer" value="true">
-                                Cancer</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_fam_thyroid" value="true">
-                                Thyroid Disorders</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_fam_neuro" value="true">
-                                Neurological Disorders</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_fam_genetic" value="true">
-                                Genetic Disorders</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_fam_other" value="true">
-                                Other</label>
+                        <div class="checkbox-grid" id="cs_family_history_grid">
+                            <!-- Dynamic Checkboxes populated on load/modal open -->
                         </div>
 
                         <div class="form-section-header">Lifestyle & Wellness Assessment</div>
@@ -1141,16 +1099,6 @@
                                 <label for="cs_protocol_service">Select Protocol / Service</label>
                                 <select class="form-control" id="cs_protocol_service" name="cs_protocol_service">
                                     <option value="">-- Select Service --</option>
-                                    <option value="Ozone Therapy">Ozone Therapy</option>
-                                    <option value="Acupuncture">Acupuncture</option>
-                                    <option value="Naturopathy & Detox">Naturopathy & Detox</option>
-                                    <option value="Diabetic Wound Care">Diabetic Wound Care</option>
-                                    <option value="Pain Management">Pain Management</option>
-                                    <option value="Cupping Therapy">Cupping Therapy</option>
-                                    <option value="Kansya Therapy">Kansya Therapy</option>
-                                    <option value="Energy Medicine">Energy Medicine</option>
-                                    <option value="Therapeutic Wellness Baths">Therapeutic Wellness Baths</option>
-                                    <option value="Therapeutic Massages">Therapeutic Massages</option>
                                 </select>
                             </div>
                         </div>
@@ -1167,27 +1115,8 @@
                         </div>
 
                         <div class="form-section-header">Recommended Therapies</div>
-                        <div class="checkbox-grid">
-                            <label class="checkbox-label"><input type="checkbox" name="cs_rec_ozone" value="true"> Ozone
-                                Therapy</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_rec_iv" value="true"> IV
-                                Nutritional Therapy</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_rec_physio" value="true">
-                                Physiotherapy</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_rec_massage" value="true">
-                                Massage Therapy</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_rec_cupping" value="true">
-                                Cupping Therapy</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_rec_detox" value="true">
-                                Detoxification Therapy</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_rec_pain" value="true"> Pain
-                                Management Therapy</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_rec_rehab" value="true">
-                                Rehabilitation Therapy</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_rec_lifestyle" value="true">
-                                Lifestyle Modification Program</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_rec_other" value="true">
-                                Other</label>
+                        <div class="checkbox-grid" id="cs_rec_therapies_grid">
+                            <!-- Dynamic Checkboxes populated on load/modal open -->
                         </div>
 
                         <div class="form-group">
@@ -1210,19 +1139,8 @@
                         </div>
 
                         <div class="form-section-header">Previous Treatments Tried</div>
-                        <div class="checkbox-grid">
-                            <label class="checkbox-label"><input type="checkbox" name="cs_prev_allopathy" value="true">
-                                Allopathy</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_prev_ayurveda" value="true">
-                                Ayurveda</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_prev_homeopathy" value="true">
-                                Homeopathy</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_prev_physio" value="true">
-                                Physiotherapy</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_prev_alternative"
-                                    value="true"> Alternative Therapy</label>
-                            <label class="checkbox-label"><input type="checkbox" name="cs_prev_none" value="true">
-                                None</label>
+                        <div class="checkbox-grid" id="cs_prev_treatments_grid">
+                            <!-- Dynamic Checkboxes populated on load/modal open -->
                         </div>
                         <div class="form-group">
                             <label for="cs_prev_treatment_details">Previous Treatments Details</label>
@@ -1258,8 +1176,9 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="cs_patient_signature">Patient Signature (Name / Initials)</label>
-                                <input type="text" class="form-control" id="cs_patient_signature"
-                                    name="cs_patient_signature" placeholder="Signature text">
+                                <select class="form-control" id="cs_patient_signature" name="cs_patient_signature">
+                                    <option value="">-- Select Patient --</option>
+                                </select>
                             </div>
                             <div class="form-group">
                                 <label for="cs_signature_date">Date</label>
@@ -1269,8 +1188,9 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="cs_consulting_doctor">Consulting Doctor / Therapist</label>
-                                <input type="text" class="form-control" id="cs_consulting_doctor"
-                                    name="cs_consulting_doctor" placeholder="Doctor's Name">
+                                <select class="form-control" id="cs_consulting_doctor" name="cs_consulting_doctor">
+                                    <option value="">-- Select Doctor --</option>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -1905,6 +1825,92 @@
                 <div class="modal-footer" style="margin-top: 24px; padding: 0;">
                     <button type="button" class="btn btn-primary" data-close="roomBillingModal">Close</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- 14. Super Admin: Hospital Case Sheet & Services Config Modal -->
+    <div class="modal-overlay" id="hospitalConfigModal">
+        <div class="modal modal-lg" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2>Configure Case Sheet & Protocols</h2>
+                <button class="modal-close" data-close="hospitalConfigModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="hospitalConfigForm" autocomplete="off">
+                    <input type="hidden" id="config_hosp_id">
+                    
+                    <div style="margin-bottom: 20px; border-bottom: 1.5px solid var(--border); padding-bottom: 12px; display: flex; gap: 8px;">
+                        <button type="button" class="btn btn-primary config-tab-btn active" data-config-tab="protocols_setup">Protocols & Services</button>
+                        <button type="button" class="btn btn-outline config-tab-btn" data-config-tab="checkboxes_setup">Case Sheet Checkboxes</button>
+                    </div>
+
+                    <!-- Config Tab 1: Protocols Setup -->
+                    <div id="config-tab-protocols_setup" class="config-tab-pane active">
+                        <h3 style="font-size: 15px; margin-bottom: 10px;">🩺 Clinical Protocols / Services list</h3>
+                        <div class="table-container minimal" style="max-height: 250px; overflow-y: auto; margin-bottom: 16px; border: 1px solid var(--border); border-radius: 6px;">
+                            <table class="data-table" style="font-size:12.5px;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 30%;">Service Name</th>
+                                        <th>Autopopulated Description</th>
+                                        <th style="width: 10%; text-align: center;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="configProtocolsTableBody">
+                                    <!-- Dynamic protocol rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style="background-color: var(--bg-primary); padding: 12px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 16px;">
+                            <h4 style="font-size: 13px; margin-bottom: 8px; font-weight: 700;">➕ Add Protocol / Service</h4>
+                            <div style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 8px; align-items: flex-end;">
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label for="new_protocol_name" style="font-size: 11px;">Protocol Name</label>
+                                    <input type="text" class="form-control" id="new_protocol_name" placeholder="e.g. Ozone Therapy">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label for="new_protocol_desc" style="font-size: 11px;">Autopopulated Description</label>
+                                    <input type="text" class="form-control" id="new_protocol_desc" placeholder="e.g. Ozone is a powerful healer...">
+                                </div>
+                                <div>
+                                    <button type="button" class="btn btn-primary" id="addConfigProtocolBtn" style="padding: 10px 14px;">Add</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Config Tab 2: Checkboxes Setup -->
+                    <div id="config-tab-checkboxes_setup" class="config-tab-pane" style="display: none;">
+                        <h3 style="font-size: 15px; margin-bottom: 12px;">📋 Custom Case Sheet Checkbox Options</h3>
+                        <p style="font-size: 12px; color: var(--text3); margin-bottom: 16px;">Edit options for the case sheet checkbox categories. Enter each option on a new line.</p>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                            <div class="form-group">
+                                <label for="config_past_history_options">Past Medical History — Conditions</label>
+                                <textarea class="form-control" id="config_past_history_options" rows="6" placeholder="One condition per line..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="config_family_history_options">Family History</label>
+                                <textarea class="form-control" id="config_family_history_options" rows="6" placeholder="One condition per line..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="config_rec_therapies_options">Recommended Therapies</label>
+                                <textarea class="form-control" id="config_rec_therapies_options" rows="6" placeholder="One therapy per line..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="config_prev_treatments_options">Previous Treatments Tried</label>
+                                <textarea class="form-control" id="config_prev_treatments_options" rows="6" placeholder="One treatment per line..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);">
+                        <button type="button" class="btn btn-outline" data-close="hospitalConfigModal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="saveHospitalConfigBtn">Save Configuration</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

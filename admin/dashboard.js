@@ -5,6 +5,172 @@
 const API_BASE = "/api";
 let activeTab = "overview";
 
+const DEFAULT_CASE_SHEET_CONFIG = {
+  protocols: [
+    { name: "Ozone Therapy", description: "Ozone is a powerful healer it improves oxygen delivery, boosts immunity, reduces inflammation & fights infections." },
+    { name: "Acupuncture", description: "Ancient healing for modern life. Relieves pain, reduces stress and restores natural balance." },
+    { name: "Naturopathy & Detox", description: "Natural therapies to detoxify, rejuvenate and strengthen the body naturally." },
+    { name: "Diabetic Wound Care", description: "Advanced wound healing solutions for diabetic foot and chronic wounds." },
+    { name: "Pain Management", description: "Non-surgical, drug-free approach to manage acute and chronic pain effectively." },
+    { name: "Cupping Therapy", description: "Cupping Therapy improves blood circulation, relieves muscle tension, and supports natural detoxification." },
+    { name: "Kansya Therapy", description: "Kansya Therapy is a traditional Indian therapeutic massage performed using a specially crafted Kansa metal tool to promote relaxation, circulation, detoxification, and holistic rejuvenation naturally." },
+    { name: "Energy Medicine", description: "Energy Medicine focuses on restoring the body's natural energy balance to support physical, emotional, and holistic well-being." },
+    { name: "Therapeutic Wellness Baths", description: "Traditional naturopathy therapies designed to support detoxification, relaxation, circulation, and holistic wellness naturally." },
+    { name: "Therapeutic Massages", description: "Therapeutic massages designed to promote relaxation, improve circulation, relieve muscle tension, and support overall physical and mental wellness naturally." }
+  ],
+  past_medical_history: [
+    "Diabetes Mellitus",
+    "Hypertension",
+    "Thyroid Disorder",
+    "Cardiac Disease",
+    "Asthma / Respiratory",
+    "Arthritis / Joint Disorders",
+    "Neurological Disorder",
+    "Kidney Disease",
+    "Liver Disease",
+    "Skin Disorders",
+    "Autoimmune Disorders",
+    "Cancer History",
+    "Psychological Disorders"
+  ],
+  family_history: [
+    "Diabetes",
+    "Hypertension",
+    "Cardiac Disease",
+    "Cancer",
+    "Thyroid Disorders",
+    "Neurological Disorders",
+    "Genetic Disorders"
+  ],
+  recommended_therapies: [
+    "Ozone Therapy",
+    "IV Nutritional Therapy",
+    "Physiotherapy",
+    "Massage Therapy",
+    "Cupping Therapy",
+    "Detoxification Therapy",
+    "Pain Management Therapy",
+    "Rehabilitation Therapy",
+    "Lifestyle Modification Program"
+  ],
+  previous_treatments: [
+    "Allopathy",
+    "Ayurveda",
+    "Homeopathy",
+    "Physiotherapy",
+    "Alternative Therapy",
+    "None"
+  ]
+};
+
+window.hospitalCaseSheetConfig = null;
+
+function sanitizeKey(str) {
+  return str.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').trim();
+}
+
+async function fetchCaseSheetConfig(force = false) {
+  if (window.hospitalCaseSheetConfig && !force) {
+    return window.hospitalCaseSheetConfig;
+  }
+  try {
+    const res = await fetch(`${API_BASE}/super?action=case-sheet-config`, {
+      headers: authHeaders(),
+    });
+    const data = await res.json();
+    if (res.ok && data.success && data.config) {
+      window.hospitalCaseSheetConfig = data.config;
+      return data.config;
+    }
+  } catch (err) {
+    console.error("Failed to fetch case sheet config:", err);
+  }
+  window.hospitalCaseSheetConfig = DEFAULT_CASE_SHEET_CONFIG;
+  return DEFAULT_CASE_SHEET_CONFIG;
+}
+
+function renderDynamicCaseSheetFields(config) {
+  // 1. Protocols Select Dropdown
+  const protocolSelect = document.getElementById("cs_protocol_service");
+  if (protocolSelect && config.protocols) {
+    const currentVal = protocolSelect.value;
+    protocolSelect.innerHTML = '<option value="">-- Select Service --</option>' + 
+      config.protocols.map(p => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join("");
+    protocolSelect.value = currentVal;
+  }
+
+  // Helper to render a checkbox grid
+  function renderGrid(containerId, options, prefix) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    const currentStates = {};
+    container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      currentStates[cb.name] = cb.checked;
+    });
+    const textInput = container.querySelector(`[name="cs_${prefix}other_text"]`);
+    const currentText = textInput ? textInput.value : "";
+
+    let html = "";
+    options.forEach(opt => {
+      const sanitized = sanitizeKey(opt);
+      const inputName = `cs_${prefix}${sanitized}`;
+      const checked = currentStates[inputName] ? "checked" : "";
+      html += `
+        <label class="checkbox-label">
+          <input type="checkbox" name="${inputName}" value="true" ${checked} data-option-name="${esc(opt)}"> 
+          ${esc(opt)}
+        </label>
+      `;
+    });
+
+    const hasOther = options.some(opt => opt.toLowerCase() === "other");
+    if (!hasOther) {
+      const inputName = `cs_${prefix}other`;
+      const checked = currentStates[inputName] ? "checked" : "";
+      html += `
+        <label class="checkbox-label">
+          <input type="checkbox" name="${inputName}" value="true" ${checked} data-option-name="Other"> 
+          Other
+        </label>
+      `;
+    }
+
+    const otherInputName = `cs_${prefix}other_text`;
+    const otherChecked = currentStates[`cs_${prefix}other`] || currentStates[`cs_${prefix}other_text`] || false;
+    const displayStyle = otherChecked ? "block" : "none";
+    html += `
+      <div class="other-input-wrapper" id="${prefix}other_wrapper" style="grid-column: 1 / -1; display: ${displayStyle}; margin-top: 6px;">
+        <input type="text" class="form-control" name="${otherInputName}" value="${esc(currentText)}" placeholder="Please specify details...">
+      </div>
+    `;
+
+    container.innerHTML = html;
+
+    // Attach click/change listeners to checkbox to toggle "other" text box
+    container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener("change", (e) => {
+        const isOther = e.target.getAttribute("data-option-name").toLowerCase() === "other" || e.target.name.endsWith("_other");
+        if (isOther) {
+          const wrapper = container.querySelector(".other-input-wrapper");
+          if (wrapper) {
+            wrapper.style.display = e.target.checked ? "block" : "none";
+            if (!e.target.checked) {
+              const textInp = wrapper.querySelector("input");
+              if (textInp) textInp.value = "";
+            }
+          }
+        }
+      });
+    });
+  }
+
+  renderGrid("cs_past_conditions_grid", config.past_medical_history || [], "past_");
+  renderGrid("cs_family_history_grid", config.family_history || [], "fam_");
+  renderGrid("cs_rec_therapies_grid", config.recommended_therapies || [], "rec_");
+  renderGrid("cs_prev_treatments_grid", config.previous_treatments || [], "prev_");
+}
+
 // Pagination States
 let patientPage = 1;
 let appointmentPage = 1;
@@ -94,6 +260,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Load dynamic menu items based on roles
     loadDynamicNavigation();
+    
+    // Fetch custom case sheet configs on load
+    await fetchCaseSheetConfig();
   }
 
   initDateTime();

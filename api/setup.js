@@ -137,6 +137,7 @@ module.exports = async function handler(req, res) {
     await sql`ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS gst_no VARCHAR(50)`;
     await sql`ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS gst_percent NUMERIC(5,2) DEFAULT 0.00`;
     await sql`ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS tax_name VARCHAR(50) DEFAULT 'GST'`;
+    await sql`ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS case_sheet_config TEXT`;
 
     // Migration: Add GST breakup columns to invoices
     await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS taxable_amount NUMERIC(15,2)`;
