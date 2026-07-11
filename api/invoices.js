@@ -1258,7 +1258,16 @@ module.exports = async function handler(req, res) {
       if (req.method === "GET") {
         try {
           await syncRoomInvoices(sql, targetHospitalId);
+          const allocationId = req.query.allocation_id;
+          if (allocationId) {
+            const rows = await sql`
+              SELECT * FROM invoices 
+              WHERE allocation_id = ${parseInt(allocationId)}
+            `;
+            return res.status(200).json({ success: true, invoices: rows });
+          }
           const search = req.query.search || "";
+
           const status = req.query.status || "";
           const page = parseInt(req.query.page) || 1;
           const limit = parseInt(req.query.limit) || 15;

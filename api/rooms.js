@@ -117,14 +117,14 @@ module.exports = async function handler(req, res) {
         if (id) {
           const rows = targetHospitalId !== null
             ? await sql`
-              SELECT ra.*, p.full_name as patient_name, r.room_no, r.room_type
+              SELECT ra.*, p.full_name as patient_name, r.room_no, r.room_type, r.price_per_day
               FROM room_allocations ra
               JOIN patients p ON ra.patient_id = p.id
               JOIN rooms r ON ra.room_id = r.id
               WHERE ra.id = ${parseInt(id)} AND ra.hospital_id = ${targetHospitalId}
             `
             : await sql`
-              SELECT ra.*, p.full_name as patient_name, r.room_no, r.room_type
+              SELECT ra.*, p.full_name as patient_name, r.room_no, r.room_type, r.price_per_day
               FROM room_allocations ra
               JOIN patients p ON ra.patient_id = p.id
               JOIN rooms r ON ra.room_id = r.id

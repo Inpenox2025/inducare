@@ -2828,6 +2828,23 @@ async function saveAllocation(e) {
 }
 
 window.dischargeAllocation = async function (id) {
+  // Check invoice balance before discharging
+  try {
+    const resInv = await fetch(`${API_BASE}/invoices?allocation_id=${id}`, { headers: authHeaders() });
+    const dataInv = await resInv.json();
+    if (resInv.ok && dataInv.success && dataInv.invoices && dataInv.invoices.length > 0) {
+      const inv = dataInv.invoices[0];
+      const due = parseFloat(inv.due_amount) || 0.00;
+      if (due > 0.01) {
+        alert(`❌ Cannot discharge patient! Outstanding balance of ${formatCurrency(due)} is pending. Please reconcile and clear all pending bills before discharge.`);
+        openReconciliationModal(inv.id, inv.invoice_no, inv.amount, inv.due_amount);
+        return;
+      }
+    }
+  } catch (err) {
+    console.error("Failed to verify outstanding bills before discharge:", err);
+  }
+
   if (
     !confirm(
       "Are you sure you want to discharge this patient? This will release the room.",
@@ -2850,6 +2867,7 @@ window.dischargeAllocation = async function (id) {
     showToast("Network error discharging patient", "error");
   }
 };
+
 
 // Visit dropdown loaders
 async function populateVisitModalDropdowns() {
