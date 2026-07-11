@@ -1,10 +1,10 @@
-const { getSQL } = require('../shared/db');
-const bcrypt = require('bcryptjs');
+const { getSQL } = require("../shared/db");
+const bcrypt = require("bcryptjs");
 
 module.exports = async function handler(req, res) {
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST' && req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST" && req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
@@ -228,7 +228,7 @@ module.exports = async function handler(req, res) {
     if (checkHospitals.length === 0) {
       const h1 = await sql`
         INSERT INTO hospitals (name, logo_data)
-        VALUES ('Inducare General Hospital', '')
+        VALUES ('icare General Hospital', '')
         RETURNING id
       `;
       await sql`
@@ -245,10 +245,10 @@ module.exports = async function handler(req, res) {
     const hospitals = await sql`SELECT id FROM hospitals`;
     for (const h of hospitals) {
       const rolesToSeed = [
-        { role_name: 'admin', description: 'Hospital Administrator' },
-        { role_name: 'nurse', description: 'Staff Nurse' },
-        { role_name: 'doctor', description: 'Medical Doctor' },
-        { role_name: 'pharmacist', description: 'Pharmacy Manager' }
+        { role_name: "admin", description: "Hospital Administrator" },
+        { role_name: "nurse", description: "Staff Nurse" },
+        { role_name: "doctor", description: "Medical Doctor" },
+        { role_name: "pharmacist", description: "Pharmacy Manager" },
       ];
       for (const r of rolesToSeed) {
         const checkRole = await sql`
@@ -263,30 +263,111 @@ module.exports = async function handler(req, res) {
         }
       }
 
-      const checkMenus = await sql`SELECT id FROM role_menus WHERE hospital_id = ${h.id} LIMIT 1`;
+      const checkMenus =
+        await sql`SELECT id FROM role_menus WHERE hospital_id = ${h.id} LIMIT 1`;
       if (checkMenus.length === 0) {
         const defaultMenus = [
           // Admin menus
-          { role_name: 'admin', menu_key: 'overview', menu_label: 'Overview Panel', menu_icon: '📊' },
-          { role_name: 'admin', menu_key: 'patients', menu_label: 'Patients Registry', menu_icon: '👥' },
-          { role_name: 'admin', menu_key: 'appointments', menu_label: 'Appointments', menu_icon: '📅' },
-          { role_name: 'admin', menu_key: 'invoices', menu_label: 'Billing & Invoices', menu_icon: '💳' },
-          { role_name: 'admin', menu_key: 'receipts-panel', menu_label: 'Payment Receipts', menu_icon: '🧾' },
-          { role_name: 'admin', menu_key: 'doctors', menu_label: 'Doctors Registry', menu_icon: '👨‍⚕️' },
-          { role_name: 'admin', menu_key: 'rooms', menu_label: 'Rooms & Allocations', menu_icon: '🏨' },
-          { role_name: 'admin', menu_key: 'hospital-setup', menu_label: 'Hospital Setup', menu_icon: '⚙️' },
-          
+          {
+            role_name: "admin",
+            menu_key: "overview",
+            menu_label: "Overview Panel",
+            menu_icon: "📊",
+          },
+          {
+            role_name: "admin",
+            menu_key: "patients",
+            menu_label: "Patients Registry",
+            menu_icon: "👥",
+          },
+          {
+            role_name: "admin",
+            menu_key: "appointments",
+            menu_label: "Appointments",
+            menu_icon: "📅",
+          },
+          {
+            role_name: "admin",
+            menu_key: "invoices",
+            menu_label: "Billing & Invoices",
+            menu_icon: "💳",
+          },
+          {
+            role_name: "admin",
+            menu_key: "receipts-panel",
+            menu_label: "Payment Receipts",
+            menu_icon: "🧾",
+          },
+          {
+            role_name: "admin",
+            menu_key: "doctors",
+            menu_label: "Doctors Registry",
+            menu_icon: "👨‍⚕️",
+          },
+          {
+            role_name: "admin",
+            menu_key: "rooms",
+            menu_label: "Rooms & Allocations",
+            menu_icon: "🏨",
+          },
+          {
+            role_name: "admin",
+            menu_key: "hospital-setup",
+            menu_label: "Hospital Setup",
+            menu_icon: "⚙️",
+          },
+
           // Nurse menus
-          { role_name: 'nurse', menu_key: 'overview', menu_label: 'Overview Panel', menu_icon: '📊' },
-          { role_name: 'nurse', menu_key: 'patients', menu_label: 'Patients Registry', menu_icon: '👥' },
-          { role_name: 'nurse', menu_key: 'appointments', menu_label: 'Appointments', menu_icon: '📅' },
-          { role_name: 'nurse', menu_key: 'receipts-panel', menu_label: 'Payment Receipts', menu_icon: '🧾' },
-          { role_name: 'nurse', menu_key: 'rooms', menu_label: 'Rooms & Allocations', menu_icon: '🏨' },
+          {
+            role_name: "nurse",
+            menu_key: "overview",
+            menu_label: "Overview Panel",
+            menu_icon: "📊",
+          },
+          {
+            role_name: "nurse",
+            menu_key: "patients",
+            menu_label: "Patients Registry",
+            menu_icon: "👥",
+          },
+          {
+            role_name: "nurse",
+            menu_key: "appointments",
+            menu_label: "Appointments",
+            menu_icon: "📅",
+          },
+          {
+            role_name: "nurse",
+            menu_key: "receipts-panel",
+            menu_label: "Payment Receipts",
+            menu_icon: "🧾",
+          },
+          {
+            role_name: "nurse",
+            menu_key: "rooms",
+            menu_label: "Rooms & Allocations",
+            menu_icon: "🏨",
+          },
 
           // Doctor menus
-          { role_name: 'doctor', menu_key: 'overview', menu_label: 'Overview Panel', menu_icon: '📊' },
-          { role_name: 'doctor', menu_key: 'patients', menu_label: 'Patients Registry', menu_icon: '👥' },
-          { role_name: 'doctor', menu_key: 'rooms', menu_label: 'Rooms & Allocations', menu_icon: '🏨' }
+          {
+            role_name: "doctor",
+            menu_key: "overview",
+            menu_label: "Overview Panel",
+            menu_icon: "📊",
+          },
+          {
+            role_name: "doctor",
+            menu_key: "patients",
+            menu_label: "Patients Registry",
+            menu_icon: "👥",
+          },
+          {
+            role_name: "doctor",
+            menu_key: "rooms",
+            menu_label: "Rooms & Allocations",
+            menu_icon: "🏨",
+          },
         ];
         for (const m of defaultMenus) {
           await sql`
@@ -311,9 +392,10 @@ module.exports = async function handler(req, res) {
     }
 
     // Seed default superadmin if not exists
-    const superRows = await sql`SELECT id FROM users WHERE username = 'superadmin'`;
+    const superRows =
+      await sql`SELECT id FROM users WHERE username = 'superadmin'`;
     if (superRows.length === 0) {
-      const hash = await bcrypt.hash('superpassword123', 10);
+      const hash = await bcrypt.hash("superpassword123", 10);
       await sql`
         INSERT INTO users (username, password_hash, role, hospital_id) 
         VALUES ('superadmin', ${hash}, 'super_admin', NULL)
@@ -324,7 +406,7 @@ module.exports = async function handler(req, res) {
     const adminRows = await sql`SELECT id FROM users WHERE username = 'admin'`;
     let adminId;
     if (adminRows.length === 0) {
-      const hash = await bcrypt.hash('admin123', 10);
+      const hash = await bcrypt.hash("admin123", 10);
       const inserted = await sql`
         INSERT INTO users (username, password_hash, role, hospital_id) 
         VALUES ('admin', ${hash}, 'admin', ${hospital1Id}) 
@@ -339,7 +421,7 @@ module.exports = async function handler(req, res) {
     // 6. Seed default nurse user if not exists
     const nurseRows = await sql`SELECT id FROM users WHERE username = 'nurse'`;
     if (nurseRows.length === 0) {
-      const hash = await bcrypt.hash('nurse123', 10);
+      const hash = await bcrypt.hash("nurse123", 10);
       await sql`
         INSERT INTO users (username, password_hash, role, hospital_id) 
         VALUES ('nurse', ${hash}, 'nurse', ${hospital1Id})
@@ -349,9 +431,10 @@ module.exports = async function handler(req, res) {
     }
 
     // 6b. Seed default doctor user if not exists
-    const doctorRows = await sql`SELECT id FROM users WHERE username = 'doctor'`;
+    const doctorRows =
+      await sql`SELECT id FROM users WHERE username = 'doctor'`;
     if (doctorRows.length === 0) {
-      const hash = await bcrypt.hash('doctor123', 10);
+      const hash = await bcrypt.hash("doctor123", 10);
       await sql`
         INSERT INTO users (username, password_hash, role, hospital_id) 
         VALUES ('doctor', ${hash}, 'doctor', ${hospital1Id})
@@ -366,9 +449,9 @@ module.exports = async function handler(req, res) {
       await sql`
         INSERT INTO doctors (name, specialization, phone, email, fee, hospital_id)
         VALUES 
-        ('Dr. Stephen Strange', 'Cardiology', '9876543220', 'strange@inducare.com', 500.00, ${hospital1Id}),
-        ('Dr. Gregory House', 'Diagnostics', '9876543221', 'house@inducare.com', 1200.00, ${hospital1Id}),
-        ('Dr. Meredith Grey', 'General Surgery', '9876543222', 'grey@inducare.com', 800.00, ${hospital1Id})
+        ('Dr. Stephen Strange', 'Cardiology', '9876543220', 'strange@icare.com', 500.00, ${hospital1Id}),
+        ('Dr. Gregory House', 'Diagnostics', '9876543221', 'house@icare.com', 1200.00, ${hospital1Id}),
+        ('Dr. Meredith Grey', 'General Surgery', '9876543222', 'grey@icare.com', 800.00, ${hospital1Id})
       `;
     } else {
       await sql`UPDATE doctors SET hospital_id = ${hospital1Id} WHERE hospital_id IS NULL`;
@@ -456,14 +539,16 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      message: 'Database tables initialized and seeded successfully.',
+      message: "Database tables initialized and seeded successfully.",
       credentials: {
-        admin: 'admin / admin123',
-        nurse: 'nurse / nurse123'
-      }
+        admin: "admin / admin123",
+        nurse: "nurse / nurse123",
+      },
     });
   } catch (error) {
-    console.error('Database setup error:', error);
-    return res.status(500).json({ error: 'Database setup failed', details: error.message });
+    console.error("Database setup error:", error);
+    return res
+      .status(500)
+      .json({ error: "Database setup failed", details: error.message });
   }
 };

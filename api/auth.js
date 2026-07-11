@@ -1,22 +1,32 @@
-const { getSQL } = require('../shared/db');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const { getSQL } = require("../shared/db");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
-const JWT_SECRET = process.env.JWT_SECRET || 'hospital-management-jwt-secret-key-2026';
+const JWT_SECRET =
+  process.env.JWT_SECRET || "hospital-management-jwt-secret-key-2026";
 
 module.exports = async function handler(req, res) {
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method === "OPTIONS") return res.status(200).end();
 
-  const action = req.query.action || (req.url && req.url.includes('/login') ? 'login' : req.url && req.url.includes('/me') ? 'me' : null);
+  const action =
+    req.query.action ||
+    (req.url && req.url.includes("/login")
+      ? "login"
+      : req.url && req.url.includes("/me")
+        ? "me"
+        : null);
 
   // ══════ Action: Login ══════
-  if (action === 'login') {
-    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (action === "login") {
+    if (req.method !== "POST")
+      return res.status(405).json({ error: "Method not allowed" });
 
     try {
       const { username, password } = req.body;
       if (!username || !password) {
-        return res.status(400).json({ error: 'Username and password are required' });
+        return res
+          .status(400)
+          .json({ error: "Username and password are required" });
       }
 
       const sql = getSQL();
@@ -30,50 +40,62 @@ module.exports = async function handler(req, res) {
            OR u.email = ${identifier}
       `;
       if (rows.length === 0) {
-        return res.status(401).json({ error: 'Invalid credentials' });
+        return res.status(401).json({ error: "Invalid credentials" });
       }
 
       const user = rows[0];
       const valid = await bcrypt.compare(password, user.password_hash);
       if (!valid) {
-        return res.status(401).json({ error: 'Invalid credentials' });
+        return res.status(401).json({ error: "Invalid credentials" });
       }
 
       const token = jwt.sign(
-        { id: user.id, username: user.username, role: user.role, hospital_id: user.hospital_id },
+        {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+          hospital_id: user.hospital_id,
+        },
         JWT_SECRET,
-        { expiresIn: '24h' }
+        { expiresIn: "24h" },
       );
 
       return res.status(200).json({
         success: true,
         token,
-        user: { 
-          id: user.id, 
-          username: user.username, 
-          role: user.role, 
+        user: {
+          id: user.id,
+          username: user.username,
+          role: user.role,
           hospital_id: user.hospital_id,
-          hospital_name: user.hospital_name || (user.role === 'super_admin' ? 'Super Admin Portal' : 'Inducare Portal'),
-          hospital_logo: user.hospital_logo || ''
-        }
+          hospital_name:
+            user.hospital_name ||
+            (user.role === "super_admin"
+              ? "Super Admin Portal"
+              : "icare Portal"),
+          hospital_logo: user.hospital_logo || "",
+        },
       });
     } catch (error) {
-      console.error('Login error:', error);
-      return res.status(500).json({ error: 'Login failed', details: error.message });
+      console.error("Login error:", error);
+      return res
+        .status(500)
+        .json({ error: "Login failed", details: error.message });
     }
-  } 
-  
+  }
+
   // ══════ Action: Verify Token (Me) ══════
-  else if (action === 'me') {
-    if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  else if (action === "me") {
+    if (req.method !== "GET")
+      return res.status(405).json({ error: "Method not allowed" });
 
     try {
       const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: 'No token provided' });
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ error: "No token provided" });
       }
 
-      const token = authHeader.split(' ')[1];
+      const token = authHeader.split(" ")[1];
       const decoded = jwt.verify(token, JWT_SECRET);
 
       const sql = getSQL();
@@ -84,27 +106,29 @@ module.exports = async function handler(req, res) {
         WHERE u.id = ${decoded.id}
       `;
       if (userRows.length === 0) {
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({ error: "User not found" });
       }
       const user = userRows[0];
 
       return res.status(200).json({
         success: true,
-        user: { 
-          id: user.id, 
-          username: user.username, 
-          role: user.role, 
+        user: {
+          id: user.id,
+          username: user.username,
+          role: user.role,
           hospital_id: user.hospital_id,
-          hospital_name: user.hospital_name || (user.role === 'super_admin' ? 'Super Admin Portal' : 'Inducare Portal'),
-          hospital_logo: user.hospital_logo || ''
-        }
+          hospital_name:
+            user.hospital_name ||
+            (user.role === "super_admin"
+              ? "Super Admin Portal"
+              : "icare Portal"),
+          hospital_logo: user.hospital_logo || "",
+        },
       });
     } catch (error) {
-      return res.status(401).json({ error: 'Invalid or expired token' });
+      return res.status(401).json({ error: "Invalid or expired token" });
     }
-  } 
-  
-  else {
-    return res.status(404).json({ error: 'Endpoint action not found' });
+  } else {
+    return res.status(404).json({ error: "Endpoint action not found" });
   }
 };

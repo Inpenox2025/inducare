@@ -70,7 +70,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (user) {
     document.getElementById("userName").textContent = user.username;
     document.getElementById("userRole").textContent = user.role;
-    
+
     // Update logo/branding headers dynamically
     const logoBox = document.getElementById("logoBox");
     const brandText = document.getElementById("brandText");
@@ -83,9 +83,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       logoBox.style.backgroundColor = "#00bba8";
     }
     if (brandText) {
-      brandText.innerHTML = `${esc(user.hospital_name || 'Inducare')} <span>Staff Portal</span>`;
+      brandText.innerHTML = `${esc(user.hospital_name || "icare")} <span>Staff Portal</span>`;
     }
-    
+
     document.getElementById("headerAvatar").textContent = user.username
       .charAt(0)
       .toUpperCase();
@@ -131,9 +131,14 @@ function switchTab(tabName) {
   if (!user) return;
 
   // Enforce dynamic sidebar visible navigation checks
-  if (user.role !== 'super_admin') {
-    const navLink = document.getElementById(`nav${tabName.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('')}`);
-    if (navLink && navLink.style.display === 'none') {
+  if (user.role !== "super_admin") {
+    const navLink = document.getElementById(
+      `nav${tabName
+        .split("-")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join("")}`,
+    );
+    if (navLink && navLink.style.display === "none") {
       showToast("Access Denied. Restricted panel view.", "error");
       return;
     }
@@ -154,7 +159,8 @@ function switchTab(tabName) {
     if (tabName === "staff") {
       pageTitle.textContent = "User Accounts & Passwords";
     } else {
-      pageTitle.textContent = tabName.charAt(0).toUpperCase() + tabName.slice(1).replace("-", " ");
+      pageTitle.textContent =
+        tabName.charAt(0).toUpperCase() + tabName.slice(1).replace("-", " ");
     }
   }
 
@@ -351,10 +357,12 @@ function renderCaseSheetHTML(p) {
   const gender = p.gender || "—";
 
   const user = getUser();
-  const dynHospTitle = user && user.hospital_name ? user.hospital_name.toUpperCase() : "INDUCARE";
-  const headerLogoHTML = user && user.hospital_logo 
-    ? `<img src="${user.hospital_logo}" style="max-height:50px; display:block; margin: 0 auto 8px auto; object-fit: contain;">`
-    : `<div style="font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; color: #00bba8; letter-spacing: 0.5px; text-align: center; margin-bottom: 8px;">${dynHospTitle}</div>`;
+  const dynHospTitle =
+    user && user.hospital_name ? user.hospital_name.toUpperCase() : "icare";
+  const headerLogoHTML =
+    user && user.hospital_logo
+      ? `<img src="${user.hospital_logo}" style="max-height:50px; display:block; margin: 0 auto 8px auto; object-fit: contain;">`
+      : `<div style="font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; color: #00bba8; letter-spacing: 0.5px; text-align: center; margin-bottom: 8px;">${dynHospTitle}</div>`;
 
   let cs = {};
   if (p.case_sheet_data) {
@@ -584,7 +592,7 @@ function renderCaseSheetHTML(p) {
       <div class="case-sheet-section" style="margin-top: 20px;">
         <div class="case-sheet-section-title">Declaration & Signatures</div>
         <p style="font-size: 11.5px; line-height: 1.5; color: var(--text2); font-style: italic; margin-bottom: 20px;">
-          I hereby declare that the medical information provided by me is true and complete to the best of my knowledge. I understand that withholding relevant medical information may affect the safety and effectiveness of my treatment. I authorize the healthcare professionals at Inducare Clinic ERP and associated practitioners to evaluate, examine, and provide appropriate wellness therapies and treatment procedures as clinically indicated.
+          I hereby declare that the medical information provided by me is true and complete to the best of my knowledge. I understand that withholding relevant medical information may affect the safety and effectiveness of my treatment. I authorize the healthcare professionals at icare Clinic ERP and associated practitioners to evaluate, examine, and provide appropriate wellness therapies and treatment procedures as clinically indicated.
         </p>
         
         <div style="font-size: 13px; margin-bottom: 24px; background-color:#f8fafc; border:1px solid var(--border); border-radius:6px; padding:12px;">
@@ -696,17 +704,28 @@ function renderCaseSheetHTML(p) {
 
       <!-- PAGE 3: DOCTOR VISITS HISTORY (DYNAMIC IF DATA EXISTS) -->
       ${(() => {
-        if (cs.doctor_visits && Array.isArray(cs.doctor_visits) && cs.doctor_visits.length > 0) {
-          const rowsHTML = cs.doctor_visits.map(v => `
+        if (
+          cs.doctor_visits &&
+          Array.isArray(cs.doctor_visits) &&
+          cs.doctor_visits.length > 0
+        ) {
+          const rowsHTML = cs.doctor_visits
+            .map(
+              (v) => `
             <tr>
               <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${formatDate(v.visit_date)}</td>
               <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-weight:600;">${esc(v.doctor_name)}</td>
               <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-size:11px; color:#555;">Temp: ${esc(v.temp)} &deg;F | BP: ${esc(v.bp)} | HR: ${esc(v.hr)} bpm</td>
               <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${esc(v.notes)}</td>
             </tr>
-          `).join("");
+          `,
+            )
+            .join("");
 
-          const dynHospTitle = user && user.hospital_name ? user.hospital_name.toUpperCase() : "INDUCARE";
+          const dynHospTitle =
+            user && user.hospital_name
+              ? user.hospital_name.toUpperCase()
+              : "icare";
 
           return `
             <div class="case-sheet-page-break"></div>
@@ -769,7 +788,7 @@ window.viewCaseSheet = async function (id) {
         printBtn.onclick = () => {
           const originalTitle = document.title;
           const patientNameClean = p.full_name ? p.full_name.trim() : "Patient";
-          document.title = `${patientNameClean} - Inducare`;
+          document.title = `${patientNameClean} - icare`;
           window.print();
           setTimeout(() => {
             document.title = originalTitle;
@@ -1392,13 +1411,16 @@ async function processReconciliation(e) {
     if (updateRes.ok && result.success) {
       showToast(
         `Recorded ₹ ${payAmount} paid in ${mode.toUpperCase()}!`,
-        "success"
+        "success",
       );
       loadInvoiceReceiptsLog(id);
       document.getElementById("recon_paid_amount").value = "";
       const newInvoice = result.invoice;
-      document.getElementById("reconCurrentDue").textContent = formatCurrency(newInvoice.due_amount);
-      document.getElementById("recon_paid_amount").value = newInvoice.due_amount;
+      document.getElementById("reconCurrentDue").textContent = formatCurrency(
+        newInvoice.due_amount,
+      );
+      document.getElementById("recon_paid_amount").value =
+        newInvoice.due_amount;
       document.getElementById("recon_paid_amount").max = newInvoice.due_amount;
       loadInvoices();
     } else {
@@ -1420,7 +1442,7 @@ window.downloadInvoiceReceipt = async function (id, patientName) {
     const blob = await res.blob();
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `${patientName || "Patient"} - Inducare.pdf`;
+    a.download = `${patientName || "Patient"} - icare.pdf`;
     a.click();
     URL.revokeObjectURL(a.href);
     showToast("Receipt PDF downloaded!", "success");
@@ -1568,8 +1590,10 @@ async function saveStaff(e) {
       );
       closeModal("staffModal");
       const user = getUser();
-      if (user && user.role === 'super_admin') {
-        const activeHospSelect = document.getElementById("super_user_hospital_select");
+      if (user && user.role === "super_admin") {
+        const activeHospSelect = document.getElementById(
+          "super_user_hospital_select",
+        );
         if (activeHospSelect) {
           loadSuperHospitalUsers(activeHospSelect.value);
         }
@@ -1606,7 +1630,7 @@ window.editStaff = async function (id) {
       const staffHospGroup = document.getElementById("staff_hosp_group");
       const staffHospSelect = document.getElementById("staff_hospital_id");
       const user = getUser();
-      if (user && user.role === 'super_admin') {
+      if (user && user.role === "super_admin") {
         if (staffHospGroup) staffHospGroup.style.display = "block";
         if (staffHospSelect) staffHospSelect.value = u.hospital_id || "";
       } else {
@@ -1651,8 +1675,10 @@ window.deleteStaff = async function (id) {
       alert("Staff login account removed successfully!");
       showToast("Staff login removed", "success");
       const user = getUser();
-      if (user && user.role === 'super_admin') {
-        const activeHospSelect = document.getElementById("super_user_hospital_select");
+      if (user && user.role === "super_admin") {
+        const activeHospSelect = document.getElementById(
+          "super_user_hospital_select",
+        );
         if (activeHospSelect) {
           loadSuperHospitalUsers(activeHospSelect.value);
         }
@@ -1686,18 +1712,28 @@ function initEventListeners() {
   document.getElementById("staffForm").addEventListener("submit", saveStaff);
   document.getElementById("doctorForm").addEventListener("submit", saveDoctor);
   document.getElementById("roomForm").addEventListener("submit", saveRoom);
-  document.getElementById("allocationForm").addEventListener("submit", saveAllocation);
-  document.getElementById("visitForm").addEventListener("submit", saveDoctorVisit);
-  document.getElementById("hospitalSetupForm").addEventListener("submit", saveHospitalSetup);
-  document.getElementById("superHospitalForm").addEventListener("submit", saveSuperHospital);
-  document.getElementById("superRoleForm").addEventListener("submit", saveSuperRole);
+  document
+    .getElementById("allocationForm")
+    .addEventListener("submit", saveAllocation);
+  document
+    .getElementById("visitForm")
+    .addEventListener("submit", saveDoctorVisit);
+  document
+    .getElementById("hospitalSetupForm")
+    .addEventListener("submit", saveHospitalSetup);
+  document
+    .getElementById("superHospitalForm")
+    .addEventListener("submit", saveSuperHospital);
+  document
+    .getElementById("superRoleForm")
+    .addEventListener("submit", saveSuperRole);
 
   // File logo upload read DataURL base64
   document.getElementById("hosp_logo_file").addEventListener("change", (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = function(evt) {
+      reader.onload = function (evt) {
         const preview = document.getElementById("hosp_logo_preview");
         const emptyText = document.getElementById("hosp_logo_empty_text");
         if (preview) preview.src = evt.target.result;
@@ -1715,7 +1751,7 @@ function initEventListeners() {
       const file = e.target.files[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = function(evt) {
+        reader.onload = function (evt) {
           window.tempHospitalLogoBase64 = evt.target.result;
         };
         reader.readAsDataURL(file);
@@ -1724,22 +1760,28 @@ function initEventListeners() {
   }
 
   // Dynamic menu mapper updates
-  document.getElementById("menu_role_select").addEventListener("change", (e) => {
-    loadRoleMenusConfig(e.target.value);
-  });
+  document
+    .getElementById("menu_role_select")
+    .addEventListener("change", (e) => {
+      loadRoleMenusConfig(e.target.value);
+    });
 
   document.getElementById("loadMenuConfigBtn").addEventListener("click", () => {
     const role = document.getElementById("menu_role_select").value;
     loadRoleMenusConfig(role);
   });
 
-  document.getElementById("saveMenuConfigBtn").addEventListener("click", saveRoleMenu);
+  document
+    .getElementById("saveMenuConfigBtn")
+    .addEventListener("click", saveRoleMenu);
 
   document.getElementById("addHospBtn").addEventListener("click", () => {
     document.getElementById("superHospitalForm").reset();
     document.getElementById("super_hosp_id").value = "";
-    document.getElementById("superHospitalModalTitle").textContent = "Add Hospital Registry";
-    document.getElementById("superHospitalSubmitBtn").textContent = "Create Hospital";
+    document.getElementById("superHospitalModalTitle").textContent =
+      "Add Hospital Registry";
+    document.getElementById("superHospitalSubmitBtn").textContent =
+      "Create Hospital";
     window.tempHospitalLogoBase64 = "";
     openModal("superHospitalModal");
   });
@@ -1747,16 +1789,17 @@ function initEventListeners() {
   document.getElementById("createRoleBtn").addEventListener("click", () => {
     document.getElementById("superRoleForm").reset();
     document.getElementById("super_role_id").value = "";
-    document.getElementById("superRoleModalTitle").textContent = "Create Custom Role";
+    document.getElementById("superRoleModalTitle").textContent =
+      "Create Custom Role";
     document.getElementById("superRoleSubmitBtn").textContent = "Create Role";
     const hospGroup = document.getElementById("super_role_hosp_group");
     if (hospGroup) hospGroup.style.display = "block";
     openModal("superRoleModal");
   });
 
-
-
-  const superMenuHospitalSelect = document.getElementById("super_menu_hospital_select");
+  const superMenuHospitalSelect = document.getElementById(
+    "super_menu_hospital_select",
+  );
   if (superMenuHospitalSelect) {
     superMenuHospitalSelect.addEventListener("change", (e) => {
       loadSuperRoles(e.target.value);
@@ -1774,7 +1817,8 @@ function initEventListeners() {
   document.getElementById("addDoctorBtn").addEventListener("click", () => {
     document.getElementById("doctorForm").reset();
     document.getElementById("doctor_id").value = "";
-    document.getElementById("doctorModalTitle").textContent = "Register New Doctor";
+    document.getElementById("doctorModalTitle").textContent =
+      "Register New Doctor";
     openModal("doctorModal");
   });
 
@@ -1782,7 +1826,7 @@ function initEventListeners() {
     document.getElementById("roomForm").reset();
     document.getElementById("room_id").value = "";
     document.getElementById("roomModalTitle").textContent = "Add Clinical Room";
-    
+
     const roomHospGroup = document.getElementById("room_hosp_group");
     if (roomHospGroup) roomHospGroup.style.display = "none";
 
@@ -1794,12 +1838,15 @@ function initEventListeners() {
     superAddRoomBtn.addEventListener("click", () => {
       document.getElementById("roomForm").reset();
       document.getElementById("room_id").value = "";
-      document.getElementById("roomModalTitle").textContent = "Add Clinical Room to Hospital";
-      
+      document.getElementById("roomModalTitle").textContent =
+        "Add Clinical Room to Hospital";
+
       const roomHospGroup = document.getElementById("room_hosp_group");
       if (roomHospGroup) roomHospGroup.style.display = "block";
 
-      const superRoomHospSelect = document.getElementById("super_room_hospital_select");
+      const superRoomHospSelect = document.getElementById(
+        "super_room_hospital_select",
+      );
       const roomHospSelect = document.getElementById("room_hospital_id");
       if (superRoomHospSelect && roomHospSelect) {
         roomHospSelect.value = superRoomHospSelect.value;
@@ -1812,23 +1859,29 @@ function initEventListeners() {
   const superFetchRoomsBtn = document.getElementById("superFetchRoomsBtn");
   if (superFetchRoomsBtn) {
     superFetchRoomsBtn.addEventListener("click", () => {
-      const hospId = document.getElementById("super_room_hospital_select").value;
+      const hospId = document.getElementById(
+        "super_room_hospital_select",
+      ).value;
       loadSuperHospitalRooms(hospId);
     });
   }
 
-  const superRoomHospitalSelect = document.getElementById("super_room_hospital_select");
+  const superRoomHospitalSelect = document.getElementById(
+    "super_room_hospital_select",
+  );
   if (superRoomHospitalSelect) {
     superRoomHospitalSelect.addEventListener("change", (e) => {
       loadSuperHospitalRooms(e.target.value);
     });
   }
 
-  document.getElementById("allocateRoomBtn").addEventListener("click", async () => {
-    document.getElementById("allocationForm").reset();
-    await populateAllocationModalDropdowns();
-    openModal("allocationModal");
-  });
+  document
+    .getElementById("allocateRoomBtn")
+    .addEventListener("click", async () => {
+      document.getElementById("allocationForm").reset();
+      await populateAllocationModalDropdowns();
+      openModal("allocationModal");
+    });
 
   document.getElementById("logVisitBtn").addEventListener("click", async () => {
     document.getElementById("visitForm").reset();
@@ -1837,12 +1890,14 @@ function initEventListeners() {
   });
 
   let doctorSearchTimeout;
-  document.getElementById("searchDoctorInput").addEventListener("input", (e) => {
-    clearTimeout(doctorSearchTimeout);
-    doctorSearchTimeout = setTimeout(() => {
-      loadDoctors(e.target.value.trim());
-    }, 400);
-  });
+  document
+    .getElementById("searchDoctorInput")
+    .addEventListener("input", (e) => {
+      clearTimeout(doctorSearchTimeout);
+      doctorSearchTimeout = setTimeout(() => {
+        loadDoctors(e.target.value.trim());
+      }, 400);
+    });
 
   // Modal form tab clicks
   document.querySelectorAll(".modal-tab-btn").forEach((btn) => {
@@ -1961,7 +2016,9 @@ function initEventListeners() {
       if (staffHospGroup) staffHospGroup.style.display = "block";
 
       // Match selected hospital dropdown option
-      const superUserHospSelect = document.getElementById("super_user_hospital_select");
+      const superUserHospSelect = document.getElementById(
+        "super_user_hospital_select",
+      );
       const staffHospSelect = document.getElementById("staff_hospital_id");
       const targetHospId = superUserHospSelect ? superUserHospSelect.value : 1;
       await populateStaffRoleDropdown(targetHospId);
@@ -1977,7 +2034,8 @@ function initEventListeners() {
       document.getElementById("staffPassLabel").innerHTML =
         'Password <span class="req">*</span>';
 
-      document.getElementById("saveStaffBtn").textContent = "Create User Account";
+      document.getElementById("saveStaffBtn").textContent =
+        "Create User Account";
       openModal("staffModal");
     });
   }
@@ -1985,12 +2043,16 @@ function initEventListeners() {
   const superFetchUsersBtn = document.getElementById("superFetchUsersBtn");
   if (superFetchUsersBtn) {
     superFetchUsersBtn.addEventListener("click", () => {
-      const hospId = document.getElementById("super_user_hospital_select").value;
+      const hospId = document.getElementById(
+        "super_user_hospital_select",
+      ).value;
       loadSuperHospitalUsers(hospId);
     });
   }
 
-  const superUserHospitalSelect = document.getElementById("super_user_hospital_select");
+  const superUserHospitalSelect = document.getElementById(
+    "super_user_hospital_select",
+  );
   if (superUserHospitalSelect) {
     superUserHospitalSelect.addEventListener("change", (e) => {
       loadSuperHospitalUsers(e.target.value);
@@ -2058,16 +2120,21 @@ function initEventListeners() {
       loadInvoices();
     });
 
-  const superExportPatientsBtn = document.getElementById("superExportPatientsBtn");
+  const superExportPatientsBtn = document.getElementById(
+    "superExportPatientsBtn",
+  );
   if (superExportPatientsBtn) {
     superExportPatientsBtn.addEventListener("click", async () => {
       try {
         const token = getToken();
-        const response = await fetch(`${API_BASE}/super?action=export-patients`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const response = await fetch(
+          `${API_BASE}/super?action=export-patients`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
         if (!response.ok) throw new Error("Export failed");
-        
+
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -2084,7 +2151,9 @@ function initEventListeners() {
     });
   }
 
-  const superPatientSearchInput = document.getElementById("super_patient_search");
+  const superPatientSearchInput = document.getElementById(
+    "super_patient_search",
+  );
   if (superPatientSearchInput) {
     superPatientSearchInput.addEventListener("input", (e) => {
       const search = e.target.value.toLowerCase().trim();
@@ -2092,12 +2161,13 @@ function initEventListeners() {
         renderSuperPatientsTable(superPatientsList);
         return;
       }
-      const filtered = superPatientsList.filter(p => 
-        (p.full_name && p.full_name.toLowerCase().includes(search)) ||
-        (p.mobile_no && p.mobile_no.toLowerCase().includes(search)) ||
-        (p.email && p.email.toLowerCase().includes(search)) ||
-        (p.hospital_name && p.hospital_name.toLowerCase().includes(search)) ||
-        p.id.toString() === search
+      const filtered = superPatientsList.filter(
+        (p) =>
+          (p.full_name && p.full_name.toLowerCase().includes(search)) ||
+          (p.mobile_no && p.mobile_no.toLowerCase().includes(search)) ||
+          (p.email && p.email.toLowerCase().includes(search)) ||
+          (p.hospital_name && p.hospital_name.toLowerCase().includes(search)) ||
+          p.id.toString() === search,
       );
       renderSuperPatientsTable(filtered);
     });
@@ -2283,27 +2353,34 @@ function esc(str) {
 async function loadDoctors(search = "") {
   const tbody = document.getElementById("doctorsTableBody");
   try {
-    const res = await fetch(`${API_BASE}/doctors?search=${encodeURIComponent(search)}`, {
-      headers: authHeaders()
-    });
+    const res = await fetch(
+      `${API_BASE}/doctors?search=${encodeURIComponent(search)}`,
+      {
+        headers: authHeaders(),
+      },
+    );
     const data = await res.json();
     if (!res.ok || !data.success) {
-      tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">Failed to load doctors list.</td></tr>';
+      tbody.innerHTML =
+        '<tr><td colspan="7" class="empty-cell">Failed to load doctors list.</td></tr>';
       return;
     }
 
     if (data.doctors.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">No doctors registered in clinical directory.</td></tr>';
+      tbody.innerHTML =
+        '<tr><td colspan="7" class="empty-cell">No doctors registered in clinical directory.</td></tr>';
       return;
     }
 
-    tbody.innerHTML = data.doctors.map(d => `
+    tbody.innerHTML = data.doctors
+      .map(
+        (d) => `
       <tr>
         <td data-label="ID"><span style="color:var(--primary); font-weight:600;">#${d.id}</span></td>
         <td data-label="Doctor Name"><strong>${esc(d.name)}</strong></td>
         <td data-label="Specialization"><span style="font-weight:600; color:var(--text2);">${esc(d.specialization)}</span></td>
-        <td data-label="Phone">${esc(d.phone || '—')}</td>
-        <td data-label="Email">${esc(d.email || '—')}</td>
+        <td data-label="Phone">${esc(d.phone || "—")}</td>
+        <td data-label="Email">${esc(d.email || "—")}</td>
         <td data-label="Consultation Fee"><strong>${formatCurrency(d.fee)}</strong></td>
         <td data-label="Actions">
           <div style="display: flex; gap: 6px; flex-wrap: wrap;">
@@ -2312,9 +2389,12 @@ async function loadDoctors(search = "") {
           </div>
         </td>
       </tr>
-    `).join("");
+    `,
+      )
+      .join("");
   } catch (err) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">Error loading doctor records.</td></tr>';
+    tbody.innerHTML =
+      '<tr><td colspan="7" class="empty-cell">Error loading doctor records.</td></tr>';
   }
 }
 
@@ -2332,12 +2412,15 @@ async function saveDoctor(e) {
     const res = await fetch(url, {
       method,
       headers: authHeaders(),
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
     });
 
     const result = await res.json();
     if (res.ok && result.success) {
-      showToast(id ? "Doctor profile updated!" : "Doctor registered successfully!", "success");
+      showToast(
+        id ? "Doctor profile updated!" : "Doctor registered successfully!",
+        "success",
+      );
       closeModal("doctorModal");
       loadDoctors();
     } else {
@@ -2350,11 +2433,14 @@ async function saveDoctor(e) {
 
 window.editDoctor = async function (id) {
   try {
-    const res = await fetch(`${API_BASE}/doctors/${id}`, { headers: authHeaders() });
+    const res = await fetch(`${API_BASE}/doctors/${id}`, {
+      headers: authHeaders(),
+    });
     const data = await res.json();
     if (res.ok && data.success) {
       const d = data.doctor;
-      document.getElementById("doctorModalTitle").textContent = "Modify Doctor Credentials";
+      document.getElementById("doctorModalTitle").textContent =
+        "Modify Doctor Credentials";
       document.getElementById("doctor_id").value = d.id;
       document.getElementById("doctor_name_input").value = d.name;
       document.getElementById("doctor_spec").value = d.specialization || "";
@@ -2373,7 +2459,7 @@ window.deleteDoctor = async function (id) {
   try {
     const res = await fetch(`${API_BASE}/doctors/${id}`, {
       method: "DELETE",
-      headers: authHeaders()
+      headers: authHeaders(),
     });
     if (res.ok) {
       showToast("Doctor removed successfully", "success");
@@ -2398,11 +2484,15 @@ async function loadRooms() {
   const user = getUser();
   const addRoomBtn = document.getElementById("addRoomBtn");
   if (addRoomBtn) {
-    addRoomBtn.style.display = (user && user.role === 'super_admin') ? '' : 'none';
+    addRoomBtn.style.display =
+      user && user.role === "super_admin" ? "" : "none";
   }
 
   const roomActionsHeaders = document.querySelectorAll(".room-actions-col");
-  roomActionsHeaders.forEach(el => el.style.display = (user && user.role === 'super_admin') ? '' : 'none');
+  roomActionsHeaders.forEach(
+    (el) =>
+      (el.style.display = user && user.role === "super_admin" ? "" : "none"),
+  );
 
   // 1. Fetch & Load Rooms list
   try {
@@ -2410,39 +2500,56 @@ async function loadRooms() {
     const data = await res.json();
     if (res.ok && data.success) {
       if (data.rooms.length === 0) {
-        roomsTbody.innerHTML = '<tr><td colspan="5" class="empty-cell">No clinical rooms registered.</td></tr>';
+        roomsTbody.innerHTML =
+          '<tr><td colspan="5" class="empty-cell">No clinical rooms registered.</td></tr>';
       } else {
-        roomsTbody.innerHTML = data.rooms.map(r => `
+        roomsTbody.innerHTML = data.rooms
+          .map(
+            (r) => `
           <tr>
             <td data-label="Room No"><strong>${esc(r.room_no)}</strong></td>
             <td data-label="Type">${esc(r.room_type)}</td>
-            <td data-label="Status"><span class="badge badge-${r.status === 'available' ? 'paid' : r.status === 'occupied' ? 'unpaid' : 'partial'}">${esc(r.status)}</span></td>
+            <td data-label="Status"><span class="badge badge-${r.status === "available" ? "paid" : r.status === "occupied" ? "unpaid" : "partial"}">${esc(r.status)}</span></td>
             <td data-label="Price / Day"><strong>${formatCurrency(r.price_per_day)}</strong></td>
-            ${(user && user.role === 'super_admin') ? `
+            ${
+              user && user.role === "super_admin"
+                ? `
             <td data-label="Actions">
               <div style="display: flex; gap: 6px;">
                 <button class="action-btn btn-edit" onclick="editRoom(${r.id})">Edit</button>
                 <button class="action-btn btn-delete" onclick="deleteRoom(${r.id})">Delete</button>
               </div>
-            </td>` : ''}
+            </td>`
+                : ""
+            }
           </tr>
-        `).join("");
+        `,
+          )
+          .join("");
       }
     }
   } catch (err) {
-    roomsTbody.innerHTML = '<tr><td colspan="5" class="empty-cell">Error loading room inventory.</td></tr>';
+    roomsTbody.innerHTML =
+      '<tr><td colspan="5" class="empty-cell">Error loading room inventory.</td></tr>';
   }
 
   // 2. Fetch & Load Allocations list
   try {
-    const res = await fetch(`${API_BASE}/rooms/allocations`, { headers: authHeaders() });
+    const res = await fetch(`${API_BASE}/rooms/allocations`, {
+      headers: authHeaders(),
+    });
     const data = await res.json();
     if (res.ok && data.success) {
-      const activeAllocs = data.allocations.filter(a => a.status === 'active');
+      const activeAllocs = data.allocations.filter(
+        (a) => a.status === "active",
+      );
       if (activeAllocs.length === 0) {
-        allocsTbody.innerHTML = '<tr><td colspan="4" class="empty-cell">No patients currently admitted.</td></tr>';
+        allocsTbody.innerHTML =
+          '<tr><td colspan="4" class="empty-cell">No patients currently admitted.</td></tr>';
       } else {
-        allocsTbody.innerHTML = activeAllocs.map(a => `
+        allocsTbody.innerHTML = activeAllocs
+          .map(
+            (a) => `
           <tr>
             <td data-label="Room"><strong>${esc(a.room_no)}</strong> <span style="font-size:10px; color:var(--text3);">(${esc(a.room_type)})</span></td>
             <td data-label="Patient"><strong>${esc(a.patient_name)}</strong></td>
@@ -2451,35 +2558,46 @@ async function loadRooms() {
               <button class="action-btn btn-delete" style="background-color: var(--warning); color:#fff;" onclick="dischargeAllocation(${a.id})">Discharge</button>
             </td>
           </tr>
-        `).join("");
+        `,
+          )
+          .join("");
       }
     }
   } catch (err) {
-    allocsTbody.innerHTML = '<tr><td colspan="4" class="empty-cell">Error loading active allocations.</td></tr>';
+    allocsTbody.innerHTML =
+      '<tr><td colspan="4" class="empty-cell">Error loading active allocations.</td></tr>';
   }
 
   // 3. Fetch & Load Visits list
   try {
-    const res = await fetch(`${API_BASE}/rooms/visits`, { headers: authHeaders() });
+    const res = await fetch(`${API_BASE}/rooms/visits`, {
+      headers: authHeaders(),
+    });
     const data = await res.json();
     if (res.ok && data.success) {
       if (data.visits.length === 0) {
-        visitsTbody.innerHTML = '<tr><td colspan="6" class="empty-cell">No doctor visits logged in rooms yet.</td></tr>';
+        visitsTbody.innerHTML =
+          '<tr><td colspan="6" class="empty-cell">No doctor visits logged in rooms yet.</td></tr>';
       } else {
-        visitsTbody.innerHTML = data.visits.map(v => `
+        visitsTbody.innerHTML = data.visits
+          .map(
+            (v) => `
           <tr>
             <td data-label="Room"><strong>${esc(v.room_no)}</strong></td>
             <td data-label="Patient">${esc(v.patient_name)}</td>
             <td data-label="Visiting Doctor"><strong>${esc(v.doctor_name)}</strong> <small style="color:var(--text3); display:block;">${esc(v.doctor_specialization)}</small></td>
             <td data-label="Visit Date">${formatDate(v.visit_date)}</td>
-            <td data-label="Vitals (Temp/BP/HR)">Temp: ${esc(v.temperature || '—')} &deg;F<br>BP: ${esc(v.blood_pressure || '—')}<br>HR: ${esc(v.heart_rate || '—')} bpm</td>
-            <td data-label="Clinical notes" style="max-width: 250px; font-style:italic;">${esc(v.clinical_notes || 'No remarks recorded.')}</td>
+            <td data-label="Vitals (Temp/BP/HR)">Temp: ${esc(v.temperature || "—")} &deg;F<br>BP: ${esc(v.blood_pressure || "—")}<br>HR: ${esc(v.heart_rate || "—")} bpm</td>
+            <td data-label="Clinical notes" style="max-width: 250px; font-style:italic;">${esc(v.clinical_notes || "No remarks recorded.")}</td>
           </tr>
-        `).join("");
+        `,
+          )
+          .join("");
       }
     }
   } catch (err) {
-    visitsTbody.innerHTML = '<tr><td colspan="6" class="empty-cell">Error loading visit history.</td></tr>';
+    visitsTbody.innerHTML =
+      '<tr><td colspan="6" class="empty-cell">Error loading visit history.</td></tr>';
   }
 }
 
@@ -2497,16 +2615,21 @@ async function saveRoom(e) {
     const res = await fetch(url, {
       method,
       headers: authHeaders(),
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
     });
 
     const result = await res.json();
     if (res.ok && result.success) {
-      showToast(id ? "Room inventory updated!" : "Room registered successfully!", "success");
+      showToast(
+        id ? "Room inventory updated!" : "Room registered successfully!",
+        "success",
+      );
       closeModal("roomModal");
       const user = getUser();
-      if (user && user.role === 'super_admin') {
-        const activeHospSelect = document.getElementById("super_room_hospital_select");
+      if (user && user.role === "super_admin") {
+        const activeHospSelect = document.getElementById(
+          "super_room_hospital_select",
+        );
         if (activeHospSelect) {
           loadSuperHospitalRooms(activeHospSelect.value);
         }
@@ -2523,11 +2646,14 @@ async function saveRoom(e) {
 
 window.editRoom = async function (id) {
   try {
-    const res = await fetch(`${API_BASE}/rooms/${id}`, { headers: authHeaders() });
+    const res = await fetch(`${API_BASE}/rooms/${id}`, {
+      headers: authHeaders(),
+    });
     const data = await res.json();
     if (res.ok && data.success) {
       const r = data.room;
-      document.getElementById("roomModalTitle").textContent = "Modify Room Settings";
+      document.getElementById("roomModalTitle").textContent =
+        "Modify Room Settings";
       document.getElementById("room_id").value = r.id;
       document.getElementById("room_no_input").value = r.room_no;
       document.getElementById("room_type_select").value = r.room_type;
@@ -2538,7 +2664,7 @@ window.editRoom = async function (id) {
       const roomHospGroup = document.getElementById("room_hosp_group");
       const roomHospSelect = document.getElementById("room_hospital_id");
       const user = getUser();
-      if (user && user.role === 'super_admin') {
+      if (user && user.role === "super_admin") {
         if (roomHospGroup) roomHospGroup.style.display = "block";
         if (roomHospSelect) roomHospSelect.value = r.hospital_id || "";
       } else {
@@ -2553,17 +2679,20 @@ window.editRoom = async function (id) {
 };
 
 window.deleteRoom = async function (id) {
-  if (!confirm("Are you sure you want to remove this room from inventory?")) return;
+  if (!confirm("Are you sure you want to remove this room from inventory?"))
+    return;
   try {
     const res = await fetch(`${API_BASE}/rooms/${id}`, {
       method: "DELETE",
-      headers: authHeaders()
+      headers: authHeaders(),
     });
     if (res.ok) {
       showToast("Room removed from inventory", "success");
       const user = getUser();
-      if (user && user.role === 'super_admin') {
-        const activeHospSelect = document.getElementById("super_room_hospital_select");
+      if (user && user.role === "super_admin") {
+        const activeHospSelect = document.getElementById(
+          "super_room_hospital_select",
+        );
         if (activeHospSelect) {
           loadSuperHospitalRooms(activeHospSelect.value);
         }
@@ -2589,28 +2718,49 @@ async function populateAllocationModalDropdowns() {
 
   try {
     // 1. Fetch Patients
-    const resPat = await fetch(`${API_BASE}/patients`, { headers: authHeaders() });
+    const resPat = await fetch(`${API_BASE}/patients`, {
+      headers: authHeaders(),
+    });
     const dataPat = await resPat.json();
     if (resPat.ok && dataPat.success) {
-      patientSelect.innerHTML = '<option value="">-- Choose Patient to Admit --</option>' + 
-        dataPat.patients.map(p => `<option value="${p.id}">${esc(p.full_name)} (ID: #${p.id})</option>`).join("");
+      patientSelect.innerHTML =
+        '<option value="">-- Choose Patient to Admit --</option>' +
+        dataPat.patients
+          .map(
+            (p) =>
+              `<option value="${p.id}">${esc(p.full_name)} (ID: #${p.id})</option>`,
+          )
+          .join("");
     } else {
-      patientSelect.innerHTML = '<option value="">Failed to load patients list</option>';
+      patientSelect.innerHTML =
+        '<option value="">Failed to load patients list</option>';
     }
 
     // 2. Fetch Rooms
-    const resRoom = await fetch(`${API_BASE}/rooms`, { headers: authHeaders() });
+    const resRoom = await fetch(`${API_BASE}/rooms`, {
+      headers: authHeaders(),
+    });
     const dataRoom = await resRoom.json();
     if (resRoom.ok && dataRoom.success) {
-      const availableRooms = dataRoom.rooms.filter(r => r.status === 'available');
+      const availableRooms = dataRoom.rooms.filter(
+        (r) => r.status === "available",
+      );
       if (availableRooms.length === 0) {
-        roomSelect.innerHTML = '<option value="">No available rooms left</option>';
+        roomSelect.innerHTML =
+          '<option value="">No available rooms left</option>';
       } else {
-        roomSelect.innerHTML = '<option value="">-- Choose Available Room --</option>' + 
-          availableRooms.map(r => `<option value="${r.id}">${esc(r.room_no)} - ${esc(r.room_type)} (₹ ${r.price_per_day}/day)</option>`).join("");
+        roomSelect.innerHTML =
+          '<option value="">-- Choose Available Room --</option>' +
+          availableRooms
+            .map(
+              (r) =>
+                `<option value="${r.id}">${esc(r.room_no)} - ${esc(r.room_type)} (₹ ${r.price_per_day}/day)</option>`,
+            )
+            .join("");
       }
     } else {
-      roomSelect.innerHTML = '<option value="">Failed to load rooms list</option>';
+      roomSelect.innerHTML =
+        '<option value="">Failed to load rooms list</option>';
     }
   } catch (err) {
     patientSelect.innerHTML = '<option value="">Connection error</option>';
@@ -2628,7 +2778,7 @@ async function saveAllocation(e) {
     const res = await fetch(`${API_BASE}/rooms/allocations`, {
       method: "POST",
       headers: authHeaders(),
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
     });
 
     const result = await res.json();
@@ -2645,11 +2795,16 @@ async function saveAllocation(e) {
 }
 
 window.dischargeAllocation = async function (id) {
-  if (!confirm("Are you sure you want to discharge this patient? This will release the room.")) return;
+  if (
+    !confirm(
+      "Are you sure you want to discharge this patient? This will release the room.",
+    )
+  )
+    return;
   try {
     const res = await fetch(`${API_BASE}/rooms/allocations/${id}`, {
       method: "PUT",
-      headers: authHeaders()
+      headers: authHeaders(),
     });
     if (res.ok) {
       showToast("Patient discharged from room", "success");
@@ -2673,28 +2828,47 @@ async function populateVisitModalDropdowns() {
 
   try {
     // 1. Fetch active allocations
-    const resAlloc = await fetch(`${API_BASE}/rooms/allocations`, { headers: authHeaders() });
+    const resAlloc = await fetch(`${API_BASE}/rooms/allocations`, {
+      headers: authHeaders(),
+    });
     const dataAlloc = await resAlloc.json();
     if (resAlloc.ok && dataAlloc.success) {
-      const active = dataAlloc.allocations.filter(a => a.status === 'active');
+      const active = dataAlloc.allocations.filter((a) => a.status === "active");
       if (active.length === 0) {
-        allocSelect.innerHTML = '<option value="">No patients actively admitted in rooms</option>';
+        allocSelect.innerHTML =
+          '<option value="">No patients actively admitted in rooms</option>';
       } else {
-        allocSelect.innerHTML = '<option value="">-- Select Admitted Patient --</option>' + 
-          active.map(a => `<option value="${a.id}">${esc(a.patient_name)} in ${esc(a.room_no)}</option>`).join("");
+        allocSelect.innerHTML =
+          '<option value="">-- Select Admitted Patient --</option>' +
+          active
+            .map(
+              (a) =>
+                `<option value="${a.id}">${esc(a.patient_name)} in ${esc(a.room_no)}</option>`,
+            )
+            .join("");
       }
     } else {
-      allocSelect.innerHTML = '<option value="">Failed to load admissions</option>';
+      allocSelect.innerHTML =
+        '<option value="">Failed to load admissions</option>';
     }
 
     // 2. Fetch doctors
-    const resDoc = await fetch(`${API_BASE}/doctors`, { headers: authHeaders() });
+    const resDoc = await fetch(`${API_BASE}/doctors`, {
+      headers: authHeaders(),
+    });
     const dataDoc = await resDoc.json();
     if (resDoc.ok && dataDoc.success) {
-      doctorSelect.innerHTML = '<option value="">-- Choose Attending Doctor --</option>' + 
-        dataDoc.doctors.map(d => `<option value="${d.id}">${esc(d.name)} (${esc(d.specialization)})</option>`).join("");
+      doctorSelect.innerHTML =
+        '<option value="">-- Choose Attending Doctor --</option>' +
+        dataDoc.doctors
+          .map(
+            (d) =>
+              `<option value="${d.id}">${esc(d.name)} (${esc(d.specialization)})</option>`,
+          )
+          .join("");
     } else {
-      doctorSelect.innerHTML = '<option value="">Failed to load doctors list</option>';
+      doctorSelect.innerHTML =
+        '<option value="">Failed to load doctors list</option>';
     }
   } catch (err) {
     allocSelect.innerHTML = '<option value="">Connection error</option>';
@@ -2712,12 +2886,15 @@ async function saveDoctorVisit(e) {
     const res = await fetch(`${API_BASE}/rooms/visits`, {
       method: "POST",
       headers: authHeaders(),
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
     });
 
     const result = await res.json();
     if (res.ok && result.success) {
-      showToast("Doctor visit checkup logged & synchronized to patient case sheet!", "success");
+      showToast(
+        "Doctor visit checkup logged & synchronized to patient case sheet!",
+        "success",
+      );
       closeModal("visitModal");
       loadRooms();
     } else {
@@ -2737,35 +2914,36 @@ async function loadDynamicNavigation() {
 
   try {
     const res = await fetch(`${API_BASE}/super?action=menus`, {
-      headers: authHeaders()
+      headers: authHeaders(),
     });
     const data = await res.json();
     if (res.ok && data.success && data.menus) {
       const allNavLinks = [
-        { key: 'overview', id: 'navOverview' },
-        { key: 'patients', id: 'navPatients' },
-        { key: 'appointments', id: 'navAppointments' },
-        { key: 'invoices', id: 'navInvoices' },
-        { key: 'receipts-panel', id: 'navReceiptsPanel' },
-        { key: 'doctors', id: 'navDoctors' },
-        { key: 'rooms', id: 'navRooms' },
-        { key: 'staff', id: 'navStaff' },
-        { key: 'hospital-setup', id: 'navHospitalSetup' },
-        { key: 'super-overview', id: 'navOverview' },
-        { key: 'super-roles', id: 'navSuperPanel' },
-        { key: 'super-hospitals', id: 'navSuperPanel' }
+        { key: "overview", id: "navOverview" },
+        { key: "patients", id: "navPatients" },
+        { key: "appointments", id: "navAppointments" },
+        { key: "invoices", id: "navInvoices" },
+        { key: "receipts-panel", id: "navReceiptsPanel" },
+        { key: "doctors", id: "navDoctors" },
+        { key: "rooms", id: "navRooms" },
+        { key: "staff", id: "navStaff" },
+        { key: "hospital-setup", id: "navHospitalSetup" },
+        { key: "super-overview", id: "navOverview" },
+        { key: "super-roles", id: "navSuperPanel" },
+        { key: "super-hospitals", id: "navSuperPanel" },
       ];
 
-      allNavLinks.forEach(item => {
+      allNavLinks.forEach((item) => {
         const el = document.getElementById(item.id);
-        if (el) el.style.display = 'none';
+        if (el) el.style.display = "none";
       });
 
-      if (user.role === 'super_admin') {
+      if (user.role === "super_admin") {
         const superOverview = document.getElementById("navOverview");
         if (superOverview) {
           superOverview.style.display = "";
-          superOverview.innerHTML = '<span class="nav-icon">🏢</span> Dashboard';
+          superOverview.innerHTML =
+            '<span class="nav-icon">🏢</span> Dashboard';
           superOverview.setAttribute("data-tab", "overview");
         }
         const superPanel = document.getElementById("navSuperPanel");
@@ -2779,12 +2957,12 @@ async function loadDynamicNavigation() {
       }
 
       let firstTab = "";
-      data.menus.forEach(menu => {
-        const mapped = allNavLinks.find(item => item.key === menu.menu_key);
+      data.menus.forEach((menu) => {
+        const mapped = allNavLinks.find((item) => item.key === menu.menu_key);
         if (mapped) {
           const el = document.getElementById(mapped.id);
           if (el) {
-            el.style.display = '';
+            el.style.display = "";
             el.innerHTML = `<span class="nav-icon">${menu.menu_icon}</span> ${menu.menu_label}`;
             el.setAttribute("data-tab", menu.menu_key);
             if (!firstTab) firstTab = menu.menu_key;
@@ -2806,14 +2984,18 @@ async function loadDynamicNavigation() {
 // ══════════════════════════════════════════════════════════
 async function loadHospitalSetup() {
   try {
-    const res = await fetch(`${API_BASE}/super?action=hospital`, { headers: authHeaders() });
+    const res = await fetch(`${API_BASE}/super?action=hospital`, {
+      headers: authHeaders(),
+    });
     const data = await res.json();
     if (res.ok && data.success && data.hospital) {
       const h = data.hospital;
       document.getElementById("hosp_name_input").value = h.name || "";
-      document.getElementById("hosp_tax_name_input").value = h.tax_name || "GST";
+      document.getElementById("hosp_tax_name_input").value =
+        h.tax_name || "GST";
       document.getElementById("hosp_gst_no_input").value = h.gst_no || "";
-      document.getElementById("hosp_gst_percent_input").value = h.gst_percent !== undefined ? h.gst_percent : "0.00";
+      document.getElementById("hosp_gst_percent_input").value =
+        h.gst_percent !== undefined ? h.gst_percent : "0.00";
 
       const preview = document.getElementById("hosp_logo_preview");
       const emptyText = document.getElementById("hosp_logo_empty_text");
@@ -2830,11 +3012,15 @@ async function loadHospitalSetup() {
     }
 
     // Load setup statistics
-    const statsRes = await fetch(`${API_BASE}/super?action=stats`, { headers: authHeaders() });
+    const statsRes = await fetch(`${API_BASE}/super?action=stats`, {
+      headers: authHeaders(),
+    });
     const statsData = await statsRes.json();
     if (statsRes.ok && statsData.success) {
-      document.getElementById("setupStatsDoctors").textContent = statsData.stats.doctors;
-      document.getElementById("setupStatsRooms").textContent = statsData.stats.rooms;
+      document.getElementById("setupStatsDoctors").textContent =
+        statsData.stats.doctors;
+      document.getElementById("setupStatsRooms").textContent =
+        statsData.stats.rooms;
     }
   } catch (err) {
     showToast("Failed to load hospital settings", "error");
@@ -2853,19 +3039,28 @@ async function saveHospitalSetup(e) {
     const res = await fetch(`${API_BASE}/super?action=hospital`, {
       method: "POST",
       headers: authHeaders(),
-      body: JSON.stringify({ name, logo_data: logo, tax_name, gst_no, gst_percent })
+      body: JSON.stringify({
+        name,
+        logo_data: logo,
+        tax_name,
+        gst_no,
+        gst_percent,
+      }),
     });
     const data = await res.json();
     if (res.ok && data.success) {
-      showToast("Hospital profile saved! Re-logging in will sync custom logos.", "success");
-      
+      showToast(
+        "Hospital profile saved! Re-logging in will sync custom logos.",
+        "success",
+      );
+
       // Dynamic updates to current local context
       const u = getUser();
       if (u) {
         u.hospital_name = name;
         u.hospital_logo = logo;
         localStorage.setItem("hospital_user", JSON.stringify(u));
-        
+
         // Re-run header display update
         const logoBox = document.getElementById("logoBox");
         const brandText = document.getElementById("brandText");
@@ -2882,7 +3077,10 @@ async function saveHospitalSetup(e) {
         }
       }
     } else {
-      showToast(data.error ? `${data.error} (${data.details || ''})` : "Save failed", "error");
+      showToast(
+        data.error ? `${data.error} (${data.details || ""})` : "Save failed",
+        "error",
+      );
     }
   } catch (err) {
     showToast("Connection error saving settings", "error");
@@ -2893,31 +3091,50 @@ async function saveHospitalSetup(e) {
 // SUPER ADMIN TELEMETRY PANELS
 // ══════════════════════════════════════════════════════════
 async function loadSuperPanel() {
-  const superHospitalsTableBody = document.getElementById("superHospitalsTableBody");
+  const superHospitalsTableBody = document.getElementById(
+    "superHospitalsTableBody",
+  );
   const superRolesTableBody = document.getElementById("superRolesTableBody");
   const menuRoleSelect = document.getElementById("menu_role_select");
 
-  superHospitalsTableBody.innerHTML = '<tr><td colspan="4" class="loading-cell">Loading hospitals...</td></tr>';
-  superRolesTableBody.innerHTML = '<tr><td colspan="2" class="loading-cell">Loading custom roles...</td></tr>';
+  superHospitalsTableBody.innerHTML =
+    '<tr><td colspan="4" class="loading-cell">Loading hospitals...</td></tr>';
+  superRolesTableBody.innerHTML =
+    '<tr><td colspan="2" class="loading-cell">Loading custom roles...</td></tr>';
 
   try {
     // 1. Fetch hospitals
-    const resHosp = await fetch(`${API_BASE}/super?action=hospitals`, { headers: authHeaders() });
+    const resHosp = await fetch(`${API_BASE}/super?action=hospitals`, {
+      headers: authHeaders(),
+    });
     const dataHosp = await resHosp.json();
     if (resHosp.ok && dataHosp.success) {
       // Populate hospital selectors
-      const superMenuHospitalSelect = document.getElementById("super_menu_hospital_select");
-      const superRoleHospSelect = document.getElementById("super_role_hosp_select");
-      const superUserHospitalSelect = document.getElementById("super_user_hospital_select");
-      const superRoomHospitalSelect = document.getElementById("super_room_hospital_select");
+      const superMenuHospitalSelect = document.getElementById(
+        "super_menu_hospital_select",
+      );
+      const superRoleHospSelect = document.getElementById(
+        "super_role_hosp_select",
+      );
+      const superUserHospitalSelect = document.getElementById(
+        "super_user_hospital_select",
+      );
+      const superRoomHospitalSelect = document.getElementById(
+        "super_room_hospital_select",
+      );
       const staffHospitalSelect = document.getElementById("staff_hospital_id");
       const roomHospitalSelect = document.getElementById("room_hospital_id");
 
-      const optionsHTML = dataHosp.hospitals.map(h => `<option value="${h.id}">${esc(h.name)}</option>`).join("");
-      if (superMenuHospitalSelect) superMenuHospitalSelect.innerHTML = optionsHTML;
+      const optionsHTML = dataHosp.hospitals
+        .map((h) => `<option value="${h.id}">${esc(h.name)}</option>`)
+        .join("");
+      if (superMenuHospitalSelect)
+        superMenuHospitalSelect.innerHTML = optionsHTML;
       if (superRoleHospSelect) superRoleHospSelect.innerHTML = optionsHTML;
-      if (superUserHospitalSelect) superUserHospitalSelect.innerHTML = optionsHTML;
-      if (superRoomHospitalSelect) superRoomHospitalSelect.innerHTML = optionsHTML;
+      if (superUserHospitalSelect)
+        superUserHospitalSelect.innerHTML = optionsHTML;
+      if (superRoomHospitalSelect)
+        superRoomHospitalSelect.innerHTML = optionsHTML;
       if (staffHospitalSelect) staffHospitalSelect.innerHTML = optionsHTML;
       if (roomHospitalSelect) roomHospitalSelect.innerHTML = optionsHTML;
 
@@ -2928,9 +3145,12 @@ async function loadSuperPanel() {
       }
 
       if (dataHosp.hospitals.length === 0) {
-        superHospitalsTableBody.innerHTML = '<tr><td colspan="5" class="empty-cell">No hospitals registered yet.</td></tr>';
+        superHospitalsTableBody.innerHTML =
+          '<tr><td colspan="5" class="empty-cell">No hospitals registered yet.</td></tr>';
       } else {
-        superHospitalsTableBody.innerHTML = dataHosp.hospitals.map(h => `
+        superHospitalsTableBody.innerHTML = dataHosp.hospitals
+          .map(
+            (h) => `
           <tr>
             <td>#${h.id}</td>
             <td>
@@ -2946,7 +3166,9 @@ async function loadSuperPanel() {
               </div>
             </td>
           </tr>
-        `).join("");
+        `,
+          )
+          .join("");
       }
     }
 
@@ -2954,7 +3176,8 @@ async function loadSuperPanel() {
     if (dataHosp.hospitals.length > 0) {
       await loadSuperRoles(dataHosp.hospitals[0].id);
     } else {
-      superRolesTableBody.innerHTML = '<tr><td colspan="3" class="empty-cell">No roles registry available.</td></tr>';
+      superRolesTableBody.innerHTML =
+        '<tr><td colspan="3" class="empty-cell">No roles registry available.</td></tr>';
     }
 
     // Load cross-tenant patients list
@@ -2968,45 +3191,67 @@ async function loadSuperRoles(hospitalId) {
   const superRolesTableBody = document.getElementById("superRolesTableBody");
   const menuRoleSelect = document.getElementById("menu_role_select");
   if (!superRolesTableBody) return;
-  
-  superRolesTableBody.innerHTML = '<tr><td colspan="3" class="loading-cell">Loading roles directory...</td></tr>';
-  
+
+  superRolesTableBody.innerHTML =
+    '<tr><td colspan="3" class="loading-cell">Loading roles directory...</td></tr>';
+
   try {
-    const resRoles = await fetch(`${API_BASE}/super?action=roles&hospital_id=${hospitalId}`, { headers: authHeaders() });
+    const resRoles = await fetch(
+      `${API_BASE}/super?action=roles&hospital_id=${hospitalId}`,
+      { headers: authHeaders() },
+    );
     const dataRoles = await resRoles.json();
     if (resRoles.ok && dataRoles.success) {
       const defaultRoles = [
-        { role_name: 'nurse', description: 'Default Staff Nurse access' },
-        { role_name: 'doctor', description: 'Default attending clinician access' },
-        { role_name: 'admin', description: 'Hospital manager full tenant control' }
+        { role_name: "nurse", description: "Default Staff Nurse access" },
+        {
+          role_name: "doctor",
+          description: "Default attending clinician access",
+        },
+        {
+          role_name: "admin",
+          description: "Hospital manager full tenant control",
+        },
       ];
-      
+
       const allRoles = [...defaultRoles];
-      dataRoles.roles.forEach(r => {
-        if (!allRoles.some(ar => ar.role_name === r.role_name)) {
+      dataRoles.roles.forEach((r) => {
+        if (!allRoles.some((ar) => ar.role_name === r.role_name)) {
           allRoles.push(r);
         }
       });
 
-      superRolesTableBody.innerHTML = allRoles.map(r => `
+      superRolesTableBody.innerHTML = allRoles
+        .map(
+          (r) => `
         <tr>
           <td><code style="background-color:var(--bg-primary); padding:2px 6px; border-radius:4px; font-weight:700;">${esc(r.role_name)}</code></td>
           <td>${esc(r.description || "N/A")}</td>
           <td>
-            ${r.id ? `
+            ${
+              r.id
+                ? `
               <div style="display: flex; gap: 6px;">
                 <button class="action-btn btn-edit" onclick="editRole(${r.id})" title="Modify role description">Edit</button>
                 <button class="action-btn btn-delete" onclick="deleteRole(${r.id})" title="Remove custom role">Delete</button>
               </div>
-            ` : `<span style="font-size:11px; color:var(--text3); font-style:italic;">System Role</span>`}
+            `
+                : `<span style="font-size:11px; color:var(--text3); font-style:italic;">System Role</span>`
+            }
           </td>
         </tr>
-      `).join("");
+      `,
+        )
+        .join("");
 
       // Populating dynamic menu selects
-      menuRoleSelect.innerHTML = allRoles.map(r => `
+      menuRoleSelect.innerHTML = allRoles
+        .map(
+          (r) => `
         <option value="${r.role_name}">${esc(r.role_name.toUpperCase())}</option>
-      `).join("");
+      `,
+        )
+        .join("");
 
       // Initial load mapping config
       if (allRoles.length > 0) {
@@ -3026,31 +3271,38 @@ async function populateStaffRoleDropdown(hospitalId) {
   if (!staffRoleSelect) return;
 
   try {
-    const res = await fetch(`${API_BASE}/super?action=roles&hospital_id=${hospitalId}`, { headers: authHeaders() });
+    const res = await fetch(
+      `${API_BASE}/super?action=roles&hospital_id=${hospitalId}`,
+      { headers: authHeaders() },
+    );
     const data = await res.json();
     if (res.ok && data.success) {
       const defaultRoles = [
-        { role_name: 'nurse', description: 'Nurse (Staff Access)' },
-        { role_name: 'doctor', description: 'Doctor (Clinical Access)' },
-        { role_name: 'patient', description: 'Patient (Portal Access)' },
-        { role_name: 'admin', description: 'Administrator (Full Control)' }
+        { role_name: "nurse", description: "Nurse (Staff Access)" },
+        { role_name: "doctor", description: "Doctor (Clinical Access)" },
+        { role_name: "patient", description: "Patient (Portal Access)" },
+        { role_name: "admin", description: "Administrator (Full Control)" },
       ];
-      
+
       const allRoles = [...defaultRoles];
       if (data.roles && Array.isArray(data.roles)) {
-        data.roles.forEach(r => {
-          if (!allRoles.some(ar => ar.role_name === r.role_name)) {
+        data.roles.forEach((r) => {
+          if (!allRoles.some((ar) => ar.role_name === r.role_name)) {
             allRoles.push({
               role_name: r.role_name,
-              description: `${r.role_name.charAt(0).toUpperCase() + r.role_name.slice(1)} (Custom Role)`
+              description: `${r.role_name.charAt(0).toUpperCase() + r.role_name.slice(1)} (Custom Role)`,
             });
           }
         });
       }
 
-      staffRoleSelect.innerHTML = allRoles.map(r => `
+      staffRoleSelect.innerHTML = allRoles
+        .map(
+          (r) => `
         <option value="${r.role_name}">${esc(r.description)}</option>
-      `).join("");
+      `,
+        )
+        .join("");
     }
   } catch (err) {
     console.error("Failed to populate staff roles dropdown:", err);
@@ -3060,12 +3312,17 @@ async function populateStaffRoleDropdown(hospitalId) {
 let superPatientsList = [];
 
 async function loadSuperPatients() {
-  const superPatientsTableBody = document.getElementById("superPatientsTableBody");
+  const superPatientsTableBody = document.getElementById(
+    "superPatientsTableBody",
+  );
   if (!superPatientsTableBody) return;
-  superPatientsTableBody.innerHTML = '<tr><td colspan="6" class="loading-cell">Loading patients directory...</td></tr>';
-  
+  superPatientsTableBody.innerHTML =
+    '<tr><td colspan="6" class="loading-cell">Loading patients directory...</td></tr>';
+
   try {
-    const res = await fetch(`${API_BASE}/super?action=patients`, { headers: authHeaders() });
+    const res = await fetch(`${API_BASE}/super?action=patients`, {
+      headers: authHeaders(),
+    });
     const data = await res.json();
     if (res.ok && data.success) {
       superPatientsList = data.patients || [];
@@ -3074,20 +3331,26 @@ async function loadSuperPatients() {
       superPatientsTableBody.innerHTML = `<tr><td colspan="6" class="empty-cell" style="color:var(--error);">${esc(data.error || "Failed to load directory")}</td></tr>`;
     }
   } catch (err) {
-    superPatientsTableBody.innerHTML = '<tr><td colspan="6" class="empty-cell" style="color:var(--error);">Connection error loading patients</td></tr>';
+    superPatientsTableBody.innerHTML =
+      '<tr><td colspan="6" class="empty-cell" style="color:var(--error);">Connection error loading patients</td></tr>';
   }
 }
 
 function renderSuperPatientsTable(list) {
-  const superPatientsTableBody = document.getElementById("superPatientsTableBody");
+  const superPatientsTableBody = document.getElementById(
+    "superPatientsTableBody",
+  );
   if (!superPatientsTableBody) return;
-  
+
   if (list.length === 0) {
-    superPatientsTableBody.innerHTML = '<tr><td colspan="6" class="empty-cell">No patients found.</td></tr>';
+    superPatientsTableBody.innerHTML =
+      '<tr><td colspan="6" class="empty-cell">No patients found.</td></tr>';
     return;
   }
-  
-  superPatientsTableBody.innerHTML = list.map(p => `
+
+  superPatientsTableBody.innerHTML = list
+    .map(
+      (p) => `
     <tr>
       <td>#${p.id}</td>
       <td><strong>${esc(p.full_name)}</strong></td>
@@ -3096,25 +3359,34 @@ function renderSuperPatientsTable(list) {
       <td><span style="background-color: var(--primary-glow); color: var(--primary); padding: 4px 8px; border-radius: 4px; font-size:11px; font-weight:700;">${esc(p.hospital_name || "Unassigned")}</span></td>
       <td>${formatDate(p.created_at)}</td>
     </tr>
-  `).join("");
+  `,
+    )
+    .join("");
 }
 
 async function loadInvoiceReceiptsLog(invoiceId) {
   const body = document.getElementById("reconReceiptsBody");
   if (!body) return;
-  body.innerHTML = '<tr><td colspan="5" class="loading-cell">Loading receipts...</td></tr>';
-  
+  body.innerHTML =
+    '<tr><td colspan="5" class="loading-cell">Loading receipts...</td></tr>';
+
   try {
-    const res = await fetch(`${API_BASE}/invoices?action=receipts&invoice_id=${invoiceId}`, {
-      headers: authHeaders()
-    });
+    const res = await fetch(
+      `${API_BASE}/invoices?action=receipts&invoice_id=${invoiceId}`,
+      {
+        headers: authHeaders(),
+      },
+    );
     const data = await res.json();
     if (res.ok && data.success) {
       const receipts = data.receipts || [];
       if (receipts.length === 0) {
-        body.innerHTML = '<tr><td colspan="5" class="empty-cell">No transactions logged yet.</td></tr>';
+        body.innerHTML =
+          '<tr><td colspan="5" class="empty-cell">No transactions logged yet.</td></tr>';
       } else {
-        body.innerHTML = receipts.map(r => `
+        body.innerHTML = receipts
+          .map(
+            (r) => `
           <tr>
             <td><code>${esc(r.receipt_no)}</code></td>
             <td>${formatDate(r.payment_date)}</td>
@@ -3127,21 +3399,27 @@ async function loadInvoiceReceiptsLog(invoiceId) {
               </div>
             </td>
           </tr>
-        `).join("");
+        `,
+          )
+          .join("");
       }
     } else {
       body.innerHTML = `<tr><td colspan="5" class="empty-cell" style="color:var(--error);">${esc(data.error || "Failed to load")}</td></tr>`;
     }
   } catch (err) {
-    body.innerHTML = '<tr><td colspan="5" class="empty-cell" style="color:var(--error);">Connection error</td></tr>';
+    body.innerHTML =
+      '<tr><td colspan="5" class="empty-cell" style="color:var(--error);">Connection error</td></tr>';
   }
 }
 
 window.printReceiptSlips = async function (receiptId) {
   try {
-    const res = await fetch(`${API_BASE}/invoices?action=export-receipt-pdf&receipt_id=${receiptId}`, {
-      headers: { Authorization: `Bearer ${getToken()}` },
-    });
+    const res = await fetch(
+      `${API_BASE}/invoices?action=export-receipt-pdf&receipt_id=${receiptId}`,
+      {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      },
+    );
 
     if (!res.ok) throw new Error("Receipt PDF render failed");
 
@@ -3164,9 +3442,12 @@ window.printReceiptSlips = async function (receiptId) {
 
 window.downloadReceiptSlips = async function (receiptId, receiptNo) {
   try {
-    const res = await fetch(`${API_BASE}/invoices?action=export-receipt-pdf&receipt_id=${receiptId}`, {
-      headers: { Authorization: `Bearer ${getToken()}` },
-    });
+    const res = await fetch(
+      `${API_BASE}/invoices?action=export-receipt-pdf&receipt_id=${receiptId}`,
+      {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      },
+    );
 
     if (!res.ok) throw new Error("Receipt PDF render failed");
 
@@ -3189,22 +3470,29 @@ async function loadReceiptsPanel(page = 1) {
   receiptPage = page;
   const tbody = document.getElementById("receiptsTableBody");
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="7" class="loading-cell"><span class="spinner"></span> Loading receipts log...</td></tr>';
-  
+  tbody.innerHTML =
+    '<tr><td colspan="7" class="loading-cell"><span class="spinner"></span> Loading receipts log...</td></tr>';
+
   try {
-    const res = await fetch(`${API_BASE}/invoices?action=receipts&search=${encodeURIComponent(receiptSearch)}&page=${receiptPage}&limit=15`, {
-      headers: authHeaders()
-    });
+    const res = await fetch(
+      `${API_BASE}/invoices?action=receipts&search=${encodeURIComponent(receiptSearch)}&page=${receiptPage}&limit=15`,
+      {
+        headers: authHeaders(),
+      },
+    );
     const data = await res.json();
     if (res.ok && data.success) {
       const receipts = data.receipts || [];
       if (receipts.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">No payment transactions found.</td></tr>';
+        tbody.innerHTML =
+          '<tr><td colspan="7" class="empty-cell">No payment transactions found.</td></tr>';
         document.getElementById("receiptsPagination").innerHTML = "";
         return;
       }
-      
-      tbody.innerHTML = receipts.map(r => `
+
+      tbody.innerHTML = receipts
+        .map(
+          (r) => `
         <tr>
           <td><code>${esc(r.receipt_no)}</code></td>
           <td><code>${esc(r.invoice_no)}</code></td>
@@ -3219,20 +3507,23 @@ async function loadReceiptsPanel(page = 1) {
             </div>
           </td>
         </tr>
-      `).join("");
-      
+      `,
+        )
+        .join("");
+
       renderPagination(
         "receiptsPagination",
         data.pagination.page,
         data.pagination.totalPages,
         data.pagination.total,
-        (p) => loadReceiptsPanel(p)
+        (p) => loadReceiptsPanel(p),
       );
     } else {
       tbody.innerHTML = `<tr><td colspan="7" class="empty-cell" style="color:var(--error);">${esc(data.error || "Failed to load receipts")}</td></tr>`;
     }
   } catch (err) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-cell" style="color:var(--error);">Connection error loading receipts</td></tr>';
+    tbody.innerHTML =
+      '<tr><td colspan="7" class="empty-cell" style="color:var(--error);">Connection error loading receipts</td></tr>';
   }
 }
 
@@ -3246,21 +3537,41 @@ async function saveSuperHospital(e) {
   const gst_percent = document.getElementById("super_hosp_gst_percent").value;
 
   try {
-    const url = id ? `${API_BASE}/super?action=hospitals&id=${id}` : `${API_BASE}/super?action=hospitals`;
+    const url = id
+      ? `${API_BASE}/super?action=hospitals&id=${id}`
+      : `${API_BASE}/super?action=hospitals`;
     const method = id ? "PUT" : "POST";
 
     const res = await fetch(url, {
       method,
       headers: authHeaders(),
-      body: JSON.stringify({ name, logo_data: logo, tax_name, gst_no, gst_percent })
+      body: JSON.stringify({
+        name,
+        logo_data: logo,
+        tax_name,
+        gst_no,
+        gst_percent,
+      }),
     });
     const data = await res.json();
     if (res.ok && data.success) {
-      showToast(id ? "Hospital settings updated successfully!" : "Hospital registration successful!", "success");
+      showToast(
+        id
+          ? "Hospital settings updated successfully!"
+          : "Hospital registration successful!",
+        "success",
+      );
       closeModal("superHospitalModal");
       loadSuperPanel();
     } else {
-      showToast(data.error ? `${data.error} (${data.details || ''})` : (id ? "Failed to update hospital" : "Failed to add hospital"), "error");
+      showToast(
+        data.error
+          ? `${data.error} (${data.details || ""})`
+          : id
+            ? "Failed to update hospital"
+            : "Failed to add hospital",
+        "error",
+      );
     }
   } catch (err) {
     showToast("Network error saving hospital profile", "error");
@@ -3269,18 +3580,25 @@ async function saveSuperHospital(e) {
 
 window.editHospital = async function (id) {
   try {
-    const res = await fetch(`${API_BASE}/super?action=hospital&hospital_id=${id}`, { headers: authHeaders() });
+    const res = await fetch(
+      `${API_BASE}/super?action=hospital&hospital_id=${id}`,
+      { headers: authHeaders() },
+    );
     const data = await res.json();
     if (res.ok && data.success && data.hospital) {
       const h = data.hospital;
-      document.getElementById("superHospitalModalTitle").textContent = "Modify Hospital Settings";
-      document.getElementById("superHospitalSubmitBtn").textContent = "Save Changes";
+      document.getElementById("superHospitalModalTitle").textContent =
+        "Modify Hospital Settings";
+      document.getElementById("superHospitalSubmitBtn").textContent =
+        "Save Changes";
       document.getElementById("super_hosp_id").value = h.id;
       document.getElementById("super_hosp_name").value = h.name || "";
-      document.getElementById("super_hosp_tax_name").value = h.tax_name || "GST";
+      document.getElementById("super_hosp_tax_name").value =
+        h.tax_name || "GST";
       document.getElementById("super_hosp_gst_no").value = h.gst_no || "";
-      document.getElementById("super_hosp_gst_percent").value = h.gst_percent !== undefined ? h.gst_percent : "0.00";
-      
+      document.getElementById("super_hosp_gst_percent").value =
+        h.gst_percent !== undefined ? h.gst_percent : "0.00";
+
       const preview = document.getElementById("hosp_logo_preview");
       const emptyText = document.getElementById("hosp_logo_empty_text");
       if (h.logo_data) {
@@ -3306,11 +3624,16 @@ window.editHospital = async function (id) {
 };
 
 window.deleteHospital = async function (id) {
-  if (!confirm("Are you sure you want to delete this hospital? This will remove all associated rooms, doctors, staff and patients records permanently!")) return;
+  if (
+    !confirm(
+      "Are you sure you want to delete this hospital? This will remove all associated rooms, doctors, staff and patients records permanently!",
+    )
+  )
+    return;
   try {
     const res = await fetch(`${API_BASE}/super?action=hospitals&id=${id}`, {
       method: "DELETE",
-      headers: authHeaders()
+      headers: authHeaders(),
     });
     const data = await res.json();
     if (res.ok && data.success) {
@@ -3327,14 +3650,17 @@ window.deleteHospital = async function (id) {
 async function saveSuperRole(e) {
   e.preventDefault();
   const id = document.getElementById("super_role_id").value;
-  const roleName = document.getElementById("super_role_name").value.trim().toLowerCase();
+  const roleName = document
+    .getElementById("super_role_name")
+    .value.trim()
+    .toLowerCase();
   const desc = document.getElementById("super_role_desc").value;
 
   const user = getUser();
   const payload = { role_name: roleName, description: desc };
 
   let hostId = null;
-  if (user.role === 'super_admin') {
+  if (user.role === "super_admin") {
     const hospSelect = document.getElementById("super_role_hosp_select");
     if (hospSelect && hospSelect.value) {
       payload.hospital_id = parseInt(hospSelect.value);
@@ -3343,29 +3669,39 @@ async function saveSuperRole(e) {
   }
 
   try {
-    const url = id 
-      ? `${API_BASE}/super?action=roles&id=${id}${hostId ? `&hospital_id=${hostId}` : ''}` 
+    const url = id
+      ? `${API_BASE}/super?action=roles&id=${id}${hostId ? `&hospital_id=${hostId}` : ""}`
       : `${API_BASE}/super?action=roles`;
     const method = id ? "PUT" : "POST";
 
     const res = await fetch(url, {
       method,
       headers: authHeaders(),
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
     const data = await res.json();
     if (res.ok && data.success) {
-      showToast(id ? "Role updated successfully!" : "Custom role registered successfully!", "success");
+      showToast(
+        id
+          ? "Role updated successfully!"
+          : "Custom role registered successfully!",
+        "success",
+      );
       closeModal("superRoleModal");
-      
+
       // Reload lists based on role and panel view
-      if (user.role === 'super_admin') {
+      if (user.role === "super_admin") {
         loadSuperPanel();
       } else {
         loadHospitalRolesAndMenus();
       }
     } else {
-      showToast(data.error ? `${data.error} (${data.details || ''})` : "Role save failed", "error");
+      showToast(
+        data.error
+          ? `${data.error} (${data.details || ""})`
+          : "Role save failed",
+        "error",
+      );
     }
   } catch (err) {
     showToast("Network error saving role profile", "error");
@@ -3376,26 +3712,33 @@ window.editRole = async function (id) {
   try {
     const user = getUser();
     let hostId = "";
-    if (user.role === 'super_admin') {
-      const superRoleHospSelect = document.getElementById("super_role_hosp_select");
+    if (user.role === "super_admin") {
+      const superRoleHospSelect = document.getElementById(
+        "super_role_hosp_select",
+      );
       if (superRoleHospSelect) hostId = superRoleHospSelect.value;
     }
-    
+
     // Fetch all roles for this hospital, and find the target role by id
-    const res = await fetch(`${API_BASE}/super?action=roles${hostId ? `&hospital_id=${hostId}` : ''}`, { headers: authHeaders() });
+    const res = await fetch(
+      `${API_BASE}/super?action=roles${hostId ? `&hospital_id=${hostId}` : ""}`,
+      { headers: authHeaders() },
+    );
     const data = await res.json();
     if (res.ok && data.success) {
-      const r = data.roles.find(item => item.id === id);
+      const r = data.roles.find((item) => item.id === id);
       if (r) {
-        document.getElementById("superRoleModalTitle").textContent = "Modify Custom Role";
-        document.getElementById("superRoleSubmitBtn").textContent = "Save Changes";
+        document.getElementById("superRoleModalTitle").textContent =
+          "Modify Custom Role";
+        document.getElementById("superRoleSubmitBtn").textContent =
+          "Save Changes";
         document.getElementById("super_role_id").value = r.id;
         document.getElementById("super_role_name").value = r.role_name;
         document.getElementById("super_role_desc").value = r.description || "";
-        
+
         const hospGroup = document.getElementById("super_role_hosp_group");
         if (hospGroup) hospGroup.style.display = "none"; // Hide hospital selector when editing to prevent moving roles across tenants
-        
+
         openModal("superRoleModal");
       } else {
         showToast("Role details not found", "error");
@@ -3409,23 +3752,33 @@ window.editRole = async function (id) {
 };
 
 window.deleteRole = async function (id) {
-  if (!confirm("Are you sure you want to delete this custom role? Users assigned to this role will lose their custom menu permissions.")) return;
+  if (
+    !confirm(
+      "Are you sure you want to delete this custom role? Users assigned to this role will lose their custom menu permissions.",
+    )
+  )
+    return;
   try {
     const user = getUser();
     let hostId = "";
-    if (user.role === 'super_admin') {
-      const superRoleHospSelect = document.getElementById("super_role_hosp_select");
+    if (user.role === "super_admin") {
+      const superRoleHospSelect = document.getElementById(
+        "super_role_hosp_select",
+      );
       if (superRoleHospSelect) hostId = superRoleHospSelect.value;
     }
 
-    const res = await fetch(`${API_BASE}/super?action=roles&id=${id}${hostId ? `&hospital_id=${hostId}` : ''}`, {
-      method: "DELETE",
-      headers: authHeaders()
-    });
+    const res = await fetch(
+      `${API_BASE}/super?action=roles&id=${id}${hostId ? `&hospital_id=${hostId}` : ""}`,
+      {
+        method: "DELETE",
+        headers: authHeaders(),
+      },
+    );
     const data = await res.json();
     if (res.ok && data.success) {
       showToast("Custom role deleted successfully", "success");
-      if (user.role === 'super_admin') {
+      if (user.role === "super_admin") {
         loadSuperPanel();
       } else {
         loadHospitalRolesAndMenus();
@@ -3440,11 +3793,13 @@ window.deleteRole = async function (id) {
 
 async function loadRoleMenusConfig(role) {
   // Clear checkboxes
-  document.querySelectorAll('input[name="menu_tab"]').forEach(cb => cb.checked = false);
+  document
+    .querySelectorAll('input[name="menu_tab"]')
+    .forEach((cb) => (cb.checked = false));
 
   const superHospSelect = document.getElementById("super_menu_hospital_select");
   const hospId = superHospSelect ? superHospSelect.value : "";
-  const url = hospId 
+  const url = hospId
     ? `${API_BASE}/super?action=menus&role=${role}&hospital_id=${hospId}`
     : `${API_BASE}/super?action=menus&role=${role}`;
 
@@ -3452,8 +3807,10 @@ async function loadRoleMenusConfig(role) {
     const res = await fetch(url, { headers: authHeaders() });
     const data = await res.json();
     if (res.ok && data.success && data.menus) {
-      data.menus.forEach(m => {
-        const checkbox = document.querySelector(`input[name="menu_tab"][value="${m.menu_key}"]`);
+      data.menus.forEach((m) => {
+        const checkbox = document.querySelector(
+          `input[name="menu_tab"][value="${m.menu_key}"]`,
+        );
         if (checkbox) checkbox.checked = true;
       });
     }
@@ -3465,10 +3822,10 @@ async function loadRoleMenusConfig(role) {
 async function saveRoleMenu() {
   const role = document.getElementById("menu_role_select").value;
   const checked = document.querySelectorAll('input[name="menu_tab"]:checked');
-  const menus = Array.from(checked).map(cb => ({
+  const menus = Array.from(checked).map((cb) => ({
     menu_key: cb.value,
     menu_label: cb.getAttribute("data-label"),
-    menu_icon: cb.getAttribute("data-icon")
+    menu_icon: cb.getAttribute("data-icon"),
   }));
 
   const superHospSelect = document.getElementById("super_menu_hospital_select");
@@ -3478,11 +3835,14 @@ async function saveRoleMenu() {
     const res = await fetch(`${API_BASE}/super?action=menu-mapping`, {
       method: "POST",
       headers: authHeaders(),
-      body: JSON.stringify({ role_name: role, menus, hospital_id: hospId })
+      body: JSON.stringify({ role_name: role, menus, hospital_id: hospId }),
     });
     const data = await res.json();
     if (res.ok && data.success) {
-      showToast(`Privilege menu mappings updated for role: ${role.toUpperCase()}`, "success");
+      showToast(
+        `Privilege menu mappings updated for role: ${role.toUpperCase()}`,
+        "success",
+      );
     } else {
       showToast(data.error || "Save configuration failed", "error");
     }
@@ -3498,38 +3858,56 @@ async function loadHospitalRolesAndMenus() {
   const hospRolesTbody = document.getElementById("hospRolesTableBody");
   const hospMenuRoleSelect = document.getElementById("hosp_menu_role_select");
 
-  if (hospRolesTbody) hospRolesTbody.innerHTML = '<tr><td colspan="2" class="loading-cell">Loading roles...</td></tr>';
+  if (hospRolesTbody)
+    hospRolesTbody.innerHTML =
+      '<tr><td colspan="2" class="loading-cell">Loading roles...</td></tr>';
 
   try {
-    const res = await fetch(`${API_BASE}/super?action=roles`, { headers: authHeaders() });
+    const res = await fetch(`${API_BASE}/super?action=roles`, {
+      headers: authHeaders(),
+    });
     const data = await res.json();
     if (res.ok && data.success) {
       const defaultRoles = [
-        { role_name: 'nurse', description: 'Default Staff Nurse access' },
-        { role_name: 'doctor', description: 'Default attending clinician access' },
-        { role_name: 'admin', description: 'Hospital manager full tenant control' }
+        { role_name: "nurse", description: "Default Staff Nurse access" },
+        {
+          role_name: "doctor",
+          description: "Default attending clinician access",
+        },
+        {
+          role_name: "admin",
+          description: "Hospital manager full tenant control",
+        },
       ];
-      
+
       const allRoles = [...defaultRoles];
-      data.roles.forEach(r => {
-        if (!allRoles.some(ar => ar.role_name === r.role_name)) {
+      data.roles.forEach((r) => {
+        if (!allRoles.some((ar) => ar.role_name === r.role_name)) {
           allRoles.push(r);
         }
       });
 
       if (hospRolesTbody) {
-        hospRolesTbody.innerHTML = allRoles.map(r => `
+        hospRolesTbody.innerHTML = allRoles
+          .map(
+            (r) => `
           <tr>
             <td><code style="background-color:var(--bg-primary); padding:2px 6px; border-radius:4px; font-weight:700;">${esc(r.role_name)}</code></td>
             <td>${esc(r.description || "N/A")}</td>
           </tr>
-        `).join("");
+        `,
+          )
+          .join("");
       }
 
       if (hospMenuRoleSelect) {
-        hospMenuRoleSelect.innerHTML = allRoles.map(r => `
+        hospMenuRoleSelect.innerHTML = allRoles
+          .map(
+            (r) => `
           <option value="${r.role_name}">${esc(r.role_name.toUpperCase())}</option>
-        `).join("");
+        `,
+          )
+          .join("");
       }
 
       if (allRoles.length > 0) {
@@ -3542,14 +3920,20 @@ async function loadHospitalRolesAndMenus() {
 }
 
 async function loadHospRoleMenusConfig(role) {
-  document.querySelectorAll('input[name="hosp_menu_tab"]').forEach(cb => cb.checked = false);
+  document
+    .querySelectorAll('input[name="hosp_menu_tab"]')
+    .forEach((cb) => (cb.checked = false));
 
   try {
-    const res = await fetch(`${API_BASE}/super?action=menus&role=${role}`, { headers: authHeaders() });
+    const res = await fetch(`${API_BASE}/super?action=menus&role=${role}`, {
+      headers: authHeaders(),
+    });
     const data = await res.json();
     if (res.ok && data.success && data.menus) {
-      data.menus.forEach(m => {
-        const checkbox = document.querySelector(`input[name="hosp_menu_tab"][value="${m.menu_key}"]`);
+      data.menus.forEach((m) => {
+        const checkbox = document.querySelector(
+          `input[name="hosp_menu_tab"][value="${m.menu_key}"]`,
+        );
         if (checkbox) checkbox.checked = true;
       });
     }
@@ -3560,22 +3944,27 @@ async function loadHospRoleMenusConfig(role) {
 
 async function saveHospRoleMenu() {
   const role = document.getElementById("hosp_menu_role_select").value;
-  const checked = document.querySelectorAll('input[name="hosp_menu_tab"]:checked');
-  const menus = Array.from(checked).map(cb => ({
+  const checked = document.querySelectorAll(
+    'input[name="hosp_menu_tab"]:checked',
+  );
+  const menus = Array.from(checked).map((cb) => ({
     menu_key: cb.value,
     menu_label: cb.getAttribute("data-label"),
-    menu_icon: cb.getAttribute("data-icon")
+    menu_icon: cb.getAttribute("data-icon"),
   }));
 
   try {
     const res = await fetch(`${API_BASE}/super?action=menu-mapping`, {
       method: "POST",
       headers: authHeaders(),
-      body: JSON.stringify({ role_name: role, menus })
+      body: JSON.stringify({ role_name: role, menus }),
     });
     const data = await res.json();
     if (res.ok && data.success) {
-      showToast(`Menu privileges updated for role: ${role.toUpperCase()}`, "success");
+      showToast(
+        `Menu privileges updated for role: ${role.toUpperCase()}`,
+        "success",
+      );
       const user = getUser();
       if (user && user.role === role) {
         loadDynamicNavigation();
@@ -3592,28 +3981,41 @@ async function loadSuperHospitalUsers(hospId) {
   const tbody = document.getElementById("superUsersTableBody");
   if (!tbody) return;
 
-  tbody.innerHTML = '<tr><td colspan="5" class="loading-cell"><span class="spinner"></span> Loading hospital user accounts...</td></tr>';
+  tbody.innerHTML =
+    '<tr><td colspan="5" class="loading-cell"><span class="spinner"></span> Loading hospital user accounts...</td></tr>';
 
   try {
-    const res = await fetch(`${API_BASE}/users?hospital_id=${hospId}`, { headers: authHeaders() });
+    const res = await fetch(`${API_BASE}/users?hospital_id=${hospId}`, {
+      headers: authHeaders(),
+    });
     const data = await res.json();
     if (!res.ok || !data.success) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">Failed to retrieve users.</td></tr>';
+      tbody.innerHTML =
+        '<tr><td colspan="5" class="empty-cell">Failed to retrieve users.</td></tr>';
       return;
     }
 
     const users = data.users || [];
     if (users.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">No users registered for this hospital.</td></tr>';
+      tbody.innerHTML =
+        '<tr><td colspan="5" class="empty-cell">No users registered for this hospital.</td></tr>';
       return;
     }
 
-    tbody.innerHTML = users.map(u => {
-      const emailVal = u.email ? `<div style="font-size:12px; color:var(--text2);">${esc(u.email)}</div>` : "";
-      const phoneVal = u.phone ? `<div style="font-size:11px; color:var(--text3);">${esc(u.phone)}</div>` : "";
-      const contactInfo = (emailVal || phoneVal) ? `${emailVal}${phoneVal}` : '<span style="color:var(--text3); font-style:italic;">—</span>';
+    tbody.innerHTML = users
+      .map((u) => {
+        const emailVal = u.email
+          ? `<div style="font-size:12px; color:var(--text2);">${esc(u.email)}</div>`
+          : "";
+        const phoneVal = u.phone
+          ? `<div style="font-size:11px; color:var(--text3);">${esc(u.phone)}</div>`
+          : "";
+        const contactInfo =
+          emailVal || phoneVal
+            ? `${emailVal}${phoneVal}`
+            : '<span style="color:var(--text3); font-style:italic;">—</span>';
 
-      return `
+        return `
         <tr>
           <td>#${u.id}</td>
           <td><strong>${esc(u.username)}</strong></td>
@@ -3627,9 +4029,11 @@ async function loadSuperHospitalUsers(hospId) {
           </td>
         </tr>
       `;
-    }).join("");
+      })
+      .join("");
   } catch (err) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">Network error fetching users.</td></tr>';
+    tbody.innerHTML =
+      '<tr><td colspan="5" class="empty-cell">Network error fetching users.</td></tr>';
   }
 }
 
@@ -3637,28 +4041,35 @@ async function loadSuperHospitalRooms(hospId) {
   const tbody = document.getElementById("superRoomsTableBody");
   if (!tbody) return;
 
-  tbody.innerHTML = '<tr><td colspan="5" class="loading-cell"><span class="spinner"></span> Loading hospital rooms inventory...</td></tr>';
+  tbody.innerHTML =
+    '<tr><td colspan="5" class="loading-cell"><span class="spinner"></span> Loading hospital rooms inventory...</td></tr>';
 
   try {
-    const res = await fetch(`${API_BASE}/rooms?hospital_id=${hospId}`, { headers: authHeaders() });
+    const res = await fetch(`${API_BASE}/rooms?hospital_id=${hospId}`, {
+      headers: authHeaders(),
+    });
     const data = await res.json();
     if (!res.ok || !data.success) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">Failed to retrieve rooms list.</td></tr>';
+      tbody.innerHTML =
+        '<tr><td colspan="5" class="empty-cell">Failed to retrieve rooms list.</td></tr>';
       return;
     }
 
     const rooms = data.rooms || [];
     if (rooms.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">No clinical rooms registered for this hospital.</td></tr>';
+      tbody.innerHTML =
+        '<tr><td colspan="5" class="empty-cell">No clinical rooms registered for this hospital.</td></tr>';
       return;
     }
 
-    tbody.innerHTML = rooms.map(r => `
+    tbody.innerHTML = rooms
+      .map(
+        (r) => `
       <tr>
         <td><strong>${esc(r.room_no)}</strong></td>
         <td>${esc(r.room_type)}</td>
         <td><strong>${formatCurrency(r.price_per_day)}</strong></td>
-        <td><span class="badge badge-${r.status === 'available' ? 'paid' : r.status === 'occupied' ? 'unpaid' : 'partial'}">${esc(r.status)}</span></td>
+        <td><span class="badge badge-${r.status === "available" ? "paid" : r.status === "occupied" ? "unpaid" : "partial"}">${esc(r.status)}</span></td>
         <td>
           <div style="display: flex; gap: 6px;">
             <button class="action-btn btn-edit" onclick="editRoom(${r.id})" title="Modify room configurations">Edit</button>
@@ -3666,8 +4077,11 @@ async function loadSuperHospitalRooms(hospId) {
           </div>
         </td>
       </tr>
-    `).join("");
+    `,
+      )
+      .join("");
   } catch (err) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">Network error fetching clinical rooms.</td></tr>';
+    tbody.innerHTML =
+      '<tr><td colspan="5" class="empty-cell">Network error fetching clinical rooms.</td></tr>';
   }
 }

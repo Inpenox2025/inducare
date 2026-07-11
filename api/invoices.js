@@ -2,7 +2,8 @@ const { getSQL } = require("../shared/db");
 const jwt = require("jsonwebtoken");
 const PDFDocument = require("pdfkit");
 
-const JWT_SECRET = process.env.JWT_SECRET || "hospital-management-jwt-secret-key-2026";
+const JWT_SECRET =
+  process.env.JWT_SECRET || "hospital-management-jwt-secret-key-2026";
 
 function verifyToken(req) {
   const authHeader = req.headers.authorization;
@@ -33,8 +34,9 @@ function formatCurrency(v) {
 
 async function syncRoomInvoices(sql, targetHospitalId) {
   try {
-    const activeAllocations = targetHospitalId !== null
-      ? await sql`
+    const activeAllocations =
+      targetHospitalId !== null
+        ? await sql`
         SELECT ra.*, r.price_per_day, r.room_no, r.room_type,
                h.gst_no, h.gst_percent, h.tax_name as hosp_tax_name
         FROM room_allocations ra
@@ -42,7 +44,7 @@ async function syncRoomInvoices(sql, targetHospitalId) {
         LEFT JOIN hospitals h ON ra.hospital_id = h.id
         WHERE ra.status = 'active' AND ra.hospital_id = ${targetHospitalId}
       `
-      : await sql`
+        : await sql`
         SELECT ra.*, r.price_per_day, r.room_no, r.room_type,
                h.gst_no, h.gst_percent, h.tax_name as hosp_tax_name
         FROM room_allocations ra
@@ -57,35 +59,36 @@ async function syncRoomInvoices(sql, targetHospitalId) {
       const diffMs = now - admit;
       const days = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 
-      const invRes = await sql`SELECT * FROM invoices WHERE allocation_id = ${alloc.id}`;
+      const invRes =
+        await sql`SELECT * FROM invoices WHERE allocation_id = ${alloc.id}`;
       if (invRes.length > 0) {
         const inv = invRes[0];
-        
-        const pricePerDay = parseFloat(alloc.price_per_day) || 0.00;
+
+        const pricePerDay = parseFloat(alloc.price_per_day) || 0.0;
         const newRawFee = pricePerDay * days;
-        
+
         let newTaxableAmt = newRawFee;
-        let newGstAmt = 0.00;
-        let newGstRate = parseFloat(inv.gst_rate) || 0.00;
+        let newGstAmt = 0.0;
+        let newGstRate = parseFloat(inv.gst_rate) || 0.0;
         let newFinalTotalAmt = newRawFee;
 
         if (newGstRate > 0) {
-          newGstAmt = Math.round((newRawFee * newGstRate / 100) * 100) / 100;
+          newGstAmt = Math.round(((newRawFee * newGstRate) / 100) * 100) / 100;
           newFinalTotalAmt = newRawFee + newGstAmt;
         }
 
-        const paid = parseFloat(inv.paid_amount) || 0.00;
-        const newDue = Math.max(0.00, newFinalTotalAmt - paid);
+        const paid = parseFloat(inv.paid_amount) || 0.0;
+        const newDue = Math.max(0.0, newFinalTotalAmt - paid);
         let newStatus = inv.status;
         if (newDue <= 0) {
-          newStatus = 'paid';
+          newStatus = "paid";
         } else if (paid > 0) {
-          newStatus = 'partially_paid';
+          newStatus = "partially_paid";
         } else {
-          newStatus = 'unpaid';
+          newStatus = "unpaid";
         }
 
-        const newDesc = `Room Charge (Active: ${days} ${days === 1 ? 'Day' : 'Days'}) - Room ${alloc.room_no} (${alloc.room_type})`;
+        const newDesc = `Room Charge (Active: ${days} ${days === 1 ? "Day" : "Days"}) - Room ${alloc.room_no} (${alloc.room_type})`;
 
         if (Math.abs(parseFloat(inv.amount) - newFinalTotalAmt) > 0.01) {
           await sql`
@@ -118,7 +121,12 @@ module.exports = async function handler(req, res) {
   if (action === "receipts") {
     const user = verifyToken(req);
     if (!user) return res.status(401).json({ error: "Unauthorized" });
-    const targetHospitalId = user.role === 'super_admin' ? (req.query.hospital_id ? parseInt(req.query.hospital_id) : null) : user.hospital_id;
+    const targetHospitalId =
+      user.role === "super_admin"
+        ? req.query.hospital_id
+          ? parseInt(req.query.hospital_id)
+          : null
+        : user.hospital_id;
 
     const invoiceId = req.query.invoice_id;
     const search = req.query.search || "";
@@ -141,7 +149,7 @@ module.exports = async function handler(req, res) {
         // Fetch all receipts with tenant isolation & search filtering
         const searchPattern = `%${search}%`;
         let countRows, dataRows;
-        
+
         if (targetHospitalId !== null) {
           countRows = await sql`
             SELECT COUNT(*) as total 
@@ -151,7 +159,7 @@ module.exports = async function handler(req, res) {
             WHERE i.hospital_id = ${targetHospitalId}
               AND (r.receipt_no ILIKE ${searchPattern} OR i.invoice_no ILIKE ${searchPattern} OR p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern})
           `;
-          
+
           dataRows = await sql`
             SELECT r.*, i.invoice_no, p.full_name as patient_name
             FROM receipts r
@@ -171,7 +179,7 @@ module.exports = async function handler(req, res) {
             JOIN patients p ON i.patient_id = p.id
             WHERE r.receipt_no ILIKE ${searchPattern} OR i.invoice_no ILIKE ${searchPattern} OR p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern}
           `;
-          
+
           dataRows = await sql`
             SELECT r.*, i.invoice_no, p.full_name as patient_name
             FROM receipts r
@@ -182,7 +190,7 @@ module.exports = async function handler(req, res) {
             LIMIT ${limit} OFFSET ${offset}
           `;
         }
-        
+
         const total = parseInt(countRows[0].total);
         return res.status(200).json({
           success: true,
@@ -191,19 +199,25 @@ module.exports = async function handler(req, res) {
             total,
             page,
             limit,
-            totalPages: Math.ceil(total / limit)
-          }
+            totalPages: Math.ceil(total / limit),
+          },
         });
       }
     } catch (error) {
-      return res.status(500).json({ error: "Failed to fetch receipts list", details: error.message });
+      return res
+        .status(500)
+        .json({
+          error: "Failed to fetch receipts list",
+          details: error.message,
+        });
     }
   }
 
   // ══════ ACTION: Export PDF for a single transaction receipt (GET) ══════
   if (action === "export-receipt-pdf") {
     const receiptId = req.query.receipt_id;
-    if (!receiptId) return res.status(400).json({ error: "Receipt ID is required" });
+    if (!receiptId)
+      return res.status(400).json({ error: "Receipt ID is required" });
     try {
       const rows = await sql`
         SELECT r.*, i.invoice_no, i.amount as total_amount, i.paid_amount as total_paid, i.due_amount as total_due, i.description as invoice_desc,
@@ -216,20 +230,24 @@ module.exports = async function handler(req, res) {
         LEFT JOIN hospitals h ON i.hospital_id = h.id
         WHERE r.id = ${parseInt(receiptId)}
       `;
-      if (rows.length === 0) return res.status(404).json({ error: "Receipt transaction not found" });
+      if (rows.length === 0)
+        return res.status(404).json({ error: "Receipt transaction not found" });
       const receipt = rows[0];
 
       const doc = new PDFDocument({ margin: 50, size: "A4" });
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="Receipt_${receipt.receipt_no}.pdf"`
+        `attachment; filename="Receipt_${receipt.receipt_no}.pdf"`,
       );
       doc.pipe(res);
 
       let logoWritten = false;
       const headerStartY = 45;
-      if (receipt.hospital_logo && receipt.hospital_logo.startsWith("data:image")) {
+      if (
+        receipt.hospital_logo &&
+        receipt.hospital_logo.startsWith("data:image")
+      ) {
         try {
           const base64Data = receipt.hospital_logo.split(",")[1];
           const imgBuffer = Buffer.from(base64Data, "base64");
@@ -244,25 +262,44 @@ module.exports = async function handler(req, res) {
           .fontSize(22)
           .font("Helvetica-Bold")
           .fillColor("#00bba8")
-          .text(receipt.hospital_name ? receipt.hospital_name.toUpperCase() : "INDUCARE", 50, headerStartY);
+          .text(
+            receipt.hospital_name
+              ? receipt.hospital_name.toUpperCase()
+              : "icare",
+            50,
+            headerStartY,
+          );
       }
 
       doc
         .fontSize(10)
         .font("Helvetica-Bold")
         .fillColor("#0f172a")
-        .text((receipt.hospital_name || "INDUCARE").toUpperCase(), 350, headerStartY, { align: "right", width: 195 });
+        .text(
+          (receipt.hospital_name || "icare").toUpperCase(),
+          350,
+          headerStartY,
+          { align: "right", width: 195 },
+        );
       doc
         .fontSize(8.5)
         .font("Helvetica")
         .fillColor("#64748b")
-        .text("TRANSACTION PAYMENT RECEIPT", 350, headerStartY + 15, { align: "right", width: 195 });
+        .text("TRANSACTION PAYMENT RECEIPT", 350, headerStartY + 15, {
+          align: "right",
+          width: 195,
+        });
 
       let nextYOffset = 27;
       if (receipt.gst_no) {
         const taxName = (receipt.tax_name || "GST").toUpperCase();
         const taxLabel = taxName === "GST" ? "GSTIN" : `${taxName} No`;
-        doc.text(`${taxLabel}: ${receipt.gst_no.toUpperCase()}`, 350, headerStartY + nextYOffset, { align: "right", width: 195 });
+        doc.text(
+          `${taxLabel}: ${receipt.gst_no.toUpperCase()}`,
+          350,
+          headerStartY + nextYOffset,
+          { align: "right", width: 195 },
+        );
         nextYOffset += 12;
       }
 
@@ -286,21 +323,34 @@ module.exports = async function handler(req, res) {
 
       const infoY = doc.y;
 
-      doc.fontSize(9.5).font("Helvetica-Bold").fillColor("#0f172a").text("Receipt Details:", 50, infoY);
+      doc
+        .fontSize(9.5)
+        .font("Helvetica-Bold")
+        .fillColor("#0f172a")
+        .text("Receipt Details:", 50, infoY);
       doc
         .font("Helvetica")
         .fillColor("#475569")
         .text(`Receipt No: ${receipt.receipt_no}`, 50, infoY + 16)
-        .text(`Payment Date: ${formatDate(receipt.payment_date)}`, 50, infoY + 28)
+        .text(
+          `Payment Date: ${formatDate(receipt.payment_date)}`,
+          50,
+          infoY + 28,
+        )
         .text(`Ref Invoice: ${receipt.invoice_no}`, 50, infoY + 40);
 
-      doc.font("Helvetica-Bold").fillColor("#0f172a").text("Billed To:", 300, infoY);
+      doc
+        .font("Helvetica-Bold")
+        .fillColor("#0f172a")
+        .text("Billed To:", 300, infoY);
       doc
         .font("Helvetica")
         .fillColor("#475569")
         .text(`Patient Name: ${receipt.patient_name}`, 300, infoY + 16)
         .text(`Contact: ${receipt.patient_mobile || "—"}`, 300, infoY + 28)
-        .text(`Address: ${receipt.patient_address || "—"}`, 300, infoY + 40, { width: 240 });
+        .text(`Address: ${receipt.patient_address || "—"}`, 300, infoY + 40, {
+          width: 240,
+        });
 
       doc.moveDown(3.5);
 
@@ -327,7 +377,10 @@ module.exports = async function handler(req, res) {
       const tableRowY = doc.y;
       doc.font("Helvetica").fillColor("#0f172a");
       doc.text(`Installment Payment (${receipt.payment_mode})`, 50, tableRowY);
-      doc.text(formatCurrency(receipt.amount_paid), 450, tableRowY, { align: "right", width: 95 });
+      doc.text(formatCurrency(receipt.amount_paid), 450, tableRowY, {
+        align: "right",
+        width: 95,
+      });
 
       doc.moveDown(1.5);
       doc
@@ -339,17 +392,53 @@ module.exports = async function handler(req, res) {
       doc.moveDown(0.6);
 
       const totalsY = doc.y;
-      doc.font("Helvetica-Bold").fillColor("#475569").text("Installment Paid:", 320, totalsY);
-      doc.font("Helvetica-Bold").fillColor("#00bba8").text(formatCurrency(receipt.amount_paid), 450, totalsY, { align: "right", width: 95 });
+      doc
+        .font("Helvetica-Bold")
+        .fillColor("#475569")
+        .text("Installment Paid:", 320, totalsY);
+      doc
+        .font("Helvetica-Bold")
+        .fillColor("#00bba8")
+        .text(formatCurrency(receipt.amount_paid), 450, totalsY, {
+          align: "right",
+          width: 95,
+        });
 
-      doc.font("Helvetica-Bold").fillColor("#475569").text("Total Invoice Billed:", 320, totalsY + 16);
-      doc.font("Helvetica").fillColor("#0f172a").text(formatCurrency(receipt.total_amount), 450, totalsY + 16, { align: "right", width: 95 });
+      doc
+        .font("Helvetica-Bold")
+        .fillColor("#475569")
+        .text("Total Invoice Billed:", 320, totalsY + 16);
+      doc
+        .font("Helvetica")
+        .fillColor("#0f172a")
+        .text(formatCurrency(receipt.total_amount), 450, totalsY + 16, {
+          align: "right",
+          width: 95,
+        });
 
-      doc.font("Helvetica-Bold").fillColor("#475569").text("Total Amount Paid:", 320, totalsY + 32);
-      doc.font("Helvetica").fillColor("#0f172a").text(formatCurrency(receipt.total_paid), 450, totalsY + 32, { align: "right", width: 95 });
+      doc
+        .font("Helvetica-Bold")
+        .fillColor("#475569")
+        .text("Total Amount Paid:", 320, totalsY + 32);
+      doc
+        .font("Helvetica")
+        .fillColor("#0f172a")
+        .text(formatCurrency(receipt.total_paid), 450, totalsY + 32, {
+          align: "right",
+          width: 95,
+        });
 
-      doc.font("Helvetica-Bold").fillColor("#475569").text("Remaining Balance Due:", 320, totalsY + 48);
-      doc.font("Helvetica-Bold").fillColor("#ef4444").text(formatCurrency(receipt.total_due), 450, totalsY + 48, { align: "right", width: 95 });
+      doc
+        .font("Helvetica-Bold")
+        .fillColor("#475569")
+        .text("Remaining Balance Due:", 320, totalsY + 48);
+      doc
+        .font("Helvetica-Bold")
+        .fillColor("#ef4444")
+        .text(formatCurrency(receipt.total_due), 450, totalsY + 48, {
+          align: "right",
+          width: 95,
+        });
 
       doc.y = totalsY + 64;
       doc.moveDown(2);
@@ -357,7 +446,10 @@ module.exports = async function handler(req, res) {
       const signatureY = doc.y;
       doc.fontSize(9).font("Helvetica").fillColor("#64748b");
       doc.text("Received By: Staff Desk", 50, signatureY);
-      doc.text("Authorized Signature", 400, signatureY, { align: "right", width: 145 });
+      doc.text("Authorized Signature", 400, signatureY, {
+        align: "right",
+        width: 145,
+      });
       doc
         .moveTo(400, signatureY - 5)
         .lineTo(545, signatureY - 5)
@@ -366,11 +458,23 @@ module.exports = async function handler(req, res) {
         .stroke();
 
       doc.moveDown(2.5);
-      doc.fontSize(8).font("Helvetica").fillColor("#94a3b8").text("This is an official verification of transaction installment payment.", { align: "center" });
+      doc
+        .fontSize(8)
+        .font("Helvetica")
+        .fillColor("#94a3b8")
+        .text(
+          "This is an official verification of transaction installment payment.",
+          { align: "center" },
+        );
       doc.end();
     } catch (error) {
       console.error("PDF receipt transaction export error:", error);
-      return res.status(500).json({ error: "Failed to compile transaction receipt PDF", details: error.message });
+      return res
+        .status(500)
+        .json({
+          error: "Failed to compile transaction receipt PDF",
+          details: error.message,
+        });
     }
   }
 
@@ -403,20 +507,23 @@ module.exports = async function handler(req, res) {
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="${invoice.patient_name} - Inducare.pdf"`,
+        `attachment; filename="${invoice.patient_name} - icare.pdf"`,
       );
       doc.pipe(res);
 
       // Hospital Header (Custom Dynamic Branding)
       let logoWritten = false;
       const headerStartY = 45;
-      
-      if (invoice.hospital_logo && invoice.hospital_logo.startsWith("data:image")) {
+
+      if (
+        invoice.hospital_logo &&
+        invoice.hospital_logo.startsWith("data:image")
+      ) {
         try {
           const base64Data = invoice.hospital_logo.split(",")[1];
           const imgBuffer = Buffer.from(base64Data, "base64");
           doc.image(imgBuffer, 50, headerStartY, {
-            fit: [140, 50]
+            fit: [140, 50],
           });
           logoWritten = true;
         } catch (e) {
@@ -429,7 +536,14 @@ module.exports = async function handler(req, res) {
           .fontSize(22)
           .font("Helvetica-Bold")
           .fillColor("#00bba8")
-          .text(invoice.hospital_name ? invoice.hospital_name.toUpperCase() : "INDUCARE", 50, headerStartY, { align: "left" });
+          .text(
+            invoice.hospital_name
+              ? invoice.hospital_name.toUpperCase()
+              : "icare",
+            50,
+            headerStartY,
+            { align: "left" },
+          );
       }
 
       // Draw Hospital details on the top right
@@ -437,19 +551,34 @@ module.exports = async function handler(req, res) {
         .fontSize(10)
         .font("Helvetica-Bold")
         .fillColor("#0f172a")
-        .text((invoice.hospital_name || "INDUCARE").toUpperCase(), 350, headerStartY, { align: "right", width: 195 });
-        
-      doc
-        .fontSize(8.5)
-        .font("Helvetica")
-        .fillColor("#64748b")
-        .text(invoice.hospital_name ? "SMART CUSTOM RECEIPT" : "SMART CLINIC & HOSPITAL ERP", 350, headerStartY + 15, { align: "right", width: 195 });
+        .text(
+          (invoice.hospital_name || "icare").toUpperCase(),
+          350,
+          headerStartY,
+          { align: "right", width: 195 },
+        );
 
       doc
         .fontSize(8.5)
         .font("Helvetica")
         .fillColor("#64748b")
-        .text("Contact: +91 8688932150", 350, headerStartY + 27, { align: "right", width: 195 });
+        .text(
+          invoice.hospital_name
+            ? "SMART CUSTOM RECEIPT"
+            : "SMART CLINIC & HOSPITAL ERP",
+          350,
+          headerStartY + 15,
+          { align: "right", width: 195 },
+        );
+
+      doc
+        .fontSize(8.5)
+        .font("Helvetica")
+        .fillColor("#64748b")
+        .text("Contact: +91 8688932150", 350, headerStartY + 27, {
+          align: "right",
+          width: 195,
+        });
 
       let nextYOffset = 39;
       if (invoice.gst_no) {
@@ -459,7 +588,12 @@ module.exports = async function handler(req, res) {
           .fontSize(8.5)
           .font("Helvetica")
           .fillColor("#64748b")
-          .text(`${taxLabel}: ${invoice.gst_no.toUpperCase()}`, 350, headerStartY + nextYOffset, { align: "right", width: 195 });
+          .text(
+            `${taxLabel}: ${invoice.gst_no.toUpperCase()}`,
+            350,
+            headerStartY + nextYOffset,
+            { align: "right", width: 195 },
+          );
         nextYOffset += 12;
       }
 
@@ -487,7 +621,10 @@ module.exports = async function handler(req, res) {
       const infoY = doc.y;
 
       // Invoice info (Left Column)
-      doc.fontSize(9.5).font("Helvetica-Bold").text("Invoice Details:", 50, infoY);
+      doc
+        .fontSize(9.5)
+        .font("Helvetica-Bold")
+        .text("Invoice Details:", 50, infoY);
       doc
         .font("Helvetica")
         .fillColor("#475569")
@@ -495,7 +632,11 @@ module.exports = async function handler(req, res) {
         .text(`Issued Date: ${formatDate(invoice.created_at)}`, 50, infoY + 28);
 
       if (invoice.payment_date) {
-        doc.text(`Payment Date: ${formatDate(invoice.payment_date)}`, 50, infoY + 40);
+        doc.text(
+          `Payment Date: ${formatDate(invoice.payment_date)}`,
+          50,
+          infoY + 40,
+        );
       }
 
       // Patient Info (Right Column)
@@ -561,9 +702,12 @@ module.exports = async function handler(req, res) {
         tableRowY,
         { width: 380 },
       );
-      const printRowAmt = (invoice.gst_rate && parseFloat(invoice.gst_rate) > 0 && invoice.taxable_amount) 
-        ? parseFloat(invoice.taxable_amount) 
-        : parseFloat(invoice.amount);
+      const printRowAmt =
+        invoice.gst_rate &&
+        parseFloat(invoice.gst_rate) > 0 &&
+        invoice.taxable_amount
+          ? parseFloat(invoice.taxable_amount)
+          : parseFloat(invoice.amount);
 
       doc.text(formatCurrency(printRowAmt), 450, tableRowY, {
         align: "right",
@@ -583,7 +727,11 @@ module.exports = async function handler(req, res) {
       const totalsY = doc.y;
       let offset = 0;
 
-      if (invoice.gst_rate && parseFloat(invoice.gst_rate) > 0 && invoice.taxable_amount) {
+      if (
+        invoice.gst_rate &&
+        parseFloat(invoice.gst_rate) > 0 &&
+        invoice.taxable_amount
+      ) {
         doc
           .font("Helvetica-Bold")
           .fillColor("#475569")
@@ -595,14 +743,14 @@ module.exports = async function handler(req, res) {
             align: "right",
             width: 95,
           });
-        
+
         offset += 16;
 
         const taxName = (invoice.tax_name || "GST").toUpperCase();
         if (taxName === "GST" || taxName === "CGST/SGST") {
           const halfRate = parseFloat(invoice.gst_rate) / 2;
           const halfGstAmt = parseFloat(invoice.gst_amount) / 2;
-          
+
           doc
             .font("Helvetica-Bold")
             .fillColor("#475569")
@@ -614,7 +762,7 @@ module.exports = async function handler(req, res) {
               align: "right",
               width: 95,
             });
-          
+
           offset += 16;
 
           doc
@@ -628,13 +776,17 @@ module.exports = async function handler(req, res) {
               align: "right",
               width: 95,
             });
-            
+
           offset += 16;
         } else {
           doc
             .font("Helvetica-Bold")
             .fillColor("#475569")
-            .text(`${invoice.tax_name || "Tax"} (${invoice.gst_rate}%):`, 320, totalsY + offset);
+            .text(
+              `${invoice.tax_name || "Tax"} (${invoice.gst_rate}%):`,
+              320,
+              totalsY + offset,
+            );
           doc
             .font("Helvetica")
             .fillColor("#0f172a")
@@ -642,7 +794,7 @@ module.exports = async function handler(req, res) {
               align: "right",
               width: 95,
             });
-          
+
           offset += 16;
         }
       }
@@ -759,21 +911,27 @@ module.exports = async function handler(req, res) {
   else {
     const user = verifyToken(req);
     if (!user) return res.status(401).json({ error: "Unauthorized" });
-    const targetHospitalId = user.role === 'super_admin' ? (req.query.hospital_id ? parseInt(req.query.hospital_id) : null) : user.hospital_id;
+    const targetHospitalId =
+      user.role === "super_admin"
+        ? req.query.hospital_id
+          ? parseInt(req.query.hospital_id)
+          : null
+        : user.hospital_id;
 
     // ══════ SINGLE INVOICE ACTIONS ══════
     if (id) {
       // GET: Fetch single invoice
       if (req.method === "GET") {
         try {
-          const rows = targetHospitalId !== null
-            ? await sql`
+          const rows =
+            targetHospitalId !== null
+              ? await sql`
               SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
               FROM invoices i
               JOIN patients p ON i.patient_id = p.id
               WHERE i.id = ${parseInt(id)} AND i.hospital_id = ${targetHospitalId}
             `
-            : await sql`
+              : await sql`
               SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
               FROM invoices i
               JOIN patients p ON i.patient_id = p.id
@@ -792,18 +950,24 @@ module.exports = async function handler(req, res) {
       // PUT: Update reconciliation (mark paid/unpaid and payment mode)
       if (req.method === "PUT") {
         try {
-          const { status, payment_mode, paid_amount, amount, amount_paid } = req.body;
+          const { status, payment_mode, paid_amount, amount, amount_paid } =
+            req.body;
 
           // 1. Fetch current invoice first
-          const currentRows = targetHospitalId !== null
-            ? await sql`SELECT * FROM invoices WHERE id = ${parseInt(id)} AND hospital_id = ${targetHospitalId}`
-            : await sql`SELECT * FROM invoices WHERE id = ${parseInt(id)}`;
-          if (currentRows.length === 0) return res.status(404).json({ error: "Invoice not found" });
+          const currentRows =
+            targetHospitalId !== null
+              ? await sql`SELECT * FROM invoices WHERE id = ${parseInt(id)} AND hospital_id = ${targetHospitalId}`
+              : await sql`SELECT * FROM invoices WHERE id = ${parseInt(id)}`;
+          if (currentRows.length === 0)
+            return res.status(404).json({ error: "Invoice not found" });
           const currentInv = currentRows[0];
 
           let updatedStatus = status || currentInv.status;
-          let totalAmount = amount !== undefined ? parseFloat(amount) : parseFloat(currentInv.amount);
-          
+          let totalAmount =
+            amount !== undefined
+              ? parseFloat(amount)
+              : parseFloat(currentInv.amount);
+
           let totalPaid = 0;
           let newReceipt = null;
 
@@ -811,16 +975,21 @@ module.exports = async function handler(req, res) {
             // Logging a new installment transaction!
             const installment = parseFloat(amount_paid) || 0;
             if (installment <= 0) {
-              return res.status(400).json({ error: "Installment payment amount must be greater than zero" });
+              return res
+                .status(400)
+                .json({
+                  error: "Installment payment amount must be greater than zero",
+                });
             }
             totalPaid = (parseFloat(currentInv.paid_amount) || 0) + installment;
-            
+
             // Generate sequential receipt no
-            const countRes = await sql`SELECT COUNT(*) as count FROM receipts WHERE invoice_id = ${currentInv.id}`;
+            const countRes =
+              await sql`SELECT COUNT(*) as count FROM receipts WHERE invoice_id = ${currentInv.id}`;
             const rcptCount = parseInt(countRes[0].count) + 1;
             const rcptNo = `RCPT-${currentInv.invoice_no}-${rcptCount}`;
-            
-            const mode = payment_mode || 'CASH';
+
+            const mode = payment_mode || "CASH";
             const dateVal = new Date().toISOString().split("T")[0];
 
             const rcptRows = await sql`
@@ -831,10 +1000,13 @@ module.exports = async function handler(req, res) {
             newReceipt = rcptRows[0];
           } else {
             // Standard overwrite from dashboard (for manual adjustment/reconciliation)
-            totalPaid = paid_amount !== undefined ? parseFloat(paid_amount) : parseFloat(currentInv.paid_amount);
+            totalPaid =
+              paid_amount !== undefined
+                ? parseFloat(paid_amount)
+                : parseFloat(currentInv.paid_amount);
           }
 
-          const dueAmount = Math.max(0.00, totalAmount - totalPaid);
+          const dueAmount = Math.max(0.0, totalAmount - totalPaid);
           if (dueAmount <= 0) {
             updatedStatus = "paid";
           } else if (totalPaid > 0) {
@@ -848,8 +1020,9 @@ module.exports = async function handler(req, res) {
               ? new Date().toISOString().split("T")[0]
               : null;
 
-          const rows = targetHospitalId !== null
-            ? await sql`
+          const rows =
+            targetHospitalId !== null
+              ? await sql`
               UPDATE invoices SET
                 status = ${updatedStatus},
                 payment_mode = ${payment_mode || currentInv.payment_mode || null},
@@ -860,7 +1033,7 @@ module.exports = async function handler(req, res) {
               WHERE id = ${parseInt(id)} AND hospital_id = ${targetHospitalId}
               RETURNING *
             `
-            : await sql`
+              : await sql`
               UPDATE invoices SET
                 status = ${updatedStatus},
                 payment_mode = ${payment_mode || currentInv.payment_mode || null},
@@ -880,7 +1053,9 @@ module.exports = async function handler(req, res) {
             `;
           }
 
-          return res.status(200).json({ success: true, invoice: rows[0], receipt: newReceipt });
+          return res
+            .status(200)
+            .json({ success: true, invoice: rows[0], receipt: newReceipt });
         } catch (error) {
           return res.status(500).json({
             error: "Failed to update invoice status",
@@ -898,9 +1073,10 @@ module.exports = async function handler(req, res) {
         }
 
         try {
-          const rows = targetHospitalId !== null
-            ? await sql`DELETE FROM invoices WHERE id = ${parseInt(id)} AND hospital_id = ${targetHospitalId} RETURNING id`
-            : await sql`DELETE FROM invoices WHERE id = ${parseInt(id)} RETURNING id`;
+          const rows =
+            targetHospitalId !== null
+              ? await sql`DELETE FROM invoices WHERE id = ${parseInt(id)} AND hospital_id = ${targetHospitalId} RETURNING id`
+              : await sql`DELETE FROM invoices WHERE id = ${parseInt(id)} RETURNING id`;
           if (rows.length === 0)
             return res.status(404).json({ error: "Invoice not found" });
           return res
@@ -937,11 +1113,11 @@ module.exports = async function handler(req, res) {
           }
 
           const hostId = targetHospitalId || 1;
-          
+
           const today = new Date();
           const year = today.getFullYear();
-          const month = String(today.getMonth() + 1).padStart(2, '0');
-          const day = String(today.getDate()).padStart(2, '0');
+          const month = String(today.getMonth() + 1).padStart(2, "0");
+          const day = String(today.getDate()).padStart(2, "0");
           const dateStr = `${year}${month}${day}`;
 
           const countRes = await sql`
@@ -953,19 +1129,27 @@ module.exports = async function handler(req, res) {
           const countVal = parseInt(countRes[0].total);
           const invNo = `INSP${hostId}${dateStr}${countVal}`;
           const totalAmt = parseFloat(amount);
-          
-          const hospRes = await sql`SELECT gst_no, gst_percent, tax_name FROM hospitals WHERE id = ${hostId}`;
-          const hosp = hospRes[0];
-          
-          let taxableAmt = totalAmt;
-          let gstAmt = 0.00;
-          let gstRate = 0.00;
-          let finalTotalAmt = totalAmt;
-          const taxNameVal = hosp && hosp.tax_name ? hosp.tax_name.trim() : 'GST';
 
-          if (hosp && hosp.gst_no && hosp.gst_no.trim() !== "" && hosp.gst_percent && parseFloat(hosp.gst_percent) > 0) {
+          const hospRes =
+            await sql`SELECT gst_no, gst_percent, tax_name FROM hospitals WHERE id = ${hostId}`;
+          const hosp = hospRes[0];
+
+          let taxableAmt = totalAmt;
+          let gstAmt = 0.0;
+          let gstRate = 0.0;
+          let finalTotalAmt = totalAmt;
+          const taxNameVal =
+            hosp && hosp.tax_name ? hosp.tax_name.trim() : "GST";
+
+          if (
+            hosp &&
+            hosp.gst_no &&
+            hosp.gst_no.trim() !== "" &&
+            hosp.gst_percent &&
+            parseFloat(hosp.gst_percent) > 0
+          ) {
             gstRate = parseFloat(hosp.gst_percent);
-            gstAmt = Math.round((totalAmt * gstRate / 100) * 100) / 100;
+            gstAmt = Math.round(((totalAmt * gstRate) / 100) * 100) / 100;
             finalTotalAmt = totalAmt + gstAmt;
           }
 
@@ -1090,7 +1274,8 @@ module.exports = async function handler(req, res) {
             }
           } else {
             if (targetHospitalId !== null) {
-              countRows = await sql`SELECT COUNT(*) as total FROM invoices WHERE hospital_id = ${targetHospitalId}`;
+              countRows =
+                await sql`SELECT COUNT(*) as total FROM invoices WHERE hospital_id = ${targetHospitalId}`;
               dataRows = await sql`
                 SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
                 FROM invoices i JOIN patients p ON i.patient_id = p.id
