@@ -336,7 +336,7 @@ module.exports = async function handler(req, res) {
         .fontSize(14)
         .font("Helvetica-Bold")
         .fillColor("#00bba8")
-        .text("PAYMENT RECEIPT", { align: "left" });
+        .text("PAYMENT RECEIPT", { align: "center" });
       doc.moveDown(0.5);
 
       const infoY = doc.y;
@@ -592,7 +592,7 @@ module.exports = async function handler(req, res) {
         .lineWidth(1)
         .stroke();
 
-      doc.moveDown(2.5);
+      doc.y = 780;
       doc
         .fontSize(8)
         .font("Helvetica")
@@ -601,6 +601,14 @@ module.exports = async function handler(req, res) {
           "This is an official verification of transaction installment payment.",
           { align: "center" },
         );
+      doc.moveDown(0.3);
+      doc
+        .fontSize(8.5)
+        .font("Helvetica-Bold")
+        .fillColor("#00bba8")
+        .text("Developed & Maintained by inspenox (inspenox.in)", {
+          align: "center",
+        });
       doc.end();
     } catch (error) {
       console.error("PDF receipt transaction export error:", error);
@@ -750,7 +758,7 @@ module.exports = async function handler(req, res) {
         .fontSize(14)
         .font("Helvetica-Bold")
         .fillColor("#0f172a")
-        .text("INVOICE RECEIPT", { align: "left" });
+        .text("INVOICE RECEIPT", { align: "center" });
       doc.moveDown(0.5);
 
       const infoY = doc.y;
@@ -1067,7 +1075,7 @@ module.exports = async function handler(req, res) {
         .lineWidth(1)
         .stroke();
 
-      doc.moveDown(2);
+      doc.y = 780;
       doc
         .fontSize(8)
         .font("Helvetica")
