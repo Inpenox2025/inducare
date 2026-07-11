@@ -2176,6 +2176,7 @@ function initEventListeners() {
       }
     });
   }
+  
 
   const superPatientSearchInput = document.getElementById(
     "super_patient_search",
