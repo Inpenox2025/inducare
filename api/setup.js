@@ -178,6 +178,16 @@ module.exports = async function handler(req, res) {
     // Migration: Add allocation_id to invoices
     await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS allocation_id INT REFERENCES room_allocations(id) ON DELETE SET NULL`;
 
+    // Migration: Create Hospital Insurers Table (Many-to-Many join table)
+    await sql`
+      CREATE TABLE IF NOT EXISTS hospital_insurers (
+        hospital_id INT REFERENCES hospitals(id) ON DELETE CASCADE,
+        insurance_company_id INT REFERENCES insurance_companies(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT NOW(),
+        PRIMARY KEY (hospital_id, insurance_company_id)
+      )
+    `;
+
     // Migration: Create receipts table for partial payments
     await sql`
       CREATE TABLE IF NOT EXISTS receipts (
@@ -611,7 +621,16 @@ module.exports = async function handler(req, res) {
       await sql`UPDATE patients SET hospital_id = ${hospital1Id} WHERE hospital_id IS NULL`;
       await sql`UPDATE appointments SET hospital_id = ${hospital1Id} WHERE hospital_id IS NULL`;
       await sql`UPDATE invoices SET hospital_id = ${hospital1Id} WHERE hospital_id IS NULL`;
+    // Seed default relations if empty
+    const countRelations = await sql`SELECT COUNT(*)::int as count FROM hospital_insurers`;
+    if (countRelations[0].count === 0) {
+      await sql`
+        INSERT INTO hospital_insurers (hospital_id, insurance_company_id)
+        SELECT h.id, ic.id
+        FROM hospitals h, insurance_companies ic
+      `;
     }
+  }
 
     return res.status(200).json({
       success: true,

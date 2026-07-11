@@ -2168,6 +2168,32 @@
     </div>
 
 
+    <!-- 18. Super Admin: Map Insurance Company to Hospitals Modal -->
+    <div class="modal-overlay" id="superMapHospitalsModal">
+        <div class="modal" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Map Insurance Company to Hospitals</h2>
+                <button class="modal-close" data-close="superMapHospitalsModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="superMapHospitalsForm">
+                    <input type="hidden" id="super_map_insurance_id">
+                    <div style="margin-bottom: 16px; font-size:13.5px;">
+                        Select the hospitals associated with <strong id="superMapInsuranceName"></strong>:
+                    </div>
+                    <div id="superMapHospitalsList" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+                        <span class="loading-cell">Loading hospitals checklist...</span>
+                    </div>
+                    <div class="modal-footer" style="padding-top: 16px; margin-top: 16px; border-top: 1px solid var(--border);">
+                        <button type="button" class="btn btn-outline" data-close="superMapHospitalsModal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="saveSuperMapBtn">Save Associations</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
     <div class="toast" id="toast">Toast Message</div>
 
     <script src="/admin/dashboard.js"></script>

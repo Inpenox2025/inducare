@@ -258,6 +258,16 @@ module.exports = async function handler(req, res) {
   if (action === 'insurance-companies') {
     if (req.method === 'GET') {
       try {
+        if (user.role !== 'super_admin') {
+          // Filter by hospital_id mapping
+          const rows = await sql`
+            SELECT ic.* FROM insurance_companies ic
+            JOIN hospital_insurers hi ON ic.id = hi.insurance_company_id
+            WHERE hi.hospital_id = ${user.hospital_id} AND ic.status = 'active'
+            ORDER BY ic.name ASC
+          `;
+          return res.status(200).json({ success: true, companies: rows });
+        }
         const rows = await sql`SELECT * FROM insurance_companies ORDER BY name ASC`;
         return res.status(200).json({ success: true, companies: rows });
       } catch (error) {
@@ -324,29 +334,57 @@ module.exports = async function handler(req, res) {
   // ══════════════════════════════════════════════════════════
   // Rest of operations require ADMIN or SUPER_ADMIN role
   // ══════════════════════════════════════════════════════════
-  if (user.role !== 'super_admin' && user.role !== 'admin') {
+  if (user.role !== 'super_admin' && user.role !== 'admin' && (user.role !== 'insurer' || action !== 'hospitals')) {
     return res.status(403).json({ error: 'Access denied. Administrator privileges required.' });
   }
 
   // ══════ Super Admin: Hospitals CRUD ══════
   if (action === 'hospitals') {
-    if (user.role !== 'super_admin') {
-      return res.status(403).json({ error: 'Access denied. Super Admin privileges required.' });
-    }
-    
     if (req.method === 'GET') {
       try {
+        if (user.role === 'insurer') {
+          if (!user.insurance_company_id) {
+            return res.status(200).json({ success: true, hospitals: [] });
+          }
+          const rows = await sql`
+            SELECT h.*, 
+                   (SELECT COUNT(*)::int FROM doctors WHERE hospital_id = h.id) as doctors_count,
+                   (SELECT COUNT(*)::int FROM rooms WHERE hospital_id = h.id) as rooms_count
+            FROM hospitals h
+            JOIN hospital_insurers hi ON h.id = hi.hospital_id
+            WHERE hi.insurance_company_id = ${parseInt(user.insurance_company_id)}
+            ORDER BY h.name ASC
+          `;
+          return res.status(200).json({ success: true, hospitals: rows });
+        }
+
+        if (user.role === 'super_admin') {
+          const rows = await sql`
+            SELECT h.*, 
+                   (SELECT COUNT(*)::int FROM doctors WHERE hospital_id = h.id) as doctors_count,
+                   (SELECT COUNT(*)::int FROM rooms WHERE hospital_id = h.id) as rooms_count
+            FROM hospitals h
+            ORDER BY h.id ASC
+          `;
+          return res.status(200).json({ success: true, hospitals: rows });
+        }
+
+        // Regular admin / staff fetches only their own hospital
         const rows = await sql`
           SELECT h.*, 
-                 (SELECT COUNT(*) FROM doctors WHERE hospital_id = h.id) as doctors_count,
-                 (SELECT COUNT(*) FROM rooms WHERE hospital_id = h.id) as rooms_count
+                 (SELECT COUNT(*)::int FROM doctors WHERE hospital_id = h.id) as doctors_count,
+                 (SELECT COUNT(*)::int FROM rooms WHERE hospital_id = h.id) as rooms_count
           FROM hospitals h
-          ORDER BY h.id ASC
+          WHERE h.id = ${user.hospital_id}
         `;
         return res.status(200).json({ success: true, hospitals: rows });
       } catch (error) {
         return res.status(500).json({ error: 'Failed to list hospitals', details: error.message });
       }
+    }
+
+    if (user.role !== 'super_admin') {
+      return res.status(403).json({ error: 'Access denied. Super Admin privileges required.' });
     }
 
     if (req.method === 'POST') {
@@ -554,6 +592,54 @@ module.exports = async function handler(req, res) {
         return res.status(200).send(buffer);
       } catch (error) {
         return res.status(500).json({ error: 'Failed to export patients', details: error.message });
+      }
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // Action: Map Hospital-Insurers Mappings (Super Admin only)
+  // ══════════════════════════════════════════════════════════
+  if (action === 'map-hospital-insurers') {
+    if (req.method === 'GET') {
+      try {
+        const companyId = req.query.insurance_company_id;
+        if (!companyId) return res.status(400).json({ error: 'insurance_company_id is required' });
+        const rows = await sql`
+          SELECT hospital_id FROM hospital_insurers 
+          WHERE insurance_company_id = ${parseInt(companyId)}
+        `;
+        return res.status(200).json({ success: true, hospital_ids: rows.map(r => r.hospital_id) });
+      } catch (error) {
+        return res.status(500).json({ error: 'Failed to fetch mapped hospitals', details: error.message });
+      }
+    }
+
+    if (user.role !== 'super_admin') {
+      return res.status(403).json({ error: 'Access denied. Super Admin privileges required.' });
+    }
+
+    if (req.method === 'POST' || req.method === 'PUT') {
+      try {
+        const { insurance_company_id, hospital_ids } = req.body;
+        if (!insurance_company_id) return res.status(400).json({ error: 'insurance_company_id is required' });
+        if (!Array.isArray(hospital_ids)) return res.status(400).json({ error: 'hospital_ids must be an array' });
+
+        await sql`
+          DELETE FROM hospital_insurers 
+          WHERE insurance_company_id = ${parseInt(insurance_company_id)}
+        `;
+
+        for (const hospId of hospital_ids) {
+          await sql`
+            INSERT INTO hospital_insurers (insurance_company_id, hospital_id)
+            VALUES (${parseInt(insurance_company_id)}, ${parseInt(hospId)})
+            ON CONFLICT DO NOTHING
+          `;
+        }
+
+        return res.status(200).json({ success: true, message: 'Hospital-Insurer associations updated successfully.' });
+      } catch (error) {
+        return res.status(500).json({ error: 'Failed to map hospital-insurer', details: error.message });
       }
     }
   }

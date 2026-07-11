@@ -176,6 +176,15 @@ module.exports = async function handler(req, res) {
       if (invoiceRows.length === 0) return res.status(404).json({ error: "Invoice not found" });
       const invoice = invoiceRows[0];
 
+      // Verify relationship mapping exists
+      const mappingRows = await sql`
+        SELECT 1 FROM hospital_insurers 
+        WHERE hospital_id = ${invoice.hospital_id} AND insurance_company_id = ${parseInt(insurance_company_id)}
+      `;
+      if (mappingRows.length === 0) {
+        return res.status(400).json({ error: "This insurance company is not associated with this hospital." });
+      }
+
       // Hospital check for staff
       if (user.role !== "insurer" && user.role !== "super_admin" && invoice.hospital_id !== user.hospital_id) {
         return res.status(403).json({ error: "Access denied. Tenancy check failed." });

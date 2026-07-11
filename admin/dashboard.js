@@ -5279,6 +5279,7 @@ async function loadSuperInsuranceCompanies() {
         <td data-label="Actions">
           <div style="display: flex; gap: 6px; flex-wrap: wrap;">
             <button class="action-btn btn-edit" onclick="editInsurance(${c.id}, '${esc(c.name)}', '${c.status}')">Edit</button>
+            <button class="action-btn btn-outline" onclick="openInsuranceMappingModal(${c.id}, '${esc(c.name)}')" style="padding:4px 8px; font-size:11px;">Map Hospitals</button>
             <button class="action-btn btn-delete" onclick="deleteInsurance(${c.id})">Delete</button>
           </div>
         </td>
@@ -5476,4 +5477,93 @@ window.openClaimActionModal = function(claimId, type) {
   document.getElementById("claim_action_notes").value = "";
   openModal("claimActionModal");
 };
+
+window.openInsuranceMappingModal = async function(insuranceCompanyId, insuranceCompanyName) {
+  document.getElementById("super_map_insurance_id").value = insuranceCompanyId;
+  document.getElementById("superMapInsuranceName").textContent = insuranceCompanyName;
+  const listContainer = document.getElementById("superMapHospitalsList");
+  if (!listContainer) return;
+  listContainer.innerHTML = '<span class="loading-cell">Loading hospitals checklist...</span>';
+  
+  openModal("superMapHospitalsModal");
+
+  try {
+    // 1. Fetch all hospitals
+    const resHosp = await fetch(`${API_BASE}/super?action=hospitals`, {
+      headers: authHeaders()
+    });
+    const dataHosp = await resHosp.json();
+    if (!resHosp.ok || !dataHosp.success) {
+      listContainer.innerHTML = '<span style="color:var(--error);">Failed to load hospitals list.</span>';
+      return;
+    }
+
+    // 2. Fetch currently mapped hospital IDs for this insurance company
+    const resMap = await fetch(`${API_BASE}/super?action=map-hospital-insurers&insurance_company_id=${insuranceCompanyId}`, {
+      headers: authHeaders()
+    });
+    const dataMap = await resMap.json();
+    const mappedIds = (resMap.ok && dataMap.success) ? dataMap.hospital_ids : [];
+
+    // 3. Render checklist
+    if (dataHosp.hospitals.length === 0) {
+      listContainer.innerHTML = '<span style="color:var(--text3); font-style:italic;">No hospitals registered.</span>';
+      return;
+    }
+
+    listContainer.innerHTML = dataHosp.hospitals.map(h => {
+      const isChecked = mappedIds.includes(h.id) ? "checked" : "";
+      return `
+        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:13px; font-weight:600;">
+          <input type="checkbox" name="map_hospital_ids" value="${h.id}" ${isChecked}>
+          <span>${esc(h.name)}</span>
+        </label>
+      `;
+    }).join("");
+
+  } catch (err) {
+    listContainer.innerHTML = '<span style="color:var(--error);">Connection error loading mapping settings.</span>';
+  }
+};
+
+// Bind Mapping Form Submit
+document.addEventListener("DOMContentLoaded", () => {
+  const mapForm = document.getElementById("superMapHospitalsForm");
+  if (mapForm) {
+    mapForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const saveBtn = document.getElementById("saveSuperMapBtn");
+      const originalText = saveBtn.innerHTML;
+      saveBtn.innerHTML = "Saving...";
+      saveBtn.disabled = true;
+
+      const insuranceCompanyId = document.getElementById("super_map_insurance_id").value;
+      const checkedBoxes = document.querySelectorAll('input[name="map_hospital_ids"]:checked');
+      const hospitalIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+
+      try {
+        const res = await fetch(`${API_BASE}/super?action=map-hospital-insurers`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            insurance_company_id: parseInt(insuranceCompanyId),
+            hospital_ids: hospitalIds
+          })
+        });
+        const result = await res.json();
+        if (res.ok && result.success) {
+          showToast("Hospital associations updated successfully!", "success");
+          closeModal("superMapHospitalsModal");
+        } else {
+          showToast(result.error || "Failed to save associations", "error");
+        }
+      } catch (err) {
+        showToast("Network error mapping hospitals", "error");
+      } finally {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+      }
+    });
+  }
+});
 
