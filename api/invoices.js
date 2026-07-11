@@ -64,8 +64,21 @@ async function syncRoomInvoices(sql, targetHospitalId) {
       if (invRes.length > 0) {
         const inv = invRes[0];
 
+        // Query allocation services sum
+        let servicesTotal = 0.00;
+        try {
+          const servicesRes = await sql`
+            SELECT COALESCE(SUM(price * quantity), 0) as total 
+            FROM allocation_services 
+            WHERE allocation_id = ${alloc.id}
+          `;
+          servicesTotal = parseFloat(servicesRes[0].total) || 0.00;
+        } catch (e) {
+          console.error("syncRoomInvoices: allocation_services query error", e);
+        }
+
         const pricePerDay = parseFloat(alloc.price_per_day) || 0.0;
-        const newRawFee = pricePerDay * days;
+        const newRawFee = (pricePerDay * days) + servicesTotal;
 
         let newTaxableAmt = newRawFee;
         let newGstAmt = 0.0;
@@ -88,7 +101,10 @@ async function syncRoomInvoices(sql, targetHospitalId) {
           newStatus = "unpaid";
         }
 
-        const newDesc = `Room Charge (Active: ${days} ${days === 1 ? "Day" : "Days"}) - Room ${alloc.room_no} (${alloc.room_type})`;
+        let newDesc = `Room Charge (Active: ${days} ${days === 1 ? "Day" : "Days"}) - Room ${alloc.room_no} (${alloc.room_type})`;
+        if (servicesTotal > 0) {
+          newDesc += ` + Patient Services (Treatment/Consumables)`;
+        }
 
         if (Math.abs(parseFloat(inv.amount) - newFinalTotalAmt) > 0.01) {
           await sql`
@@ -694,14 +710,9 @@ module.exports = async function handler(req, res) {
         .stroke();
       doc.moveDown(0.6);
 
-      const tableRowY = doc.y;
+      let currentY = doc.y;
       doc.font("Helvetica").fillColor("#0f172a");
-      doc.text(
-        invoice.description || "Medical Consultation Fee",
-        50,
-        tableRowY,
-        { width: 380 },
-      );
+
       const printRowAmt =
         invoice.gst_rate &&
         parseFloat(invoice.gst_rate) > 0 &&
@@ -709,11 +720,68 @@ module.exports = async function handler(req, res) {
           ? parseFloat(invoice.taxable_amount)
           : parseFloat(invoice.amount);
 
-      doc.text(formatCurrency(printRowAmt), 450, tableRowY, {
-        align: "right",
-        width: 95,
-      });
-      doc.moveDown(1.5);
+      if (invoice.allocation_id) {
+        try {
+          const allocRes = await sql`
+            SELECT ra.*, r.price_per_day, r.room_no, r.room_type
+            FROM room_allocations ra
+            JOIN rooms r ON ra.room_id = r.id
+            WHERE ra.id = ${parseInt(invoice.allocation_id)}
+          `;
+          if (allocRes.length > 0) {
+            const alloc = allocRes[0];
+            const now = alloc.status === 'discharged' && alloc.discharged_at ? new Date(alloc.discharged_at) : new Date();
+            const admit = new Date(alloc.admitted_at);
+            const diffMs = now - admit;
+            const days = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+            const pricePerDay = parseFloat(alloc.price_per_day) || 0.00;
+            const roomChargeBase = pricePerDay * days;
+
+            // Draw base room stay charges row
+            const baseDesc = alloc.status === 'discharged' ? 'Discharge' : 'Active';
+            doc.text(`Room Charge (${baseDesc}: ${days} ${days === 1 ? 'Day' : 'Days'}) - Room ${alloc.room_no} (${alloc.room_type})`, 50, currentY, { width: 380 });
+            doc.text(formatCurrency(roomChargeBase), 450, currentY, { align: "right", width: 95 });
+            currentY += 18;
+
+            // Draw each service row
+            const services = await sql`
+              SELECT * FROM allocation_services 
+              WHERE allocation_id = ${alloc.id} 
+              ORDER BY id ASC
+            `;
+            for (const s of services) {
+              const qtyStr = s.quantity > 1 ? ` (Qty: ${s.quantity})` : '';
+              doc.text(`${s.service_name}${qtyStr}`, 50, currentY, { width: 380 });
+              doc.text(formatCurrency(parseFloat(s.price) * s.quantity), 450, currentY, { align: "right", width: 95 });
+              currentY += 18;
+            }
+          } else {
+            doc.text(invoice.description || "Room Charge", 50, currentY, { width: 380 });
+            doc.text(formatCurrency(printRowAmt), 450, currentY, { align: "right", width: 95 });
+            currentY += 18;
+          }
+        } catch (e) {
+          console.error("PDF generation allocation check failed:", e);
+          doc.text(invoice.description || "Room Charge", 50, currentY, { width: 380 });
+          doc.text(formatCurrency(printRowAmt), 450, currentY, { align: "right", width: 95 });
+          currentY += 18;
+        }
+      } else {
+        doc.text(
+          invoice.description || "Medical Consultation Fee",
+          50,
+          currentY,
+          { width: 380 }
+        );
+        doc.text(formatCurrency(printRowAmt), 450, currentY, {
+          align: "right",
+          width: 95,
+        });
+        currentY += 18;
+      }
+      
+      doc.y = currentY;
+      doc.moveDown(1);
 
       // Totals & Balances
       doc

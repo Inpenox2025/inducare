@@ -182,8 +182,22 @@ module.exports = async function handler(req, res) {
         room_type VARCHAR(50), -- 'ward', 'semi-private', 'private', 'icu'
         status VARCHAR(20) DEFAULT 'available', -- 'available', 'occupied', 'maintenance'
         price_per_day NUMERIC(15,2) DEFAULT 0.00,
+        capacity INT DEFAULT 1,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
+    // 4cc. Create Room Allocation Services Table
+    await sql`
+      CREATE TABLE IF NOT EXISTS allocation_services (
+        id SERIAL PRIMARY KEY,
+        allocation_id INT REFERENCES room_allocations(id) ON DELETE CASCADE,
+        service_name VARCHAR(255) NOT NULL,
+        price NUMERIC(15,2) NOT NULL DEFAULT 0.00,
+        quantity INT NOT NULL DEFAULT 1,
+        created_at TIMESTAMP DEFAULT NOW(),
+        hospital_id INT REFERENCES hospitals(id) ON DELETE CASCADE
       )
     `;
 
@@ -219,6 +233,7 @@ module.exports = async function handler(req, res) {
     // Migration: Add hospital_id to doctors, rooms, room_allocations, doctor_visits
     await sql`ALTER TABLE doctors ADD COLUMN IF NOT EXISTS hospital_id INT REFERENCES hospitals(id) ON DELETE SET NULL`;
     await sql`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS hospital_id INT REFERENCES hospitals(id) ON DELETE SET NULL`;
+    await sql`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS capacity INT DEFAULT 1`;
     await sql`ALTER TABLE room_allocations ADD COLUMN IF NOT EXISTS hospital_id INT REFERENCES hospitals(id) ON DELETE SET NULL`;
     await sql`ALTER TABLE doctor_visits ADD COLUMN IF NOT EXISTS hospital_id INT REFERENCES hospitals(id) ON DELETE SET NULL`;
 
@@ -312,6 +327,12 @@ module.exports = async function handler(req, res) {
           },
           {
             role_name: "admin",
+            menu_key: "discharged-patients",
+            menu_label: "Discharged Patients",
+            menu_icon: "👥",
+          },
+          {
+            role_name: "admin",
             menu_key: "hospital-setup",
             menu_label: "Hospital Setup",
             menu_icon: "⚙️",
@@ -341,6 +362,12 @@ module.exports = async function handler(req, res) {
             menu_key: "receipts-panel",
             menu_label: "Payment Receipts",
             menu_icon: "🧾",
+          },
+          {
+            role_name: "nurse",
+            menu_key: "discharged-patients",
+            menu_label: "Discharged Patients",
+            menu_icon: "👥",
           },
           {
             role_name: "nurse",
@@ -376,7 +403,6 @@ module.exports = async function handler(req, res) {
             ON CONFLICT DO NOTHING
           `;
         }
-      } else {
         // Migration: Ensure receipts-panel menu is always configured for admin and nurse in existing setups
         await sql`
           INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon, hospital_id)
@@ -386,6 +412,16 @@ module.exports = async function handler(req, res) {
         await sql`
           INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon, hospital_id)
           VALUES ('nurse', 'receipts-panel', 'Payment Receipts', '🧾', ${h.id})
+          ON CONFLICT DO NOTHING
+        `;
+        await sql`
+          INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon, hospital_id)
+          VALUES ('admin', 'discharged-patients', 'Discharged Patients', '👥', ${h.id})
+          ON CONFLICT DO NOTHING
+        `;
+        await sql`
+          INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon, hospital_id)
+          VALUES ('nurse', 'discharged-patients', 'Discharged Patients', '👥', ${h.id})
           ON CONFLICT DO NOTHING
         `;
       }
@@ -461,12 +497,12 @@ module.exports = async function handler(req, res) {
     const checkRooms = await sql`SELECT id FROM rooms LIMIT 1`;
     if (checkRooms.length === 0) {
       await sql`
-        INSERT INTO rooms (room_no, room_type, status, price_per_day, hospital_id)
+        INSERT INTO rooms (room_no, room_type, status, price_per_day, hospital_id, capacity)
         VALUES 
-        ('Room 101', 'Private', 'available', 1500.00, ${hospital1Id}),
-        ('Room 102', 'Semi-Private', 'available', 800.00, ${hospital1Id}),
-        ('Room 103', 'ICU', 'available', 5000.00, ${hospital1Id}),
-        ('Room 104', 'General Ward', 'available', 400.00, ${hospital1Id})
+        ('Room 101', 'Private', 'available', 1500.00, ${hospital1Id}, 1),
+        ('Room 102', 'Semi-Private', 'available', 800.00, ${hospital1Id}, 2),
+        ('Room 103', 'ICU', 'available', 5000.00, ${hospital1Id}, 4),
+        ('Room 104', 'General Ward', 'available', 400.00, ${hospital1Id}, 10)
       `;
     } else {
       await sql`UPDATE rooms SET hospital_id = ${hospital1Id} WHERE hospital_id IS NULL`;

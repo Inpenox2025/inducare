@@ -13,6 +13,85 @@ function verifyToken(req) {
   }
 }
 
+async function recalculateAllocationInvoice(sql, allocationId) {
+  try {
+    const allocRes = await sql`
+      SELECT ra.*, r.price_per_day, r.room_no, r.room_type, h.gst_percent, h.tax_name
+      FROM room_allocations ra
+      JOIN rooms r ON ra.room_id = r.id
+      LEFT JOIN hospitals h ON ra.hospital_id = h.id
+      WHERE ra.id = ${parseInt(allocationId)}
+    `;
+    if (allocRes.length === 0) return;
+    const alloc = allocRes[0];
+
+    const now = alloc.status === 'discharged' && alloc.discharged_at ? new Date(alloc.discharged_at) : new Date();
+    const admit = new Date(alloc.admitted_at);
+    const diffMs = now - admit;
+    const days = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+
+    let servicesTotal = 0.00;
+    try {
+      const servicesRes = await sql`
+        SELECT COALESCE(SUM(price * quantity), 0) as total
+        FROM allocation_services
+        WHERE allocation_id = ${parseInt(allocationId)}
+      `;
+      servicesTotal = parseFloat(servicesRes[0].total) || 0.00;
+    } catch (e) {
+      console.error("allocation_services query error:", e);
+    }
+
+    const roomPrice = parseFloat(alloc.price_per_day) || 0.00;
+    const newRawFee = (roomPrice * days) + servicesTotal;
+
+    const invRes = await sql`SELECT * FROM invoices WHERE allocation_id = ${parseInt(allocationId)}`;
+    if (invRes.length === 0) return;
+    const inv = invRes[0];
+
+    let newTaxableAmt = newRawFee;
+    let newGstAmt = 0.00;
+    let newGstRate = parseFloat(inv.gst_rate) || parseFloat(alloc.gst_percent) || 0.00;
+    let newFinalTotalAmt = newRawFee;
+
+    if (newGstRate > 0) {
+      newGstAmt = Math.round((newRawFee * newGstRate / 100) * 100) / 100;
+      newFinalTotalAmt = newRawFee + newGstAmt;
+    }
+
+    const paid = parseFloat(inv.paid_amount) || 0.00;
+    const newDue = Math.max(0.00, newFinalTotalAmt - paid);
+    let newStatus = inv.status;
+    if (newDue <= 0) {
+      newStatus = 'paid';
+    } else if (paid > 0) {
+      newStatus = 'partially_paid';
+    } else {
+      newStatus = 'unpaid';
+    }
+
+    let baseDesc = alloc.status === 'discharged' ? 'Final Discharge' : 'Active';
+    let newDesc = `Room Charge (${baseDesc}: ${days} ${days === 1 ? 'Day' : 'Days'}) - Room ${alloc.room_no} (${alloc.room_type})`;
+    if (servicesTotal > 0) {
+      newDesc += ` + Patient Services (Treatment/Consumables)`;
+    }
+
+    await sql`
+      UPDATE invoices SET
+        amount = ${newFinalTotalAmt},
+        due_amount = ${newDue},
+        status = ${newStatus},
+        description = ${newDesc},
+        taxable_amount = ${newTaxableAmt},
+        gst_amount = ${newGstAmt},
+        updated_at = NOW()
+      WHERE id = ${inv.id}
+    `;
+  } catch (error) {
+    console.error("recalculateAllocationInvoice failure:", error);
+  }
+}
+
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -54,23 +133,48 @@ module.exports = async function handler(req, res) {
           if (rows.length === 0) return res.status(404).json({ error: 'Allocation not found' });
           return res.status(200).json({ success: true, allocation: rows[0] });
         } else {
-          // List allocations, order by active status first, then admit date
-          const rows = targetHospitalId !== null
-            ? await sql`
-              SELECT ra.*, p.full_name as patient_name, r.room_no, r.room_type
-              FROM room_allocations ra
-              JOIN patients p ON ra.patient_id = p.id
-              JOIN rooms r ON ra.room_id = r.id
-              WHERE ra.hospital_id = ${targetHospitalId}
-              ORDER BY ra.status ASC, ra.admitted_at DESC
-            `
-            : await sql`
-              SELECT ra.*, p.full_name as patient_name, r.room_no, r.room_type
-              FROM room_allocations ra
-              JOIN patients p ON ra.patient_id = p.id
-              JOIN rooms r ON ra.room_id = r.id
-              ORDER BY ra.status ASC, ra.admitted_at DESC
-            `;
+          const filterStatus = req.query.status;
+          let rows;
+          if (targetHospitalId !== null) {
+            if (filterStatus) {
+              rows = await sql`
+                SELECT ra.*, p.full_name as patient_name, r.room_no, r.room_type
+                FROM room_allocations ra
+                JOIN patients p ON ra.patient_id = p.id
+                JOIN rooms r ON ra.room_id = r.id
+                WHERE ra.hospital_id = ${targetHospitalId} AND ra.status = ${filterStatus}
+                ORDER BY ra.admitted_at DESC
+              `;
+            } else {
+              rows = await sql`
+                SELECT ra.*, p.full_name as patient_name, r.room_no, r.room_type
+                FROM room_allocations ra
+                JOIN patients p ON ra.patient_id = p.id
+                JOIN rooms r ON ra.room_id = r.id
+                WHERE ra.hospital_id = ${targetHospitalId}
+                ORDER BY ra.status ASC, ra.admitted_at DESC
+              `;
+            }
+          } else {
+            if (filterStatus) {
+              rows = await sql`
+                SELECT ra.*, p.full_name as patient_name, r.room_no, r.room_type
+                FROM room_allocations ra
+                JOIN patients p ON ra.patient_id = p.id
+                JOIN rooms r ON ra.room_id = r.id
+                WHERE ra.status = ${filterStatus}
+                ORDER BY ra.admitted_at DESC
+              `;
+            } else {
+              rows = await sql`
+                SELECT ra.*, p.full_name as patient_name, r.room_no, r.room_type
+                FROM room_allocations ra
+                JOIN patients p ON ra.patient_id = p.id
+                JOIN rooms r ON ra.room_id = r.id
+                ORDER BY ra.status ASC, ra.admitted_at DESC
+              `;
+            }
+          }
           return res.status(200).json({ success: true, allocations: rows });
         }
       } catch (error) {
@@ -97,16 +201,25 @@ module.exports = async function handler(req, res) {
           return res.status(400).json({ error: 'Patient is already admitted to another room actively' });
         }
 
-        // Verify room availability
-        const roomCheck = await sql`SELECT status FROM rooms WHERE id = ${parseInt(room_id)} AND hospital_id = ${hostId}`;
+        // Verify room availability and capacity
+        const roomCheck = await sql`SELECT status, capacity, room_no, room_type, price_per_day FROM rooms WHERE id = ${parseInt(room_id)} AND hospital_id = ${hostId}`;
         if (roomCheck.length === 0) return res.status(404).json({ error: 'Room not found in your hospital' });
-        if (roomCheck[0].status !== 'available') {
-          return res.status(400).json({ error: 'Room is occupied or under maintenance' });
+        if (roomCheck[0].status === 'maintenance') {
+          return res.status(400).json({ error: 'Room is under maintenance' });
         }
 
-        // Retrieve room details for pricing
-        const roomRes = await sql`SELECT price_per_day, room_no, room_type FROM rooms WHERE id = ${parseInt(room_id)} AND hospital_id = ${hostId}`;
-        const room = roomRes[0];
+        const capacity = parseInt(roomCheck[0].capacity) || 1;
+        const activeCountRes = await sql`
+          SELECT COUNT(*) as count FROM room_allocations 
+          WHERE room_id = ${parseInt(room_id)} AND status = 'active'
+        `;
+        const activeCount = parseInt(activeCountRes[0].count);
+
+        if (activeCount >= capacity) {
+          return res.status(400).json({ error: 'Room capacity is full' });
+        }
+
+        const room = roomCheck[0];
 
         // Retrieve hospital details for tax settings
         const hospRes = await sql`SELECT gst_no, gst_percent, tax_name FROM hospitals WHERE id = ${hostId}`;
@@ -150,8 +263,12 @@ module.exports = async function handler(req, res) {
           )
         `;
 
-        // Update room status to occupied
-        await sql`UPDATE rooms SET status = 'occupied' WHERE id = ${parseInt(room_id)} AND hospital_id = ${hostId}`;
+        // Update room status to occupied if capacity is reached
+        if (activeCount + 1 >= capacity) {
+          await sql`UPDATE rooms SET status = 'occupied' WHERE id = ${parseInt(room_id)} AND hospital_id = ${hostId}`;
+        } else {
+          await sql`UPDATE rooms SET status = 'available' WHERE id = ${parseInt(room_id)} AND hospital_id = ${hostId}`;
+        }
 
         return res.status(201).json({ success: true, allocation: allocation[0] });
       } catch (error) {
@@ -188,60 +305,22 @@ module.exports = async function handler(req, res) {
         `;
         const finalAlloc = updated[0];
 
-        // Update the room invoice to reflect final discharge state
-        const invRes = await sql`SELECT * FROM invoices WHERE allocation_id = ${finalAlloc.id}`;
-        if (invRes.length > 0) {
-          const inv = invRes[0];
-          const admit = new Date(finalAlloc.admitted_at);
-          const discharge = new Date(finalAlloc.discharged_at);
-          const diffMs = discharge - admit;
-          const days = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+        // Recalculate invoice including any services added
+        await recalculateAllocationInvoice(sql, finalAlloc.id);
 
-          // Query room details for pricing
-          const roomRes = await sql`SELECT price_per_day, room_no, room_type FROM rooms WHERE id = ${finalAlloc.room_id}`;
-          const room = roomRes[0];
+        // Recalculate room availability based on active count and capacity
+        const remainingActiveRes = await sql`
+          SELECT COUNT(*) as count FROM room_allocations
+          WHERE room_id = ${finalAlloc.room_id} AND status = 'active'
+        `;
+        const remainingActive = parseInt(remainingActiveRes[0].count);
 
-          const pricePerDay = parseFloat(room.price_per_day) || 0.00;
-          const newRawFee = pricePerDay * days;
-          
-          let newTaxableAmt = newRawFee;
-          let newGstAmt = 0.00;
-          let newGstRate = parseFloat(inv.gst_rate) || 0.00;
-          let newFinalTotalAmt = newRawFee;
+        const roomCheck = await sql`SELECT capacity FROM rooms WHERE id = ${finalAlloc.room_id}`;
+        const capacity = roomCheck.length > 0 ? (parseInt(roomCheck[0].capacity) || 1) : 1;
 
-          if (newGstRate > 0) {
-            newGstAmt = Math.round((newRawFee * newGstRate / 100) * 100) / 100;
-            newFinalTotalAmt = newRawFee + newGstAmt;
-          }
-
-          const paid = parseFloat(inv.paid_amount) || 0.00;
-          const newDue = Math.max(0.00, newFinalTotalAmt - paid);
-          let newStatus = inv.status;
-          if (newDue <= 0) {
-            newStatus = 'paid';
-          } else if (paid > 0) {
-            newStatus = 'partially_paid';
-          } else {
-            newStatus = 'unpaid';
-          }
-
-          const newDesc = `Room Charge (Final Discharge: ${days} ${days === 1 ? 'Day' : 'Days'}) - Room ${room.room_no} (${room.room_type})`;
-
-          await sql`
-            UPDATE invoices SET
-              amount = ${newFinalTotalAmt},
-              due_amount = ${newDue},
-              status = ${newStatus},
-              description = ${newDesc},
-              taxable_amount = ${newTaxableAmt},
-              gst_amount = ${newGstAmt},
-              updated_at = NOW()
-            WHERE id = ${inv.id}
-          `;
+        if (remainingActive < capacity) {
+          await sql`UPDATE rooms SET status = 'available' WHERE id = ${alloc.room_id}`;
         }
-
-        // Revert room status to available
-        await sql`UPDATE rooms SET status = 'available' WHERE id = ${alloc.room_id}`;
 
         return res.status(200).json({ success: true, allocation: updated[0] });
       } catch (error) {
@@ -378,6 +457,68 @@ module.exports = async function handler(req, res) {
   }
 
   // ══════════════════════════════════════════════════════════
+  // Action: Services (Adding/Listing/Removing patient services under rooms)
+  // ══════════════════════════════════════════════════════════
+  else if (action === 'services') {
+    if (req.method === 'GET') {
+      try {
+        const allocId = req.query.allocation_id;
+        if (!allocId) return res.status(400).json({ error: 'Allocation ID is required' });
+        const rows = await sql`
+          SELECT * FROM allocation_services 
+          WHERE allocation_id = ${parseInt(allocId)} 
+          ORDER BY id ASC
+        `;
+        return res.status(200).json({ success: true, services: rows });
+      } catch (error) {
+        return res.status(500).json({ error: 'Failed to fetch services', details: error.message });
+      }
+    }
+
+    if (req.method === 'POST') {
+      try {
+        const { allocation_id, service_name, price, quantity } = req.body;
+        if (!allocation_id || !service_name || price === undefined) {
+          return res.status(400).json({ error: 'Allocation ID, service name, and price are required' });
+        }
+        const hostId = targetHospitalId || 1;
+        const rows = await sql`
+          INSERT INTO allocation_services (allocation_id, service_name, price, quantity, hospital_id)
+          VALUES (${parseInt(allocation_id)}, ${service_name.trim()}, ${parseFloat(price)}, ${quantity ? parseInt(quantity) : 1}, ${hostId})
+          RETURNING *
+        `;
+        
+        // Recalculate invoice total
+        await recalculateAllocationInvoice(sql, allocation_id);
+
+        return res.status(201).json({ success: true, service: rows[0] });
+      } catch (error) {
+        return res.status(500).json({ error: 'Failed to add service', details: error.message });
+      }
+    }
+
+    if (req.method === 'DELETE') {
+      try {
+        if (!id) return res.status(400).json({ error: 'Service ID is required' });
+        
+        // Find allocation_id before deleting
+        const check = await sql`SELECT allocation_id FROM allocation_services WHERE id = ${parseInt(id)}`;
+        if (check.length === 0) return res.status(404).json({ error: 'Service item not found' });
+        const allocId = check[0].allocation_id;
+
+        await sql`DELETE FROM allocation_services WHERE id = ${parseInt(id)}`;
+
+        // Recalculate invoice total
+        await recalculateAllocationInvoice(sql, allocId);
+
+        return res.status(200).json({ success: true, message: 'Service item removed successfully' });
+      } catch (error) {
+        return res.status(500).json({ error: 'Failed to delete service', details: error.message });
+      }
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
   // DEFAULT: Rooms inventory CRUD
   // ══════════════════════════════════════════════════════════
   else {
@@ -385,8 +526,18 @@ module.exports = async function handler(req, res) {
       if (req.method === 'GET') {
         try {
           const rows = targetHospitalId !== null
-            ? await sql`SELECT * FROM rooms WHERE id = ${parseInt(id)} AND hospital_id = ${targetHospitalId}`
-            : await sql`SELECT * FROM rooms WHERE id = ${parseInt(id)}`;
+            ? await sql`
+              SELECT r.*, 
+                     (SELECT COUNT(*) FROM room_allocations WHERE room_id = r.id AND status = 'active') as active_count
+              FROM rooms r 
+              WHERE r.id = ${parseInt(id)} AND r.hospital_id = ${targetHospitalId}
+            `
+            : await sql`
+              SELECT r.*, 
+                     (SELECT COUNT(*) FROM room_allocations WHERE room_id = r.id AND status = 'active') as active_count
+              FROM rooms r 
+              WHERE r.id = ${parseInt(id)}
+            `;
           if (rows.length === 0) return res.status(404).json({ error: 'Room not found' });
           return res.status(200).json({ success: true, room: rows[0] });
         } catch (error) {
@@ -401,7 +552,7 @@ module.exports = async function handler(req, res) {
 
       if (req.method === 'PUT') {
         try {
-          const { room_no, room_type, status, price_per_day, hospital_id } = req.body;
+          const { room_no, room_type, status, price_per_day, hospital_id, capacity } = req.body;
           if (!room_no) return res.status(400).json({ error: 'Room number is required' });
 
           const hostId = hospital_id ? parseInt(hospital_id) : (targetHospitalId || 1);
@@ -412,6 +563,7 @@ module.exports = async function handler(req, res) {
               room_type = ${room_type ? room_type.trim() : null},
               status = ${status || 'available'},
               price_per_day = ${price_per_day || 0.00},
+              capacity = ${capacity ? parseInt(capacity) : 1},
               hospital_id = ${hostId},
               updated_at = NOW()
             WHERE id = ${parseInt(id)}
@@ -445,20 +597,35 @@ module.exports = async function handler(req, res) {
             const searchPattern = `%${query.trim()}%`;
             rows = targetHospitalId !== null
               ? await sql`
-                SELECT * FROM rooms 
-                WHERE (room_no ILIKE ${searchPattern} OR room_type ILIKE ${searchPattern})
-                  AND hospital_id = ${targetHospitalId}
-                ORDER BY room_no ASC
+                SELECT r.*, 
+                       (SELECT COUNT(*) FROM room_allocations WHERE room_id = r.id AND status = 'active') as active_count
+                FROM rooms r 
+                WHERE (r.room_no ILIKE ${searchPattern} OR r.room_type ILIKE ${searchPattern})
+                  AND r.hospital_id = ${targetHospitalId}
+                ORDER BY r.room_no ASC
               `
               : await sql`
-                SELECT * FROM rooms 
-                WHERE room_no ILIKE ${searchPattern} OR room_type ILIKE ${searchPattern}
-                ORDER BY room_no ASC
+                SELECT r.*, 
+                       (SELECT COUNT(*) FROM room_allocations WHERE room_id = r.id AND status = 'active') as active_count
+                FROM rooms r 
+                WHERE r.room_no ILIKE ${searchPattern} OR r.room_type ILIKE ${searchPattern}
+                ORDER BY r.room_no ASC
               `;
           } else {
             rows = targetHospitalId !== null
-              ? await sql`SELECT * FROM rooms WHERE hospital_id = ${targetHospitalId} ORDER BY room_no ASC`
-              : await sql`SELECT * FROM rooms ORDER BY room_no ASC`;
+              ? await sql`
+                SELECT r.*, 
+                       (SELECT COUNT(*) FROM room_allocations WHERE room_id = r.id AND status = 'active') as active_count
+                FROM rooms r 
+                WHERE r.hospital_id = ${targetHospitalId} 
+                ORDER BY r.room_no ASC
+              `
+              : await sql`
+                SELECT r.*, 
+                       (SELECT COUNT(*) FROM room_allocations WHERE room_id = r.id AND status = 'active') as active_count
+                FROM rooms r 
+                ORDER BY r.room_no ASC
+              `;
           }
           return res.status(200).json({ success: true, rooms: rows });
         } catch (error) {
@@ -473,7 +640,7 @@ module.exports = async function handler(req, res) {
 
       if (req.method === 'POST') {
         try {
-          const { room_no, room_type, status, price_per_day } = req.body;
+          const { room_no, room_type, status, price_per_day, capacity } = req.body;
           if (!room_no) return res.status(400).json({ error: 'Room number is required' });
 
           const hostId = targetHospitalId || 1;
@@ -483,8 +650,8 @@ module.exports = async function handler(req, res) {
           if (checkDup.length > 0) return res.status(400).json({ error: 'Room number already exists in this hospital' });
 
           const rows = await sql`
-            INSERT INTO rooms (room_no, room_type, status, price_per_day, hospital_id)
-            VALUES (${room_no.trim()}, ${room_type ? room_type.trim() : null}, ${status || 'available'}, ${price_per_day || 0.00}, ${hostId})
+            INSERT INTO rooms (room_no, room_type, status, price_per_day, hospital_id, capacity)
+            VALUES (${room_no.trim()}, ${room_type ? room_type.trim() : null}, ${status || 'available'}, ${price_per_day || 0.00}, ${hostId}, ${capacity ? parseInt(capacity) : 1})
             RETURNING *
           `;
           return res.status(201).json({ success: true, room: rows[0] });

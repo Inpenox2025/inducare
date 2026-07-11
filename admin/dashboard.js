@@ -9,10 +9,12 @@ let activeTab = "overview";
 let patientPage = 1;
 let appointmentPage = 1;
 let invoicePage = 1;
+let dischargedPage = 1;
 
 // Search/Filter States
 let patientSearch = "";
 let appointmentSearch = "";
+let dischargedSearch = "";
 let appointmentDate = "";
 let invoiceSearch = "";
 let invoiceStatus = "";
@@ -175,6 +177,7 @@ function switchTab(tabName) {
   else if (tabName === "hospital-setup") loadHospitalSetup();
   else if (tabName === "super-panel") loadSuperPanel();
   else if (tabName === "receipts-panel") loadReceiptsPanel();
+  else if (tabName === "discharged-patients") loadDischargedPatients();
 
   // Close mobile sidebar on navigate
   document.getElementById("sidebar").classList.remove("open");
@@ -1817,27 +1820,33 @@ function initEventListeners() {
   document.getElementById("addDoctorBtn").addEventListener("click", () => {
     document.getElementById("doctorForm").reset();
     document.getElementById("doctor_id").value = "";
-    document.getElementById("doctorModalTitle").textContent =
-      "Register New Doctor";
-    openModal("doctorModal");
-  });
+      document.getElementById("doctorModalTitle").textContent =
+        "Register New Doctor";
+      openModal("doctorModal");
+    });
+  }
 
-  document.getElementById("addRoomBtn").addEventListener("click", () => {
-    document.getElementById("roomForm").reset();
-    document.getElementById("room_id").value = "";
-    document.getElementById("roomModalTitle").textContent = "Add Clinical Room";
+  const addRoomBtn = document.getElementById("addRoomBtn");
+  if (addRoomBtn) {
+    addRoomBtn.addEventListener("click", () => {
+      document.getElementById("roomForm").reset();
+      document.getElementById("room_id").value = "";
+      document.getElementById("room_capacity").value = "1";
+      document.getElementById("roomModalTitle").textContent = "Add Clinical Room";
 
-    const roomHospGroup = document.getElementById("room_hosp_group");
-    if (roomHospGroup) roomHospGroup.style.display = "none";
+      const roomHospGroup = document.getElementById("room_hosp_group");
+      if (roomHospGroup) roomHospGroup.style.display = "none";
 
-    openModal("roomModal");
-  });
+      openModal("roomModal");
+    });
+  }
 
   const superAddRoomBtn = document.getElementById("superAddRoomBtn");
   if (superAddRoomBtn) {
     superAddRoomBtn.addEventListener("click", () => {
       document.getElementById("roomForm").reset();
       document.getElementById("room_id").value = "";
+      document.getElementById("room_capacity").value = "1";
       document.getElementById("roomModalTitle").textContent =
         "Add Clinical Room to Hospital";
 
@@ -2068,6 +2077,23 @@ function initEventListeners() {
   });
 
   // Searches & Debounces
+  let dischargedSearchTimeout;
+  document
+    .getElementById("searchDischargedInput")
+    .addEventListener("input", (e) => {
+      clearTimeout(dischargedSearchTimeout);
+      dischargedSearchTimeout = setTimeout(() => {
+        dischargedSearch = e.target.value.trim();
+        dischargedPage = 1;
+        loadDischargedPatients();
+      }, 400);
+    });
+
+  const roomBillingForm = document.getElementById("roomBillingForm");
+  if (roomBillingForm) {
+    roomBillingForm.addEventListener("submit", saveRoomBillingItem);
+  }
+
   let patientSearchTimeout;
   document
     .getElementById("searchPatientInput")
@@ -2224,7 +2250,7 @@ function initEventListeners() {
       });
     }
   });
-}
+
 
 // ─────── Overlay Helpers ───────
 function openModal(id) {
@@ -2509,7 +2535,7 @@ async function loadRooms() {
           <tr>
             <td data-label="Room No"><strong>${esc(r.room_no)}</strong></td>
             <td data-label="Type">${esc(r.room_type)}</td>
-            <td data-label="Status"><span class="badge badge-${r.status === "available" ? "paid" : r.status === "occupied" ? "unpaid" : "partial"}">${esc(r.status)}</span></td>
+            <td data-label="Status"><span class="badge badge-${r.status === "available" ? "paid" : r.status === "occupied" ? "unpaid" : "partial"}">${esc(r.status)} (${r.active_count || 0}/${r.capacity || 1} occupied)</span></td>
             <td data-label="Price / Day"><strong>${formatCurrency(r.price_per_day)}</strong></td>
             ${
               user && user.role === "super_admin"
@@ -2555,7 +2581,10 @@ async function loadRooms() {
             <td data-label="Patient"><strong>${esc(a.patient_name)}</strong></td>
             <td data-label="Admitted Date">${formatDate(a.admitted_at)}</td>
             <td data-label="Action">
-              <button class="action-btn btn-delete" style="background-color: var(--warning); color:#fff;" onclick="dischargeAllocation(${a.id})">Discharge</button>
+              <div style="display: flex; gap: 6px;">
+                <button class="action-btn btn-edit" style="background-color: var(--info); color:#fff; border-color: var(--info);" onclick="manageRoomBilling(${a.id})">Add Bill Item</button>
+                <button class="action-btn btn-delete" style="background-color: var(--warning); color:#fff;" onclick="dischargeAllocation(${a.id})">Discharge</button>
+              </div>
             </td>
           </tr>
         `,
@@ -2658,6 +2687,7 @@ window.editRoom = async function (id) {
       document.getElementById("room_no_input").value = r.room_no;
       document.getElementById("room_type_select").value = r.room_type;
       document.getElementById("room_status_select").value = r.status;
+      document.getElementById("room_capacity").value = r.capacity || 1;
       document.getElementById("room_price").value = r.price_per_day;
 
       // Handle target hospital selection display
@@ -2753,8 +2783,10 @@ async function populateAllocationModalDropdowns() {
           '<option value="">-- Choose Available Room --</option>' +
           availableRooms
             .map(
-              (r) =>
-                `<option value="${r.id}">${esc(r.room_no)} - ${esc(r.room_type)} (₹ ${r.price_per_day}/day)</option>`,
+              (r) => {
+                const occInfo = r.capacity > 1 ? ` (${r.active_count || 0}/${r.capacity} occupied)` : "";
+                return `<option value="${r.id}">${esc(r.room_no)} - ${esc(r.room_type)} (₹ ${r.price_per_day}/day)${occInfo}</option>`;
+              }
             )
             .join("");
       }
@@ -2921,6 +2953,7 @@ async function loadDynamicNavigation() {
       const allNavLinks = [
         { key: "overview", id: "navOverview" },
         { key: "patients", id: "navPatients" },
+        { key: "discharged-patients", id: "navDischargedPatients" },
         { key: "appointments", id: "navAppointments" },
         { key: "invoices", id: "navInvoices" },
         { key: "receipts-panel", id: "navReceiptsPanel" },
@@ -4085,3 +4118,162 @@ async function loadSuperHospitalRooms(hospId) {
       '<tr><td colspan="5" class="empty-cell">Network error fetching clinical rooms.</td></tr>';
   }
 }
+
+async function loadDischargedPatients() {
+  const tbody = document.getElementById("dischargedTableBody");
+  tbody.innerHTML = '<tr><td colspan="7" class="loading-cell"><span class="spinner"></span> Loading discharged patients...</td></tr>';
+  try {
+    let url = `${API_BASE}/rooms/allocations?status=discharged`;
+    const res = await fetch(url, { headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">Failed to retrieve discharged patients log.</td></tr>';
+      return;
+    }
+    
+    let allocs = data.allocations || [];
+    if (dischargedSearch) {
+      const q = dischargedSearch.toLowerCase();
+      allocs = allocs.filter(a => 
+        a.patient_name.toLowerCase().includes(q) || 
+        a.room_no.toLowerCase().includes(q) || 
+        a.room_type.toLowerCase().includes(q)
+      );
+    }
+    
+    if (allocs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">No discharged patient records found.</td></tr>';
+      return;
+    }
+    
+    tbody.innerHTML = allocs.map(a => `
+      <tr>
+        <td data-label="Patient ID"><span style="color:var(--primary); font-weight:600;">#${a.patient_id}</span></td>
+        <td data-label="Patient Name"><strong>${esc(a.patient_name)}</strong></td>
+        <td data-label="Room No"><strong>${esc(a.room_no)}</strong></td>
+        <td data-label="Room Type">${esc(a.room_type)}</td>
+        <td data-label="Admitted Date">${formatDate(a.admitted_at)}</td>
+        <td data-label="Discharged Date">${formatDate(a.discharged_at)}</td>
+        <td data-label="Case Sheet"><a href="#" class="view-case-sheet-link" onclick="window.viewCaseSheet(${a.patient_id}); event.preventDefault();">View Case Sheet</a></td>
+      </tr>
+    `).join("");
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">Error connecting to server.</td></tr>';
+  }
+}
+
+window.manageRoomBilling = async function(allocationId) {
+  document.getElementById("billing_allocation_id").value = allocationId;
+  document.getElementById("roomBillingForm").reset();
+  
+  try {
+    const res = await fetch(`${API_BASE}/rooms/allocations/${allocationId}`, { headers: authHeaders() });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      const a = data.allocation;
+      document.getElementById("billingPatientName").textContent = a.patient_name;
+      document.getElementById("billingRoomNo").textContent = a.room_no;
+      document.getElementById("billingBaseFee").textContent = formatCurrency(a.price_per_day) + "/day";
+      
+      await loadRoomBilling(allocationId);
+      openModal("roomBillingModal");
+    } else {
+      showToast("Failed to retrieve allocation details", "error");
+    }
+  } catch (err) {
+    showToast("Error retrieving allocation details", "error");
+  }
+};
+
+async function loadRoomBilling(allocationId) {
+  const tbody = document.getElementById("roomBillingItemsBody");
+  tbody.innerHTML = '<tr><td colspan="5" class="loading-cell">Loading items...</td></tr>';
+  try {
+    const res = await fetch(`${API_BASE}/rooms/visits?action=services&allocation_id=${allocationId}`, { headers: authHeaders() });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      const services = data.services || [];
+      if (services.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">No extra services billed yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = services.map(s => {
+        const itemTotal = parseFloat(s.price) * s.quantity;
+        return `
+          <tr>
+            <td data-label="Item Description"><strong>${esc(s.service_name)}</strong></td>
+            <td data-label="Unit Price">${formatCurrency(s.price)}</td>
+            <td data-label="Qty">${s.quantity}</td>
+            <td data-label="Total"><strong>${formatCurrency(itemTotal)}</strong></td>
+            <td data-label="Action">
+              <button type="button" class="action-btn btn-delete" style="padding:4px 8px; font-size:11px;" onclick="deleteRoomBillingItem(${s.id}, ${allocationId})">Remove</button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    } else {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">Failed to retrieve items.</td></tr>';
+    }
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">Connection error.</td></tr>';
+  }
+}
+
+async function saveRoomBillingItem(e) {
+  e.preventDefault();
+  const allocId = document.getElementById("billing_allocation_id").value;
+  const name = document.getElementById("billing_service_name").value;
+  const price = document.getElementById("billing_price").value;
+  const quantity = document.getElementById("billing_quantity").value;
+
+  try {
+    const res = await fetch(`${API_BASE}/rooms/visits?action=services`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        allocation_id: allocId,
+        service_name: name,
+        price,
+        quantity
+      })
+    });
+    const result = await res.json();
+    if (res.ok && result.success) {
+      showToast("Billing item added successfully!", "success");
+      document.getElementById("billing_service_name").value = "";
+      document.getElementById("billing_price").value = "";
+      document.getElementById("billing_quantity").value = "1";
+      await loadRoomBilling(allocId);
+      
+      if (activeTab === "invoices") loadInvoices();
+      if (activeTab === "overview") loadOverview();
+    } else {
+      showToast(result.error || "Failed to add billing item", "error");
+    }
+  } catch (err) {
+    showToast("Connection error adding item", "error");
+  }
+}
+
+window.deleteRoomBillingItem = async function(serviceId, allocationId) {
+  if (!confirm("Are you sure you want to remove this billing item?")) return;
+  try {
+    const res = await fetch(`${API_BASE}/rooms/visits/${serviceId}?action=services`, {
+      method: "DELETE",
+      headers: authHeaders()
+    });
+    const result = await res.json();
+    if (res.ok && result.success) {
+      showToast("Billing item removed!", "success");
+      await loadRoomBilling(allocationId);
+      
+      if (activeTab === "invoices") loadInvoices();
+      if (activeTab === "overview") loadOverview();
+    } else {
+      showToast(result.error || "Failed to delete item", "error");
+    }
+  } catch (err) {
+    showToast("Connection error deleting item", "error");
+  }
+};
+
