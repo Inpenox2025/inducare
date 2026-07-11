@@ -240,16 +240,26 @@ module.exports = async function handler(req, res) {
                i.allocation_id, i.taxable_amount, i.gst_amount, i.gst_rate,
                p.full_name as patient_name, p.mobile_no as patient_mobile, p.address as patient_address,
                h.name as hospital_name, h.logo_data as hospital_logo, h.gst_no as gst_no,
-               COALESCE(i.tax_name, h.tax_name, 'GST') as tax_name
+               COALESCE(i.tax_name, h.tax_name, 'GST') as tax_name,
+               ic.name as insurance_company_name, c.insurance_company_id as claim_insurance_company_id
         FROM receipts r
         JOIN invoices i ON r.invoice_id = i.id
         JOIN patients p ON i.patient_id = p.id
         LEFT JOIN hospitals h ON i.hospital_id = h.id
+        LEFT JOIN claims c ON i.id = c.invoice_id AND c.status = 'approved'
+        LEFT JOIN insurance_companies ic ON c.insurance_company_id = ic.id
         WHERE r.id = ${parseInt(receiptId)}
       `;
       if (rows.length === 0)
         return res.status(404).json({ error: "Receipt transaction not found" });
       const receipt = rows[0];
+
+      if (user.role === "insurer") {
+        const insurerCompanyId = parseInt(user.insurance_company_id);
+        if (!insurerCompanyId || parseInt(receipt.claim_insurance_company_id) !== insurerCompanyId) {
+          return res.status(403).json({ error: "Access denied. Not authorized for this receipt." });
+        }
+      }
 
 
       const doc = new PDFDocument({ margin: 50, size: "A4" });
@@ -336,7 +346,7 @@ module.exports = async function handler(req, res) {
         .fontSize(14)
         .font("Helvetica-Bold")
         .fillColor("#00bba8")
-        .text("PAYMENT RECEIPT", { align: "center" });
+        .text("PAYMENT RECEIPT", 50, doc.y, { align: "center", width: 495 });
       doc.moveDown(0.5);
 
       const infoY = doc.y;
@@ -474,7 +484,10 @@ module.exports = async function handler(req, res) {
       // Draw transaction mode row
       const transModeY = doc.y;
       doc.font("Helvetica-Bold").fillColor("#0f172a");
-      doc.text(`Payment Receipt Logged (${receipt.payment_mode.toUpperCase()})`, 50, transModeY);
+      const pModeText = receipt.payment_mode === "insurer" && receipt.insurance_company_name
+        ? `INSURER: ${receipt.insurance_company_name.toUpperCase()}`
+        : receipt.payment_mode.toUpperCase();
+      doc.text("Payment Receipt Logged (" + pModeText + ")", 50, transModeY);
       doc.text(formatCurrency(receipt.amount_paid), 450, transModeY, {
         align: "right",
         width: 95,
@@ -592,22 +605,14 @@ module.exports = async function handler(req, res) {
         .lineWidth(1)
         .stroke();
 
-      doc.y = 780;
-      doc
-        .fontSize(8)
-        .font("Helvetica")
-        .fillColor("#94a3b8")
-        .text(
-          "This is an official verification of transaction installment payment.",
-          { align: "center" },
-        );
-      doc.moveDown(0.3);
+      doc.y = 745;
       doc
         .fontSize(8.5)
         .font("Helvetica-Bold")
         .fillColor("#00bba8")
-        .text("Developed & Maintained by inspenox (inspenox.in)", {
+        .text("Developed & Maintained by inspenox (inspenox.in)", 50, doc.y, {
           align: "center",
+          width: 495
         });
       doc.end();
     } catch (error) {
@@ -633,11 +638,14 @@ module.exports = async function handler(req, res) {
         SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile, p.address as patient_address,
                a.doctor_name, a.appointment_date, a.appointment_time,
                h.name as hospital_name, h.logo_data as hospital_logo, h.gst_no as gst_no,
-               COALESCE(i.tax_name, h.tax_name, 'GST') as tax_name
+               COALESCE(i.tax_name, h.tax_name, 'GST') as tax_name,
+               ic.name as insurance_company_name, c.policy_number, c.insurance_company_id as claim_insurance_company_id
         FROM invoices i
         JOIN patients p ON i.patient_id = p.id
         LEFT JOIN appointments a ON i.appointment_id = a.id
         LEFT JOIN hospitals h ON i.hospital_id = h.id
+        LEFT JOIN claims c ON i.id = c.invoice_id AND c.status = 'approved'
+        LEFT JOIN insurance_companies ic ON c.insurance_company_id = ic.id
         WHERE i.id = ${parseInt(pdfId)}
       `;
 
@@ -645,6 +653,13 @@ module.exports = async function handler(req, res) {
         return res.status(404).json({ error: "Invoice not found" });
       }
       const invoice = rows[0];
+
+      if (user.role === "insurer") {
+        const insurerCompanyId = parseInt(user.insurance_company_id);
+        if (!insurerCompanyId || parseInt(invoice.claim_insurance_company_id) !== insurerCompanyId) {
+          return res.status(403).json({ error: "Access denied. Not authorized for this invoice." });
+        }
+      }
 
       const doc = new PDFDocument({ margin: 50, size: "A4" });
       res.setHeader("Content-Type", "application/pdf");
@@ -758,7 +773,7 @@ module.exports = async function handler(req, res) {
         .fontSize(14)
         .font("Helvetica-Bold")
         .fillColor("#0f172a")
-        .text("INVOICE RECEIPT", { align: "center" });
+        .text("INVOICE RECEIPT", 50, doc.y, { align: "center", width: 495 });
       doc.moveDown(0.5);
 
       const infoY = doc.y;
@@ -781,6 +796,20 @@ module.exports = async function handler(req, res) {
           infoY + 40,
         );
       }
+      if (invoice.payment_mode === "insurer" && invoice.insurance_company_name) {
+        doc.text(
+          `Insurer: ${invoice.insurance_company_name}`,
+          50,
+          infoY + 52,
+        );
+        if (invoice.policy_number) {
+          doc.text(
+            `Policy No: ${invoice.policy_number}`,
+            50,
+            infoY + 64,
+          );
+        }
+      }
 
       // Patient Info (Right Column)
       doc
@@ -796,7 +825,8 @@ module.exports = async function handler(req, res) {
           width: 240,
         });
 
-      doc.moveDown(3);
+      doc.y = Math.max(doc.y, infoY + (invoice.payment_mode === "insurer" ? 80 : 56));
+      doc.moveDown(1.5);
 
       // Appointment check context
       if (invoice.doctor_name) {
@@ -1047,7 +1077,9 @@ module.exports = async function handler(req, res) {
         .fontSize(9.5)
         .font("Helvetica-Bold")
         .fillColor(invoice.status === "paid" ? "#065f46" : "#991b1b");
-      const pMode = invoice.payment_mode
+      const pMode = invoice.payment_mode === "insurer" && invoice.insurance_company_name
+        ? `INSURER (${invoice.insurance_company_name.toUpperCase()})`
+        : invoice.payment_mode
         ? invoice.payment_mode.toUpperCase()
         : "N/A";
       const pDate = invoice.payment_date
@@ -1060,7 +1092,7 @@ module.exports = async function handler(req, res) {
       doc.text(bannerText, 70, bannerY + 10, { align: "center", width: 455 });
 
       // Footer signature space
-      doc.moveDown(3);
+      doc.moveDown(1.5);
       const signatureY = doc.y;
       doc.fontSize(9).font("Helvetica").fillColor("#64748b");
       doc.text("Prepared By: Staff Desk", 50, signatureY);
@@ -1075,21 +1107,14 @@ module.exports = async function handler(req, res) {
         .lineWidth(1)
         .stroke();
 
-      doc.y = 780;
-      doc
-        .fontSize(8)
-        .font("Helvetica")
-        .fillColor("#94a3b8")
-        .text("This is a verified digital payment receipt.", {
-          align: "center",
-        });
-      doc.moveDown(0.3);
+      doc.y = 745;
       doc
         .fontSize(8.5)
         .font("Helvetica-Bold")
         .fillColor("#00bba8")
-        .text("Developed & Maintained by inspenox (inspenox.in)", {
+        .text("Developed & Maintained by inspenox (inspenox.in)", 50, doc.y, {
           align: "center",
+          width: 495
         });
 
       doc.end();
@@ -1118,22 +1143,34 @@ module.exports = async function handler(req, res) {
       // GET: Fetch single invoice
       if (req.method === "GET") {
         try {
-          const rows =
-            targetHospitalId !== null
-              ? await sql`
+          let rows;
+          if (user.role === "insurer") {
+            const insurerCompanyId = parseInt(user.insurance_company_id);
+            rows = await sql`
               SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
               FROM invoices i
               JOIN patients p ON i.patient_id = p.id
-              WHERE i.id = ${parseInt(id)} AND i.hospital_id = ${targetHospitalId}
-            `
-              : await sql`
-              SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
-              FROM invoices i
-              JOIN patients p ON i.patient_id = p.id
-              WHERE i.id = ${parseInt(id)}
+              JOIN claims c ON i.id = c.invoice_id
+              WHERE i.id = ${parseInt(id)} AND c.insurance_company_id = ${insurerCompanyId}
             `;
+          } else {
+            rows =
+              targetHospitalId !== null
+                ? await sql`
+                SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                FROM invoices i
+                JOIN patients p ON i.patient_id = p.id
+                WHERE i.id = ${parseInt(id)} AND i.hospital_id = ${targetHospitalId}
+              `
+                : await sql`
+                SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                FROM invoices i
+                JOIN patients p ON i.patient_id = p.id
+                WHERE i.id = ${parseInt(id)}
+              `;
+          }
           if (rows.length === 0)
-            return res.status(404).json({ error: "Invoice not found" });
+            return res.status(404).json({ error: "Invoice not found or access denied" });
           return res.status(200).json({ success: true, invoice: rows[0] });
         } catch (error) {
           return res
@@ -1384,6 +1421,103 @@ module.exports = async function handler(req, res) {
       // GET: List invoices with query searches and pagination
       if (req.method === "GET") {
         try {
+          if (user.role === "insurer") {
+            const insurerCompanyId = parseInt(user.insurance_company_id);
+            if (!insurerCompanyId) {
+              return res.status(200).json({ success: true, invoices: [], pagination: { total: 0, page: 1, limit: 15, totalPages: 0 } });
+            }
+
+            const search = req.query.search || "";
+            const status = req.query.status || "";
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 15;
+            const offset = (page - 1) * limit;
+            const searchPattern = `%${search}%`;
+
+            let countRows, dataRows;
+
+            if (search || status) {
+              if (search && status) {
+                countRows = await sql`
+                  SELECT COUNT(DISTINCT i.id) as total 
+                  FROM invoices i 
+                  JOIN patients p ON i.patient_id = p.id
+                  JOIN claims c ON i.id = c.invoice_id
+                  WHERE c.insurance_company_id = ${insurerCompanyId}
+                    AND i.status = ${status} 
+                    AND (p.full_name ILIKE ${searchPattern} OR i.invoice_no ILIKE ${searchPattern})
+                `;
+                dataRows = await sql`
+                  SELECT DISTINCT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                  FROM invoices i 
+                  JOIN patients p ON i.patient_id = p.id
+                  JOIN claims c ON i.id = c.invoice_id
+                  WHERE c.insurance_company_id = ${insurerCompanyId}
+                    AND i.status = ${status} 
+                    AND (p.full_name ILIKE ${searchPattern} OR i.invoice_no ILIKE ${searchPattern})
+                  ORDER BY i.created_at DESC LIMIT ${limit} OFFSET ${offset}
+                `;
+              } else if (search) {
+                countRows = await sql`
+                  SELECT COUNT(DISTINCT i.id) as total 
+                  FROM invoices i 
+                  JOIN patients p ON i.patient_id = p.id
+                  JOIN claims c ON i.id = c.invoice_id
+                  WHERE c.insurance_company_id = ${insurerCompanyId}
+                    AND (p.full_name ILIKE ${searchPattern} OR i.invoice_no ILIKE ${searchPattern})
+                `;
+                dataRows = await sql`
+                  SELECT DISTINCT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                  FROM invoices i 
+                  JOIN patients p ON i.patient_id = p.id
+                  JOIN claims c ON i.id = c.invoice_id
+                  WHERE c.insurance_company_id = ${insurerCompanyId}
+                    AND (p.full_name ILIKE ${searchPattern} OR i.invoice_no ILIKE ${searchPattern})
+                  ORDER BY i.created_at DESC LIMIT ${limit} OFFSET ${offset}
+                `;
+              } else {
+                countRows = await sql`
+                  SELECT COUNT(DISTINCT i.id) as total 
+                  FROM invoices i 
+                  JOIN claims c ON i.id = c.invoice_id
+                  WHERE c.insurance_company_id = ${insurerCompanyId} AND i.status = ${status}
+                `;
+                dataRows = await sql`
+                  SELECT DISTINCT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                  FROM invoices i 
+                  JOIN patients p ON i.patient_id = p.id
+                  JOIN claims c ON i.id = c.invoice_id
+                  WHERE c.insurance_company_id = ${insurerCompanyId} AND i.status = ${status}
+                  ORDER BY i.created_at DESC LIMIT ${limit} OFFSET ${offset}
+                `;
+              }
+            } else {
+              countRows = await sql`
+                SELECT COUNT(DISTINCT i.id) as total 
+                FROM invoices i 
+                JOIN claims c ON i.id = c.invoice_id
+                WHERE c.insurance_company_id = ${insurerCompanyId}
+              `;
+              dataRows = await sql`
+                SELECT DISTINCT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile 
+                FROM invoices i 
+                JOIN patients p ON i.patient_id = p.id
+                JOIN claims c ON i.id = c.invoice_id
+                WHERE c.insurance_company_id = ${insurerCompanyId}
+                ORDER BY i.created_at DESC LIMIT ${limit} OFFSET ${offset}
+              `;
+            }
+
+            const total = parseInt(countRows[0].total);
+            const totalPages = Math.ceil(total / limit);
+
+            return res.status(200).json({
+              success: true,
+              invoices: dataRows,
+              pagination: { total, page, limit, totalPages },
+            });
+          }
+
           await syncRoomInvoices(sql, targetHospitalId);
           const allocationId = req.query.allocation_id;
           if (allocationId) {

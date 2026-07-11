@@ -161,10 +161,14 @@ module.exports = async function handler(req, res) {
         document_data TEXT,
         status VARCHAR(20) DEFAULT 'pending',
         status_notes TEXT,
+        policy_number VARCHAR(100),
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       )
     `;
+
+    // Migration: Add policy_number to claims if it doesn't exist
+    await sql`ALTER TABLE claims ADD COLUMN IF NOT EXISTS policy_number VARCHAR(100)`;
 
     // Migration: Add insurance_company_id to users
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS insurance_company_id INT REFERENCES insurance_companies(id) ON DELETE SET NULL`;

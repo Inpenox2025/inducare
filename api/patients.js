@@ -36,10 +36,23 @@ module.exports = async function handler(req, res) {
     // GET: View single patient
     if (req.method === 'GET') {
       try {
-        const rows = user.role === 'super_admin' 
-          ? await sql`SELECT * FROM patients WHERE id = ${parseInt(id)}`
-          : await sql`SELECT * FROM patients WHERE id = ${parseInt(id)} AND hospital_id = ${user.hospital_id}`;
-        if (rows.length === 0) return res.status(404).json({ error: 'Patient not found' });
+        let rows;
+        if (user.role === 'super_admin') {
+          rows = await sql`SELECT * FROM patients WHERE id = ${parseInt(id)}`;
+        } else if (user.role === 'insurer') {
+          const insurerCompanyId = parseInt(user.insurance_company_id);
+          if (!insurerCompanyId) {
+            return res.status(403).json({ error: 'Access denied. Account not linked to insurer.' });
+          }
+          rows = await sql`
+            SELECT DISTINCT p.* FROM patients p
+            JOIN claims c ON p.id = c.patient_id
+            WHERE p.id = ${parseInt(id)} AND c.insurance_company_id = ${insurerCompanyId}
+          `;
+        } else {
+          rows = await sql`SELECT * FROM patients WHERE id = ${parseInt(id)} AND hospital_id = ${user.hospital_id}`;
+        }
+        if (rows.length === 0) return res.status(404).json({ error: 'Patient not found or access denied' });
         return res.status(200).json({ success: true, patient: rows[0] });
       } catch (error) {
         return res.status(500).json({ error: 'Failed to fetch patient', details: error.message });
@@ -147,6 +160,62 @@ module.exports = async function handler(req, res) {
         const search = req.query.search || '';
 
         let countRows, dataRows;
+
+        if (user.role === 'insurer') {
+          const insurerCompanyId = parseInt(user.insurance_company_id);
+          if (!insurerCompanyId) {
+            return res.status(200).json({ success: true, patients: [], pagination: { total: 0, page, limit, totalPages: 0 } });
+          }
+
+          if (search) {
+            const searchPattern = `%${search}%`;
+            countRows = await sql`
+              SELECT COUNT(DISTINCT p.id) as total 
+              FROM patients p
+              JOIN claims c ON p.id = c.patient_id
+              WHERE c.insurance_company_id = ${insurerCompanyId}
+                AND (p.full_name ILIKE ${searchPattern} 
+                  OR p.mobile_no ILIKE ${searchPattern} 
+                  OR p.medical_history ILIKE ${searchPattern})
+            `;
+            dataRows = await sql`
+              SELECT DISTINCT p.* 
+              FROM patients p
+              JOIN claims c ON p.id = c.patient_id
+              WHERE c.insurance_company_id = ${insurerCompanyId}
+                AND (p.full_name ILIKE ${searchPattern} 
+                  OR p.mobile_no ILIKE ${searchPattern} 
+                  OR p.medical_history ILIKE ${searchPattern})
+              ORDER BY p.created_at DESC 
+              LIMIT ${limit} OFFSET ${offset}
+            `;
+          } else {
+            countRows = await sql`
+              SELECT COUNT(DISTINCT p.id) as total 
+              FROM patients p
+              JOIN claims c ON p.id = c.patient_id
+              WHERE c.insurance_company_id = ${insurerCompanyId}
+            `;
+            dataRows = await sql`
+              SELECT DISTINCT p.* 
+              FROM patients p
+              JOIN claims c ON p.id = c.patient_id
+              WHERE c.insurance_company_id = ${insurerCompanyId}
+              ORDER BY p.created_at DESC 
+              LIMIT ${limit} OFFSET ${offset}
+            `;
+          }
+
+          const total = parseInt(countRows[0].total);
+          const totalPages = Math.ceil(total / limit);
+
+          return res.status(200).json({
+            success: true,
+            patients: dataRows,
+            pagination: { total, page, limit, totalPages }
+          });
+        }
+
         const targetHospitalId = user.role === 'super_admin' ? (req.query.hospital_id ? parseInt(req.query.hospital_id) : null) : user.hospital_id;
 
         if (search) {

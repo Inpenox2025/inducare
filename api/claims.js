@@ -161,7 +161,7 @@ module.exports = async function handler(req, res) {
       }
 
       // Default POST action: Submit a new Claim
-      const { invoice_id, amount, insurance_company_id, document_data } = req.body;
+      const { invoice_id, amount, insurance_company_id, document_data, policy_number } = req.body;
       if (!invoice_id || !amount || !insurance_company_id || !document_data) {
         return res.status(400).json({ error: "invoice_id, amount, insurance_company_id, and document_data are required" });
       }
@@ -201,8 +201,8 @@ module.exports = async function handler(req, res) {
 
       // Insert new pending claim
       const rows = await sql`
-        INSERT INTO claims (insurance_company_id, patient_id, hospital_id, invoice_id, amount, document_data, status)
-        VALUES (${parseInt(insurance_company_id)}, ${invoice.patient_id}, ${invoice.hospital_id}, ${invoice.id}, ${parseFloat(amount)}, ${document_data}, 'pending')
+        INSERT INTO claims (insurance_company_id, patient_id, hospital_id, invoice_id, amount, document_data, status, policy_number)
+        VALUES (${parseInt(insurance_company_id)}, ${invoice.patient_id}, ${invoice.hospital_id}, ${invoice.id}, ${parseFloat(amount)}, ${document_data}, 'pending', ${policy_number || null})
         RETURNING *
       `;
 

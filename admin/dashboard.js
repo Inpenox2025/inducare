@@ -1628,6 +1628,37 @@ window.openReconciliationModal = async function (id, invNo, amount, due) {
   document.getElementById("recon_paid_amount").value = due;
   document.getElementById("recon_paid_amount").max = due;
 
+  const user = getUser();
+  const isClaimsEnabled = user && (user.role === 'super_admin' || (window.allowedMenuKeys && window.allowedMenuKeys.includes('claims')));
+  const modeSelect = document.getElementById("recon_payment_mode");
+  if (modeSelect) {
+    let optInsurer = modeSelect.querySelector('option[value="insurer"]');
+    if (optInsurer) {
+      if (isClaimsEnabled) {
+        optInsurer.style.display = "";
+        optInsurer.disabled = false;
+      } else {
+        optInsurer.style.display = "none";
+        optInsurer.disabled = true;
+        if (modeSelect.value === "insurer") {
+          modeSelect.value = "cash";
+        }
+      }
+    }
+  }
+
+  // Also reset insurer fields visibility and values
+  const insurerFields = document.getElementById("reconInsurerFields");
+  if (insurerFields) insurerFields.style.display = "none";
+  const reconInsCompany = document.getElementById("recon_insurance_company");
+  if (reconInsCompany) reconInsCompany.value = "";
+  const reconClaimDoc = document.getElementById("recon_claim_document");
+  if (reconClaimDoc) reconClaimDoc.value = "";
+  const reconClaimDocData = document.getElementById("recon_claim_document_data");
+  if (reconClaimDocData) reconClaimDocData.value = "";
+  const reconPolicyNum = document.getElementById("recon_policy_number");
+  if (reconPolicyNum) reconPolicyNum.value = "";
+
   // Clear previous details
   const detailsBox = document.getElementById("reconItemsDetailsBox");
   const itemsContainer = document.getElementById("reconBillItemsContainer");
@@ -1733,9 +1764,14 @@ async function processReconciliation(e) {
   if (mode === "insurer") {
     const insuranceCompanyId = document.getElementById("recon_insurance_company").value;
     const documentData = document.getElementById("recon_claim_document_data").value;
+    const policyNumber = document.getElementById("recon_policy_number").value.trim();
 
     if (!insuranceCompanyId) {
       showToast("Please select an insurance company.", "error");
+      return;
+    }
+    if (!policyNumber) {
+      showToast("Please enter the policy number.", "error");
       return;
     }
     if (!documentData) {
@@ -1751,7 +1787,8 @@ async function processReconciliation(e) {
           invoice_id: parseInt(id),
           amount: payAmount,
           insurance_company_id: parseInt(insuranceCompanyId),
-          document_data: documentData
+          document_data: documentData,
+          policy_number: policyNumber
         })
       });
       const result = await claimRes.json();
@@ -3354,6 +3391,7 @@ async function loadDynamicNavigation() {
     });
     const data = await res.json();
     if (res.ok && data.success && data.menus) {
+      window.allowedMenuKeys = data.menus.map(m => m.menu_key);
       const allNavLinks = [
         { key: "overview", id: "navOverview" },
         { key: "patients", id: "navPatients" },
@@ -5119,10 +5157,18 @@ document.addEventListener("DOMContentLoaded", () => {
       const invoiceId = document.getElementById("claim_invoice_id").value;
       const amount = document.getElementById("claim_amount").value;
       const documentData = document.getElementById("claim_document_data").value;
+      const policyNumber = document.getElementById("claim_policy_number").value.trim();
       const user = getUser();
 
       if (!user || !user.insurance_company_id) {
         showToast("Access Denied. You must be an insurer associated with a company.", "error");
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+        return;
+      }
+
+      if (!policyNumber) {
+        showToast("Please enter the policy number.", "error");
         saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
         return;
@@ -5136,7 +5182,8 @@ document.addEventListener("DOMContentLoaded", () => {
             invoice_id: parseInt(invoiceId),
             amount: parseFloat(amount),
             insurance_company_id: parseInt(user.insurance_company_id),
-            document_data: documentData
+            document_data: documentData,
+            policy_number: policyNumber
           })
         });
         const result = await res.json();
@@ -5362,6 +5409,7 @@ async function loadInsurerClaims() {
           <td data-label="Patient Name"><strong>${esc(c.patient_name)}</strong></td>
           <td data-label="Hospital">${esc(c.hospital_name)}</td>
           <td data-label="Invoice No"><code>${esc(c.invoice_no)}</code></td>
+          <td data-label="Policy No">${esc(c.policy_number || '—')}</td>
           <td data-label="Claimed Amount"><strong>${formatCurrency(c.amount)}</strong></td>
           <td data-label="Document">
             <a href="#" onclick="viewBase64Document('${c.id}')" style="color:var(--primary); font-weight:600; text-decoration:none;">📄 View Document</a>
@@ -5437,6 +5485,7 @@ async function loadAdminClaims() {
             <td data-label="Patient Name"><strong>${esc(c.patient_name)}</strong></td>
             <td data-label="Insurer Company">${esc(c.insurance_company_name)}</td>
             <td data-label="Invoice No"><code>${esc(c.invoice_no)}</code></td>
+            <td data-label="Policy No">${esc(c.policy_number || '—')}</td>
             <td data-label="Claim Amount"><strong>${formatCurrency(c.amount)}</strong></td>
             <td data-label="Document">
               <a href="#" onclick="viewBase64Document('${c.id}')" style="color:var(--primary); font-weight:600; text-decoration:none;">📄 View Document</a>
