@@ -4190,7 +4190,7 @@ async function loadRoomBilling(allocationId) {
   const tbody = document.getElementById("roomBillingItemsBody");
   tbody.innerHTML = '<tr><td colspan="5" class="loading-cell">Loading items...</td></tr>';
   try {
-    const res = await fetch(`${API_BASE}/rooms/visits?action=services&allocation_id=${allocationId}`, { headers: authHeaders() });
+    const res = await fetch(`${API_BASE}/rooms?action=services&allocation_id=${allocationId}`, { headers: authHeaders() });
     const data = await res.json();
     if (res.ok && data.success) {
       const services = data.services || [];
@@ -4228,7 +4228,7 @@ async function saveRoomBillingItem(e) {
   const quantity = document.getElementById("billing_quantity").value;
 
   try {
-    const res = await fetch(`${API_BASE}/rooms/visits?action=services`, {
+    const res = await fetch(`${API_BASE}/rooms?action=services`, {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({
@@ -4259,7 +4259,7 @@ async function saveRoomBillingItem(e) {
 window.deleteRoomBillingItem = async function(serviceId, allocationId) {
   if (!confirm("Are you sure you want to remove this billing item?")) return;
   try {
-    const res = await fetch(`${API_BASE}/rooms/visits/${serviceId}?action=services`, {
+    const res = await fetch(`${API_BASE}/rooms/${serviceId}?action=services`, {
       method: "DELETE",
       headers: authHeaders()
     });
