@@ -3411,15 +3411,6 @@ async function loadDynamicNavigation() {
         return;
       }
 
-      if (user.role === "admin") {
-        const clmLink = document.getElementById("navClaims");
-        if (clmLink) {
-          clmLink.style.display = "";
-          clmLink.innerHTML = '<span class="nav-icon">📝</span> Insurance Claims';
-          clmLink.setAttribute("data-tab", "claims");
-        }
-      }
-
       let firstTab = "";
       data.menus.forEach((menu) => {
         const mapped = allNavLinks.find((item) => item.key === menu.menu_key);
