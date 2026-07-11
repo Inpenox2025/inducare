@@ -1455,7 +1455,7 @@
 
     <!-- 4. Payment Reconciliation Modal -->
     <div class="modal-overlay" id="reconciliationModal">
-        <div class="modal" style="max-width: 450px;">
+        <div class="modal" style="max-width: 650px;">
             <div class="modal-header">
                 <h2 id="reconModalTitle">Payment & Receipts Installments</h2>
                 <button class="modal-close" data-close="reconciliationModal">✕</button>
@@ -1476,32 +1476,24 @@
                             <strong id="reconTotalBilled" style="color:var(--text1);">₹ 0.00</strong>
                         </div>
                         <div style="display:flex; justify-content:space-between; font-size:14px; margin-bottom:12px; border-bottom: 1.5px dashed var(--border); padding-bottom:8px;">
-                    <!-- Billed Details Preview -->
-                    <div id="reconItemsDetailsBox" style="display:none; margin-bottom:16px; padding:12px; background:var(--bg-primary); border:1px dashed var(--border); border-radius:6px;">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                            <span style="color:var(--text3);">Invoice ID:</span>
-                            <span id="reconInvoiceNo" style="font-weight:600; color:var(--text1);">—</span>
+                            <span style="color:var(--text3); font-weight:500;">Current Outstanding Dues:</span>
+                            <strong id="reconCurrentDue" style="color:var(--error); font-weight:700;">₹ 0.00</strong>
                         </div>
-                        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                            <span style="color:var(--text3);">Total Billed:</span>
-                            <span id="reconTotalBilled" style="font-weight:600; color:var(--text1);">—</span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                            <span id="reconTaxLabel" style="color:var(--text3);">Tax (0%):</span>
-                            <span id="reconTaxAmount" style="font-weight:600; color:var(--text1);">—</span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; margin-bottom:6px; padding-top:6px; border-top:1px solid var(--border);">
-                            <span style="color:var(--text2); font-weight:600;">Taxable Value:</span>
-                            <span id="reconTaxableAmount" style="font-weight:700; color:var(--text1);">—</span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                            <span style="color:var(--primary); font-weight:600;">Current Due:</span>
-                            <span id="reconCurrentDue" style="font-weight:700; color:var(--error);">—</span>
-                        </div>
-                        
-                        <!-- Detailed Bill Items -->
-                        <div id="reconBillItemsContainer" style="margin-top:8px; font-size:11px; color:var(--text3); border-top:1px dashed var(--border); padding-top:8px;">
-                            <!-- Populated dynamically -->
+
+                        <!-- Itemized Details & GST Breakdown Inside Billing Reconciliation -->
+                        <div id="reconItemsDetailsBox" style="font-size: 12px; color: var(--text2); display:none; margin-top:12px; border-top:1px dashed var(--border); padding-top:8px;">
+                            <h4 style="margin: 8px 0 6px 0; font-size:12px; color:var(--text1); font-weight:700;">📋 Itemized Bill Details</h4>
+                            <div id="reconBillItemsContainer" style="display:flex; flex-direction:column; gap:4px; max-height:120px; overflow-y:auto; margin-bottom:8px; padding-right:4px;">
+                                <!-- Dynamically populated list of items -->
+                            </div>
+                            <div style="display:flex; justify-content:space-between; color:var(--text3); font-size:11px; margin-top:6px;">
+                                <span>Taxable Amount:</span>
+                                <span id="reconTaxableAmount">₹ 0.00</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; color:var(--text3); font-size:11px;">
+                                <span id="reconTaxLabel">GST (0.0%):</span>
+                                <span id="reconTaxAmount">₹ 0.00</span>
+                            </div>
                         </div>
                     </div>
 
