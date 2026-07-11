@@ -31,7 +31,7 @@ module.exports = async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       if (id) {
-        const rows = await sql`SELECT id, username, email, phone, role, hospital_id, created_at FROM users WHERE id = ${id}`;
+        const rows = await sql`SELECT id, username, email, phone, role, hospital_id, insurance_company_id, created_at FROM users WHERE id = ${id}`;
         if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
         
         // Block hospital admin from viewing users of other hospitals or Super Admin (which has hospital_id NULL)
@@ -44,8 +44,8 @@ module.exports = async function handler(req, res) {
       } else {
         const queryHosp = req.query.hospital_id;
         const rows = adminUser.role === 'super_admin'
-          ? (queryHosp ? await sql`SELECT id, username, email, phone, role, hospital_id, created_at FROM users WHERE hospital_id = ${parseInt(queryHosp)} ORDER BY created_at DESC` : await sql`SELECT id, username, email, phone, role, hospital_id, created_at FROM users ORDER BY created_at DESC`)
-          : await sql`SELECT id, username, email, phone, role, hospital_id, created_at FROM users WHERE hospital_id = ${adminUser.hospital_id} ORDER BY created_at DESC`;
+          ? (queryHosp ? await sql`SELECT id, username, email, phone, role, hospital_id, insurance_company_id, created_at FROM users WHERE hospital_id = ${parseInt(queryHosp)} ORDER BY created_at DESC` : await sql`SELECT id, username, email, phone, role, hospital_id, insurance_company_id, created_at FROM users ORDER BY created_at DESC`)
+          : await sql`SELECT id, username, email, phone, role, hospital_id, insurance_company_id, created_at FROM users WHERE hospital_id = ${adminUser.hospital_id} ORDER BY created_at DESC`;
         return res.status(200).json({ success: true, users: rows });
       }
     } catch (error) {
@@ -56,7 +56,7 @@ module.exports = async function handler(req, res) {
   // ══════ POST: Create New Staff Member ══════
   if (req.method === 'POST') {
     try {
-      const { username, password, role, email, phone } = req.body;
+      const { username, password, role, email, phone, insurance_company_id } = req.body;
       if (!username || !password || !role) {
         return res.status(400).json({ error: 'Username, password and role are required' });
       }
@@ -73,11 +73,12 @@ module.exports = async function handler(req, res) {
       }
 
       const hostId = adminUser.role === 'super_admin' ? (req.body.hospital_id ? parseInt(req.body.hospital_id) : null) : adminUser.hospital_id;
+      const insCompanyId = insurance_company_id ? parseInt(insurance_company_id) : null;
       const hash = await bcrypt.hash(password, 10);
       const rows = await sql`
-        INSERT INTO users (username, password_hash, role, email, phone, hospital_id)
-        VALUES (${username.trim()}, ${hash}, ${role}, ${email ? email.trim() : null}, ${phone ? phone.trim() : null}, ${hostId})
-        RETURNING id, username, email, phone, role, created_at
+        INSERT INTO users (username, password_hash, role, email, phone, hospital_id, insurance_company_id)
+        VALUES (${username.trim()}, ${hash}, ${role}, ${email ? email.trim() : null}, ${phone ? phone.trim() : null}, ${hostId}, ${insCompanyId})
+        RETURNING id, username, email, phone, role, hospital_id, insurance_company_id, created_at
       `;
       return res.status(201).json({ success: true, user: rows[0] });
     } catch (error) {
@@ -89,7 +90,8 @@ module.exports = async function handler(req, res) {
   if (req.method === 'PUT') {
     try {
       if (!id) return res.status(400).json({ error: 'User ID is required' });
-      const { username, password, role, email, phone } = req.body;
+      const { username, password, role, email, phone, insurance_company_id } = req.body;
+      const insCompanyId = insurance_company_id ? parseInt(insurance_company_id) : null;
 
       if (!username || !role) {
         return res.status(400).json({ error: 'Username and role are required' });
@@ -126,9 +128,10 @@ module.exports = async function handler(req, res) {
             password_hash = ${hash},
             role = ${role},
             email = ${email ? email.trim() : null},
-            phone = ${phone ? phone.trim() : null}
+            phone = ${phone ? phone.trim() : null},
+            insurance_company_id = ${insCompanyId}
           WHERE id = ${id}
-          RETURNING id, username, email, phone, role, created_at
+          RETURNING id, username, email, phone, role, hospital_id, insurance_company_id, created_at
         `;
       } else {
         rows = await sql`
@@ -136,9 +139,10 @@ module.exports = async function handler(req, res) {
             username = ${username.trim()},
             role = ${role},
             email = ${email ? email.trim() : null},
-            phone = ${phone ? phone.trim() : null}
+            phone = ${phone ? phone.trim() : null},
+            insurance_company_id = ${insCompanyId}
           WHERE id = ${id}
-          RETURNING id, username, email, phone, role, created_at
+          RETURNING id, username, email, phone, role, hospital_id, insurance_company_id, created_at
         `;
       }
 

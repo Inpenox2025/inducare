@@ -55,6 +55,7 @@ module.exports = async function handler(req, res) {
           username: user.username,
           role: user.role,
           hospital_id: user.hospital_id,
+          insurance_company_id: user.insurance_company_id,
         },
         JWT_SECRET,
         { expiresIn: "24h" },
@@ -68,6 +69,7 @@ module.exports = async function handler(req, res) {
           username: user.username,
           role: user.role,
           hospital_id: user.hospital_id,
+          insurance_company_id: user.insurance_company_id,
           hospital_name:
             user.hospital_name ||
             (user.role === "super_admin"
@@ -117,6 +119,7 @@ module.exports = async function handler(req, res) {
           username: user.username,
           role: user.role,
           hospital_id: user.hospital_id,
+          insurance_company_id: user.insurance_company_id,
           hospital_name:
             user.hospital_name ||
             (user.role === "super_admin"

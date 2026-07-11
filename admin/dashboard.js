@@ -347,6 +347,9 @@ function switchTab(tabName) {
   else if (tabName === "super-panel") loadSuperPanel();
   else if (tabName === "receipts-panel") loadReceiptsPanel();
   else if (tabName === "discharged-patients") loadDischargedPatients();
+  else if (tabName === "insurer-hospitals") loadInsurerHospitals();
+  else if (tabName === "insurer-claims") loadInsurerClaims();
+  else if (tabName === "claims") loadAdminClaims();
 
   // Close mobile sidebar on navigate
   document.getElementById("sidebar").classList.remove("open");
@@ -1726,6 +1729,45 @@ async function processReconciliation(e) {
     return;
   }
 
+  // Handle insurer payment mode
+  if (mode === "insurer") {
+    const insuranceCompanyId = document.getElementById("recon_insurance_company").value;
+    const documentData = document.getElementById("recon_claim_document_data").value;
+
+    if (!insuranceCompanyId) {
+      showToast("Please select an insurance company.", "error");
+      return;
+    }
+    if (!documentData) {
+      showToast("Please upload the claim verification document.", "error");
+      return;
+    }
+
+    try {
+      const claimRes = await fetch(`${API_BASE}/claims`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          invoice_id: parseInt(id),
+          amount: payAmount,
+          insurance_company_id: parseInt(insuranceCompanyId),
+          document_data: documentData
+        })
+      });
+      const result = await claimRes.json();
+      if (claimRes.ok && result.success) {
+        showToast("Insurance claim filed successfully and is pending review!", "success");
+        closeModal("reconciliationModal");
+        loadInvoices();
+      } else {
+        showToast(result.error || "Failed to file insurance claim", "error");
+      }
+    } catch (err) {
+      showToast("Connection error filing insurance claim", "error");
+    }
+    return;
+  }
+
   try {
     const updateRes = await fetch(`${API_BASE}/invoices/${id}`, {
       method: "PUT",
@@ -1978,6 +2020,19 @@ window.editStaff = async function (id) {
       await populateStaffRoleDropdown(hospId);
 
       document.getElementById("staff_role").value = u.role;
+      
+      const insGroup = document.getElementById("staffInsuranceCompanyGroup");
+      if (insGroup) {
+        if (u.role === "insurer") {
+          insGroup.style.display = "block";
+          await populateInsuranceCompaniesSelect("staff_insurance_company_id", u.insurance_company_id || "");
+        } else {
+          insGroup.style.display = "none";
+          const selectField = document.getElementById("staff_insurance_company_id");
+          if (selectField) selectField.value = "";
+        }
+      }
+
       document.getElementById("saveStaffBtn").textContent =
         "Update Credentials";
 
@@ -2320,9 +2375,11 @@ function initEventListeners() {
     document.getElementById("staffModalTitle").textContent =
       "Create Staff Account";
 
-    // Hide target hospital selector for regular admins
+    // Hide target hospital selector and insurance group for regular admins
     const staffHospGroup = document.getElementById("staff_hosp_group");
     if (staffHospGroup) staffHospGroup.style.display = "none";
+    const insGroup = document.getElementById("staffInsuranceCompanyGroup");
+    if (insGroup) insGroup.style.display = "none";
 
     const u = getUser();
     await populateStaffRoleDropdown(u ? u.hospital_id : 1);
@@ -2349,6 +2406,8 @@ function initEventListeners() {
       // Show target hospital selector for Super Admins
       const staffHospGroup = document.getElementById("staff_hosp_group");
       if (staffHospGroup) staffHospGroup.style.display = "block";
+      const insGroup = document.getElementById("staffInsuranceCompanyGroup");
+      if (insGroup) insGroup.style.display = "none";
 
       // Match selected hospital dropdown option
       const superUserHospSelect = document.getElementById(
@@ -3309,12 +3368,24 @@ async function loadDynamicNavigation() {
         { key: "super-overview", id: "navOverview" },
         { key: "super-roles", id: "navSuperPanel" },
         { key: "super-hospitals", id: "navSuperPanel" },
+        { key: "insurer-hospitals", id: "navInsurerHospitals" },
+        { key: "insurer-claims", id: "navInsurerClaims" },
+        { key: "claims", id: "navClaims" },
       ];
 
       allNavLinks.forEach((item) => {
         const el = document.getElementById(item.id);
         if (el) el.style.display = "none";
       });
+
+      if (user.role === "insurer") {
+        const hHosp = document.getElementById("navInsurerHospitals");
+        if (hHosp) hHosp.style.display = "";
+        const hClaims = document.getElementById("navInsurerClaims");
+        if (hClaims) hClaims.style.display = "";
+        switchTab("insurer-claims");
+        return;
+      }
 
       if (user.role === "super_admin") {
         const superOverview = document.getElementById("navOverview");
@@ -3330,8 +3401,23 @@ async function loadDynamicNavigation() {
           superPanel.innerHTML = '<span class="nav-icon">🔑</span> Super Panel';
           superPanel.setAttribute("data-tab", "super-panel");
         }
+        const clmLink = document.getElementById("navClaims");
+        if (clmLink) {
+          clmLink.style.display = "";
+          clmLink.innerHTML = '<span class="nav-icon">📝</span> Claims Review';
+          clmLink.setAttribute("data-tab", "claims");
+        }
         switchTab("super-panel");
         return;
+      }
+
+      if (user.role === "admin") {
+        const clmLink = document.getElementById("navClaims");
+        if (clmLink) {
+          clmLink.style.display = "";
+          clmLink.innerHTML = '<span class="nav-icon">📝</span> Insurance Claims';
+          clmLink.setAttribute("data-tab", "claims");
+        }
       }
 
       let firstTab = "";
@@ -3561,6 +3647,9 @@ async function loadSuperPanel() {
 
     // Load cross-tenant patients list
     await loadSuperPatients();
+    
+    // Load insurance companies list
+    await loadSuperInsuranceCompanies();
   } catch (err) {
     showToast("Failed to query Super parameters", "error");
   }
@@ -3661,6 +3750,7 @@ async function populateStaffRoleDropdown(hospitalId) {
         { role_name: "doctor", description: "Doctor (Clinical Access)" },
         { role_name: "patient", description: "Patient (Portal Access)" },
         { role_name: "admin", description: "Administrator (Full Control)" },
+        { role_name: "insurer", description: "Insurer (Claim Processing)" },
       ];
 
       const allRoles = [...defaultRoles];
@@ -4786,5 +4876,604 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  // ══════════════════════════════════════════════════════════
+  // INSURENCE & CLAIMS INTEGRATION EVENT LISTENERS
+  // ══════════════════════════════════════════════════════════
+  // Toggle insurer dropdown in payment reconciliation
+  const reconMode = document.getElementById("recon_payment_mode");
+  if (reconMode) {
+    reconMode.addEventListener("change", async (e) => {
+      const insurerFields = document.getElementById("reconInsurerFields");
+      if (insurerFields) {
+        if (e.target.value === "insurer") {
+          insurerFields.style.display = "block";
+          await populateInsuranceCompaniesSelect("recon_insurance_company");
+        } else {
+          insurerFields.style.display = "none";
+          document.getElementById("recon_insurance_company").value = "";
+          document.getElementById("recon_claim_document").value = "";
+          document.getElementById("recon_claim_document_data").value = "";
+        }
+      }
+    });
+  }
+
+  // Convert reconciliation file to Base64
+  const reconFile = document.getElementById("recon_claim_document");
+  if (reconFile) {
+    reconFile.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          document.getElementById("recon_claim_document_data").value = evt.target.result;
+        };
+        reader.readAsDataURL(file);
+      } else {
+        document.getElementById("recon_claim_document_data").value = "";
+      }
+    });
+  }
+
+  // Super Admin: Add Insurance Company Form
+  const superAddInsuranceBtn = document.getElementById("superAddInsuranceBtn");
+  if (superAddInsuranceBtn) {
+    superAddInsuranceBtn.addEventListener("click", () => {
+      document.getElementById("superInsuranceForm").reset();
+      document.getElementById("super_insurance_id").value = "";
+      document.getElementById("superInsuranceModalTitle").textContent = "Add Insurance Company";
+      document.getElementById("superInsuranceStatusGroup").style.display = "none";
+      openModal("superInsuranceModal");
+    });
+  }
+
+  const superInsuranceForm = document.getElementById("superInsuranceForm");
+  if (superInsuranceForm) {
+    superInsuranceForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const saveBtn = document.getElementById("saveSuperInsuranceBtn");
+      const originalText = saveBtn.innerHTML;
+      saveBtn.innerHTML = "Saving...";
+      saveBtn.disabled = true;
+
+      const id = document.getElementById("super_insurance_id").value;
+      const name = document.getElementById("super_insurance_name").value;
+      const status = document.getElementById("super_insurance_status").value;
+
+      try {
+        const url = id ? `${API_BASE}/super?action=insurance-companies&id=${id}` : `${API_BASE}/super?action=insurance-companies`;
+        const method = id ? "PUT" : "POST";
+        const body = id ? JSON.stringify({ id: parseInt(id), name, status }) : JSON.stringify({ name });
+
+        const res = await fetch(url, {
+          method,
+          headers: authHeaders(),
+          body
+        });
+        const result = await res.json();
+        if (res.ok && result.success) {
+          showToast(id ? "Insurance company updated!" : "Insurance company added successfully!", "success");
+          closeModal("superInsuranceModal");
+          await loadSuperInsuranceCompanies();
+        } else {
+          showToast(result.error || "Failed to save company", "error");
+        }
+      } catch (err) {
+        showToast("Network error saving insurance company", "error");
+      } finally {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+      }
+    });
+  }
+
+  // Insurer: File a Claim Trigger
+  const insurerFileClaimBtn = document.getElementById("insurerFileClaimBtn");
+  if (insurerFileClaimBtn) {
+    insurerFileClaimBtn.addEventListener("click", async () => {
+      document.getElementById("fileClaimForm").reset();
+      document.getElementById("claim_document_data").value = "";
+      
+      const patSelect = document.getElementById("claim_patient_id");
+      const invSelect = document.getElementById("claim_invoice_id");
+      patSelect.innerHTML = '<option value="">-- Choose Hospital First --</option>';
+      patSelect.disabled = true;
+      invSelect.innerHTML = '<option value="">-- Choose Patient First --</option>';
+      invSelect.disabled = true;
+
+      // Populate Hospitals dropdown
+      try {
+        const res = await fetch(`${API_BASE}/super?action=hospitals`, {
+          headers: authHeaders()
+        });
+        const data = await res.json();
+        const hospSelect = document.getElementById("claim_hospital_id");
+        if (res.ok && data.success && data.hospitals && hospSelect) {
+          hospSelect.innerHTML = '<option value="">-- Select Hospital --</option>' +
+            data.hospitals.map(h => `<option value="${h.id}">${esc(h.name)}</option>`).join("");
+        }
+      } catch (err) {
+        showToast("Failed to fetch hospitals list", "error");
+      }
+      openModal("fileClaimModal");
+    });
+  }
+
+  // Insurer: Claim Hospital change
+  const claimHospitalId = document.getElementById("claim_hospital_id");
+  if (claimHospitalId) {
+    claimHospitalId.addEventListener("change", async (e) => {
+      const hospId = e.target.value;
+      const patSelect = document.getElementById("claim_patient_id");
+      const invSelect = document.getElementById("claim_invoice_id");
+      
+      patSelect.innerHTML = '<option value="">-- Loading Patients... --</option>';
+      patSelect.disabled = true;
+      invSelect.innerHTML = '<option value="">-- Choose Patient First --</option>';
+      invSelect.disabled = true;
+      document.getElementById("claim_invoice_dues").value = "";
+
+      if (!hospId) {
+        patSelect.innerHTML = '<option value="">-- Choose Hospital First --</option>';
+        return;
+      }
+
+      try {
+        // Fetch patients of this hospital
+        const res = await fetch(`${API_BASE}/patients?hospital_id=${hospId}&limit=1000`, {
+          headers: authHeaders()
+        });
+        const data = await res.json();
+        if (res.ok && data.success && data.patients) {
+          patSelect.innerHTML = '<option value="">-- Select Patient --</option>' +
+            data.patients.map(p => `<option value="${p.id}">${esc(p.full_name)} (${esc(p.mobile_no || 'No Phone')})</option>`).join("");
+          patSelect.disabled = false;
+        } else {
+          patSelect.innerHTML = '<option value="">-- No Patients Found --</option>';
+        }
+      } catch (err) {
+        showToast("Failed to fetch patients", "error");
+        patSelect.innerHTML = '<option value="">-- Error --</option>';
+      }
+    });
+  }
+
+  // Insurer: Claim Patient change
+  const claimPatientId = document.getElementById("claim_patient_id");
+  if (claimPatientId) {
+    claimPatientId.addEventListener("change", async (e) => {
+      const patId = e.target.value;
+      const invSelect = document.getElementById("claim_invoice_id");
+      
+      invSelect.innerHTML = '<option value="">-- Loading Invoices... --</option>';
+      invSelect.disabled = true;
+      document.getElementById("claim_invoice_dues").value = "";
+
+      if (!patId) {
+        invSelect.innerHTML = '<option value="">-- Choose Patient First --</option>';
+        return;
+      }
+
+      try {
+        // Fetch invoices of this patient
+        const res = await fetch(`${API_BASE}/invoices?patient_id=${patId}`, {
+          headers: authHeaders()
+        });
+        const data = await res.json();
+        if (res.ok && data.success && data.invoices) {
+          const unpaid = data.invoices.filter(i => i.status === 'unpaid' || i.status === 'partially_paid');
+          if (unpaid.length === 0) {
+            invSelect.innerHTML = '<option value="">-- No Outstanding Invoices --</option>';
+            return;
+          }
+          invSelect.innerHTML = '<option value="">-- Select Invoice --</option>' +
+            unpaid.map(i => `<option value="${i.id}" data-due="${i.due_amount}">${esc(i.invoice_no)} (Dues: ₹${i.due_amount})</option>`).join("");
+          invSelect.disabled = false;
+        } else {
+          invSelect.innerHTML = '<option value="">-- No Invoices Found --</option>';
+        }
+      } catch (err) {
+        showToast("Failed to fetch invoices", "error");
+        invSelect.innerHTML = '<option value="">-- Error --</option>';
+      }
+    });
+  }
+
+  // Insurer: Claim Invoice change
+  const claimInvoiceId = document.getElementById("claim_invoice_id");
+  if (claimInvoiceId) {
+    claimInvoiceId.addEventListener("change", (e) => {
+      const select = e.target;
+      const option = select.options[select.selectedIndex];
+      if (option && option.value) {
+        const due = option.getAttribute("data-due");
+        document.getElementById("claim_invoice_dues").value = due;
+        document.getElementById("claim_amount").value = due;
+        document.getElementById("claim_amount").max = due;
+      } else {
+        document.getElementById("claim_invoice_dues").value = "";
+        document.getElementById("claim_amount").value = "";
+      }
+    });
+  }
+
+  // Insurer: Claim Document file Base64 loader
+  const claimDocFile = document.getElementById("claim_document");
+  if (claimDocFile) {
+    claimDocFile.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          document.getElementById("claim_document_data").value = evt.target.result;
+        };
+        reader.readAsDataURL(file);
+      } else {
+        document.getElementById("claim_document_data").value = "";
+      }
+    });
+  }
+
+  // Insurer: Submit Claim Form
+  const fileClaimForm = document.getElementById("fileClaimForm");
+  if (fileClaimForm) {
+    fileClaimForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const saveBtn = document.getElementById("submitClaimBtn");
+      const originalText = saveBtn.innerHTML;
+      saveBtn.innerHTML = "Submitting...";
+      saveBtn.disabled = true;
+
+      const invoiceId = document.getElementById("claim_invoice_id").value;
+      const amount = document.getElementById("claim_amount").value;
+      const documentData = document.getElementById("claim_document_data").value;
+      const user = getUser();
+
+      if (!user || !user.insurance_company_id) {
+        showToast("Access Denied. You must be an insurer associated with a company.", "error");
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/claims`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            invoice_id: parseInt(invoiceId),
+            amount: parseFloat(amount),
+            insurance_company_id: parseInt(user.insurance_company_id),
+            document_data: documentData
+          })
+        });
+        const result = await res.json();
+        if (res.ok && result.success) {
+          showToast("Claim filed successfully!", "success");
+          closeModal("fileClaimModal");
+          await loadInsurerClaims();
+        } else {
+          showToast(result.error || "Failed to file claim", "error");
+        }
+      } catch (err) {
+        showToast("Network error filing claim", "error");
+      } finally {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+      }
+    });
+  }
+
+  // Admin: Claim action (approve / reject) form submit
+  const claimActionForm = document.getElementById("claimActionForm");
+  if (claimActionForm) {
+    claimActionForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const saveBtn = document.getElementById("saveClaimActionBtn");
+      const originalText = saveBtn.innerHTML;
+      saveBtn.innerHTML = "Processing...";
+      saveBtn.disabled = true;
+
+      const claimId = document.getElementById("claim_action_id").value;
+      const type = document.getElementById("claim_action_type").value;
+      const notes = document.getElementById("claim_action_notes").value;
+
+      try {
+        const res = await fetch(`${API_BASE}/claims?action=${type}`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            claim_id: parseInt(claimId),
+            notes
+          })
+        });
+        const result = await res.json();
+        if (res.ok && result.success) {
+          showToast(`Claim has been ${type === "approve" ? "approved" : "rejected"} successfully!`, "success");
+          closeModal("claimActionModal");
+          await loadAdminClaims();
+        } else {
+          showToast(result.error || "Failed to process claim", "error");
+        }
+      } catch (err) {
+        showToast("Connection error processing claim", "error");
+      } finally {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+      }
+    });
+  }
+
+  // Staff roles privilege: listen for changes in staff modal roles dropdown
+  const staffRoleSelect = document.getElementById("staff_role");
+  if (staffRoleSelect) {
+    staffRoleSelect.addEventListener("change", async (e) => {
+      const insGroup = document.getElementById("staffInsuranceCompanyGroup");
+      if (insGroup) {
+        if (e.target.value === "insurer") {
+          insGroup.style.display = "block";
+          await populateInsuranceCompaniesSelect("staff_insurance_company_id");
+        } else {
+          insGroup.style.display = "none";
+          const selectField = document.getElementById("staff_insurance_company_id");
+          if (selectField) selectField.value = "";
+        }
+      }
+    });
+  }
 });
+
+// ══════════════════════════════════════════════════════════
+// INSURENCE & CLAIMS INTEGRATION SYSTEM LOGIC FUNCTIONS
+// ══════════════════════════════════════════════════════════
+window.insuranceCompanies = [];
+
+async function fetchInsuranceCompanies() {
+  try {
+    const res = await fetch(`${API_BASE}/super?action=insurance-companies`, {
+      headers: authHeaders()
+    });
+    const data = await res.json();
+    if (res.ok && data.success && data.companies) {
+      window.insuranceCompanies = data.companies;
+      return data.companies;
+    }
+  } catch (err) {
+    console.error("Failed to fetch insurance companies list:", err);
+  }
+  return [];
+}
+
+async function populateInsuranceCompaniesSelect(selectElementId, currentVal = "") {
+  const select = document.getElementById(selectElementId);
+  if (!select) return;
+  const companies = await fetchInsuranceCompanies();
+  const activeCompanies = companies.filter(c => c.status === 'active');
+  select.innerHTML = '<option value="">-- Select Insurance Company --</option>' +
+    activeCompanies.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
+  select.value = currentVal;
+}
+
+// ─── Super Admin: Insurance Companies CRUD ───
+async function loadSuperInsuranceCompanies() {
+  const tbody = document.getElementById("superInsuranceTableBody");
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="4" class="loading-cell">Loading insurance companies...</td></tr>';
+  
+  try {
+    const companies = await fetchInsuranceCompanies();
+    if (companies.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-cell">No insurance companies registered.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = companies.map(c => `
+      <tr>
+        <td data-label="ID"><span style="color:var(--primary); font-weight:600;">#${c.id}</span></td>
+        <td data-label="Insurance Company Name"><strong>${esc(c.name)}</strong></td>
+        <td data-label="Status">
+          <span class="badge ${c.status === 'active' ? 'badge-success' : 'badge-danger'}" style="text-transform:uppercase; font-size:11px;">
+            ${esc(c.status)}
+          </span>
+        </td>
+        <td data-label="Actions">
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button class="action-btn btn-edit" onclick="editInsurance(${c.id}, '${esc(c.name)}', '${c.status}')">Edit</button>
+            <button class="action-btn btn-delete" onclick="deleteInsurance(${c.id})">Delete</button>
+          </div>
+        </td>
+      </tr>
+    `).join("");
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-cell" style="color:var(--error);">Connection error loading insurers</td></tr>';
+  }
+}
+
+window.editInsurance = function(id, name, status) {
+  document.getElementById("superInsuranceModalTitle").textContent = "Modify Insurance Company";
+  document.getElementById("super_insurance_id").value = id;
+  document.getElementById("super_insurance_name").value = name;
+  const statusGroup = document.getElementById("superInsuranceStatusGroup");
+  if (statusGroup) statusGroup.style.display = "block";
+  document.getElementById("super_insurance_status").value = status;
+  openModal("superInsuranceModal");
+};
+
+window.deleteInsurance = async function(id) {
+  if (!confirm("Are you sure you want to remove this insurance company? All linked users and claims will be affected.")) return;
+  try {
+    const res = await fetch(`${API_BASE}/super?action=insurance-companies&id=${id}`, {
+      method: "DELETE",
+      headers: authHeaders()
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast("Insurance company removed!", "success");
+      await loadSuperInsuranceCompanies();
+    } else {
+      showToast(data.error || "Failed to remove insurer", "error");
+    }
+  } catch (err) {
+    showToast("Network error deleting insurer", "error");
+  }
+};
+
+// ─── Insurer Portal: Hospitals & Claims ───
+async function loadInsurerHospitals() {
+  const tbody = document.getElementById("insurerHospitalsTableBody");
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="3" class="loading-cell">Loading hospitals...</td></tr>';
+  
+  try {
+    const res = await fetch(`${API_BASE}/super?action=hospitals`, {
+      headers: authHeaders()
+    });
+    const data = await res.json();
+    if (res.ok && data.success && data.hospitals) {
+      if (data.hospitals.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty-cell">No hospitals registered yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.hospitals.map(h => `
+        <tr>
+          <td><span style="color:var(--primary); font-weight:600;">#${h.id}</span></td>
+          <td><strong>${esc(h.name)}</strong></td>
+          <td>${h.doctors_count} doctors / ${h.rooms_count} rooms</td>
+        </tr>
+      `).join("");
+    } else {
+      tbody.innerHTML = '<tr><td colspan="3" class="empty-cell">Failed to fetch hospitals.</td></tr>';
+    }
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="3" class="empty-cell">Connection error.</td></tr>';
+  }
+}
+
+async function loadInsurerClaims() {
+  const tbody = document.getElementById("insurerClaimsTableBody");
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="8" class="loading-cell">Loading claims...</td></tr>';
+
+  try {
+    const res = await fetch(`${API_BASE}/claims`, {
+      headers: authHeaders()
+    });
+    const data = await res.json();
+    if (res.ok && data.success && data.claims) {
+      if (data.claims.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-cell">No claims filed yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.claims.map(c => `
+        <tr>
+          <td data-label="ID"><span style="color:var(--primary); font-weight:600;">#${c.id}</span></td>
+          <td data-label="Patient Name"><strong>${esc(c.patient_name)}</strong></td>
+          <td data-label="Hospital">${esc(c.hospital_name)}</td>
+          <td data-label="Invoice No"><code>${esc(c.invoice_no)}</code></td>
+          <td data-label="Claimed Amount"><strong>${formatCurrency(c.amount)}</strong></td>
+          <td data-label="Document">
+            <a href="#" onclick="viewBase64Document('${c.id}')" style="color:var(--primary); font-weight:600; text-decoration:none;">📄 View Document</a>
+          </td>
+          <td data-label="Status">
+            <span class="badge ${c.status === 'approved' ? 'badge-success' : c.status === 'rejected' ? 'badge-danger' : 'badge-warning'}" title="${esc(c.status_notes || '')}" style="text-transform:uppercase; font-size:11px;">
+              ${esc(c.status)}
+            </span>
+          </td>
+          <td data-label="Date Filed">${formatDate(c.created_at)}</td>
+        </tr>
+      `).join("");
+      
+      // Store claims in window for viewing docs
+      window.cachedClaims = data.claims;
+    } else {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty-cell">Failed to fetch claims.</td></tr>';
+    }
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-cell">Connection error loading claims.</td></tr>';
+  }
+}
+
+window.viewBase64Document = function(claimId) {
+  const claim = (window.cachedClaims || []).find(c => c.id === parseInt(claimId));
+  if (!claim || !claim.document_data) {
+    showToast("Document not found", "error");
+    return;
+  }
+  const win = window.open();
+  if (win) {
+    win.document.write(`<iframe src="${claim.document_data}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+  } else {
+    showToast("Popup blocked! Enable popups to view files.", "error");
+  }
+};
+
+// ─── Hospital Admin Portal: Claims Review ───
+async function loadAdminClaims() {
+  const tbody = document.getElementById("adminClaimsTableBody");
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="8" class="loading-cell">Loading claims list...</td></tr>';
+
+  try {
+    const res = await fetch(`${API_BASE}/claims`, {
+      headers: authHeaders()
+    });
+    const data = await res.json();
+    if (res.ok && data.success && data.claims) {
+      if (data.claims.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-cell">No insurance claims registered for review.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.claims.map(c => {
+        let actionButtons = `<span style="color:var(--text3); font-style:italic;">None</span>`;
+        if (c.status === 'pending') {
+          actionButtons = `
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button class="action-btn btn-edit" onclick="openClaimActionModal(${c.id}, 'approve')" style="background-color:var(--success) !important;">Approve</button>
+              <button class="action-btn btn-delete" onclick="openClaimActionModal(${c.id}, 'reject')">Reject</button>
+            </div>
+          `;
+        } else {
+          actionButtons = `
+            <span style="font-size:11.5px; color:var(--text3); display:block; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${esc(c.status_notes || '')}">
+              ${esc(c.status_notes || 'Processed')}
+            </span>
+          `;
+        }
+        return `
+          <tr>
+            <td data-label="ID"><span style="color:var(--primary); font-weight:600;">#${c.id}</span></td>
+            <td data-label="Patient Name"><strong>${esc(c.patient_name)}</strong></td>
+            <td data-label="Insurer Company">${esc(c.insurance_company_name)}</td>
+            <td data-label="Invoice No"><code>${esc(c.invoice_no)}</code></td>
+            <td data-label="Claim Amount"><strong>${formatCurrency(c.amount)}</strong></td>
+            <td data-label="Document">
+              <a href="#" onclick="viewBase64Document('${c.id}')" style="color:var(--primary); font-weight:600; text-decoration:none;">📄 View Document</a>
+            </td>
+            <td data-label="Status">
+              <span class="badge ${c.status === 'approved' ? 'badge-success' : c.status === 'rejected' ? 'badge-danger' : 'badge-warning'}" style="text-transform:uppercase; font-size:11px;">
+                ${esc(c.status)}
+              </span>
+            </td>
+            <td data-label="Actions">${actionButtons}</td>
+          </tr>
+        `;
+      }).join("");
+
+      window.cachedClaims = data.claims;
+    } else {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty-cell">Failed to fetch claims.</td></tr>';
+    }
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-cell">Connection error.</td></tr>';
+  }
+}
+
+window.openClaimActionModal = function(claimId, type) {
+  document.getElementById("claim_action_id").value = claimId;
+  document.getElementById("claim_action_type").value = type;
+  document.getElementById("claimActionText").textContent = type;
+  document.getElementById("claimActionText").style.color = type === "approve" ? "var(--success)" : "var(--error)";
+  document.getElementById("claim_action_notes").value = "";
+  openModal("claimActionModal");
+};
 

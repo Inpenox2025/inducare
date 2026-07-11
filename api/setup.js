@@ -139,6 +139,36 @@ module.exports = async function handler(req, res) {
     await sql`ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS tax_name VARCHAR(50) DEFAULT 'GST'`;
     await sql`ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS case_sheet_config TEXT`;
 
+    // Migration: Create Insurance Companies Table
+    await sql`
+      CREATE TABLE IF NOT EXISTS insurance_companies (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        status VARCHAR(20) DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
+    // Migration: Create Claims Table
+    await sql`
+      CREATE TABLE IF NOT EXISTS claims (
+        id SERIAL PRIMARY KEY,
+        insurance_company_id INT REFERENCES insurance_companies(id) ON DELETE CASCADE,
+        patient_id INT REFERENCES patients(id) ON DELETE CASCADE,
+        hospital_id INT REFERENCES hospitals(id) ON DELETE CASCADE,
+        invoice_id INT REFERENCES invoices(id) ON DELETE CASCADE,
+        amount NUMERIC(15,2) NOT NULL,
+        document_data TEXT,
+        status VARCHAR(20) DEFAULT 'pending',
+        status_notes TEXT,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
+    // Migration: Add insurance_company_id to users
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS insurance_company_id INT REFERENCES insurance_companies(id) ON DELETE SET NULL`;
+
     // Migration: Add GST breakup columns to invoices
     await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS taxable_amount NUMERIC(15,2)`;
     await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS gst_amount NUMERIC(15,2)`;
@@ -255,6 +285,15 @@ module.exports = async function handler(req, res) {
     } else {
       const hps = await sql`SELECT id FROM hospitals ORDER BY id ASC`;
       hospital1Id = hps[0].id;
+    }
+
+    // Seed default insurance companies if empty
+    const checkInsurance = await sql`SELECT id FROM insurance_companies LIMIT 1`;
+    if (checkInsurance.length === 0) {
+      await sql`INSERT INTO insurance_companies (name) VALUES ('Star Health Insurance')`;
+      await sql`INSERT INTO insurance_companies (name) VALUES ('HDFC ERGO General Insurance')`;
+      await sql`INSERT INTO insurance_companies (name) VALUES ('Care Health Insurance')`;
+      await sql`INSERT INTO insurance_companies (name) VALUES ('Niva Bupa Health Insurance')`;
     }
 
     // Seed default custom roles and menus for EACH hospital

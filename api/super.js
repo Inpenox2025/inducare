@@ -253,6 +253,75 @@ module.exports = async function handler(req, res) {
   }
 
   // ══════════════════════════════════════════════════════════
+  // Action: Manage Insurance Companies
+  // ══════════════════════════════════════════════════════════
+  if (action === 'insurance-companies') {
+    if (req.method === 'GET') {
+      try {
+        const rows = await sql`SELECT * FROM insurance_companies ORDER BY name ASC`;
+        return res.status(200).json({ success: true, companies: rows });
+      } catch (error) {
+        return res.status(500).json({ error: 'Failed to fetch insurance companies', details: error.message });
+      }
+    }
+
+    // POST/PUT/DELETE require super_admin
+    if (user.role !== 'super_admin') {
+      return res.status(403).json({ error: 'Access denied. Super Admin privileges required.' });
+    }
+
+    if (req.method === 'POST') {
+      try {
+        const { name } = req.body;
+        if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
+        const rows = await sql`
+          INSERT INTO insurance_companies (name)
+          VALUES (${name.trim()})
+          RETURNING *
+        `;
+        return res.status(201).json({ success: true, company: rows[0] });
+      } catch (error) {
+        return res.status(500).json({ error: 'Failed to create insurance company', details: error.message });
+      }
+    }
+
+    if (req.method === 'PUT') {
+      try {
+        const compId = req.query.id || req.body.id;
+        if (!compId) return res.status(400).json({ error: 'ID is required' });
+        const { name, status } = req.body;
+        const rows = await sql`
+          UPDATE insurance_companies
+          SET name = COALESCE(${name ? name.trim() : null}, name),
+              status = COALESCE(${status || null}, status)
+          WHERE id = ${parseInt(compId)}
+          RETURNING *
+        `;
+        if (rows.length === 0) return res.status(404).json({ error: 'Insurance company not found' });
+        return res.status(200).json({ success: true, company: rows[0] });
+      } catch (error) {
+        return res.status(500).json({ error: 'Failed to update insurance company', details: error.message });
+      }
+    }
+
+    if (req.method === 'DELETE') {
+      try {
+        const compId = req.query.id;
+        if (!compId) return res.status(400).json({ error: 'ID query param is required' });
+        const rows = await sql`
+          DELETE FROM insurance_companies
+          WHERE id = ${parseInt(compId)}
+          RETURNING id
+        `;
+        if (rows.length === 0) return res.status(404).json({ error: 'Insurance company not found' });
+        return res.status(200).json({ success: true, message: 'Insurance company deleted' });
+      } catch (error) {
+        return res.status(500).json({ error: 'Failed to delete insurance company', details: error.message });
+      }
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
   // Rest of operations require ADMIN or SUPER_ADMIN role
   // ══════════════════════════════════════════════════════════
   if (user.role !== 'super_admin' && user.role !== 'admin') {
