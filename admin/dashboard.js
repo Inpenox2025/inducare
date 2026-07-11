@@ -479,6 +479,10 @@ function deserializePatientForm(p) {
   const form = document.getElementById("patientForm");
   form.reset();
 
+  // Render dynamic grids and select options based on current configuration first
+  const config = window.hospitalCaseSheetConfig || DEFAULT_CASE_SHEET_CONFIG;
+  renderDynamicCaseSheetFields(config);
+
   document.getElementById("patient_id").value = p.id;
   document.getElementById("patient_name").value = p.full_name;
   document.getElementById("patient_dob").value = p.date_of_birth
@@ -506,6 +510,38 @@ function deserializePatientForm(p) {
     }
   }
 
+  // Compatibility mapping for old keys
+  if (caseSheet.past_diabetes && !caseSheet.past_diabetes_mellitus) caseSheet.past_diabetes_mellitus = caseSheet.past_diabetes;
+  if (caseSheet.past_thyroid && !caseSheet.past_thyroid_disorder) caseSheet.past_thyroid_disorder = caseSheet.past_thyroid;
+  if (caseSheet.past_cardiac && !caseSheet.past_cardiac_disease) caseSheet.past_cardiac_disease = caseSheet.past_cardiac;
+  if (caseSheet.past_asthma && !caseSheet.past_asthma_respiratory) caseSheet.past_asthma_respiratory = caseSheet.past_asthma;
+  if (caseSheet.past_arthritis && !caseSheet.past_arthritis_joint_disorders) caseSheet.past_arthritis_joint_disorders = caseSheet.past_arthritis;
+  if (caseSheet.past_neuro && !caseSheet.past_neurological_disorder) caseSheet.past_neurological_disorder = caseSheet.past_neuro;
+  if (caseSheet.past_kidney && !caseSheet.past_kidney_disease) caseSheet.past_kidney_disease = caseSheet.past_kidney;
+  if (caseSheet.past_liver && !caseSheet.past_liver_disease) caseSheet.past_liver_disease = caseSheet.past_liver;
+  if (caseSheet.past_skin && !caseSheet.past_skin_disorders) caseSheet.past_skin_disorders = caseSheet.past_skin;
+  if (caseSheet.past_autoimmune && !caseSheet.past_autoimmune_disorders) caseSheet.past_autoimmune_disorders = caseSheet.past_autoimmune;
+  if (caseSheet.past_cancer && !caseSheet.past_cancer_history) caseSheet.past_cancer_history = caseSheet.past_cancer;
+  if (caseSheet.past_psychological && !caseSheet.past_psychological_disorders) caseSheet.past_psychological_disorders = caseSheet.past_psychological;
+
+  if (caseSheet.fam_cardiac && !caseSheet.fam_cardiac_disease) caseSheet.fam_cardiac_disease = caseSheet.fam_cardiac;
+  if (caseSheet.fam_thyroid && !caseSheet.fam_thyroid_disorders) caseSheet.fam_thyroid_disorders = caseSheet.fam_thyroid;
+  if (caseSheet.fam_neuro && !caseSheet.fam_neurological_disorders) caseSheet.fam_neurological_disorders = caseSheet.fam_neuro;
+  if (caseSheet.fam_genetic && !caseSheet.fam_genetic_disorders) caseSheet.fam_genetic_disorders = caseSheet.fam_genetic;
+
+  if (caseSheet.rec_ozone && !caseSheet.rec_ozone_therapy) caseSheet.rec_ozone_therapy = caseSheet.rec_ozone;
+  if (caseSheet.rec_iv && !caseSheet.rec_iv_nutritional_therapy) caseSheet.rec_iv_nutritional_therapy = caseSheet.rec_iv;
+  if (caseSheet.rec_physio && !caseSheet.rec_physiotherapy) caseSheet.rec_physiotherapy = caseSheet.rec_physio;
+  if (caseSheet.rec_massage && !caseSheet.rec_massage_therapy) caseSheet.rec_massage_therapy = caseSheet.rec_massage;
+  if (caseSheet.rec_cupping && !caseSheet.rec_cupping_therapy) caseSheet.rec_cupping_therapy = caseSheet.rec_cupping;
+  if (caseSheet.rec_detox && !caseSheet.rec_detoxification_therapy) caseSheet.rec_detoxification_therapy = caseSheet.rec_detox;
+  if (caseSheet.rec_pain && !caseSheet.rec_pain_management_therapy) caseSheet.rec_pain_management_therapy = caseSheet.rec_pain;
+  if (caseSheet.rec_rehab && !caseSheet.rec_rehabilitation_therapy) caseSheet.rec_rehabilitation_therapy = caseSheet.rec_rehab;
+  if (caseSheet.rec_lifestyle && !caseSheet.rec_lifestyle_modification_program) caseSheet.rec_lifestyle_modification_program = caseSheet.rec_lifestyle;
+
+  if (caseSheet.prev_physio && !caseSheet.prev_physiotherapy) caseSheet.prev_physiotherapy = caseSheet.prev_physio;
+  if (caseSheet.prev_alternative && !caseSheet.prev_alternative_therapy) caseSheet.prev_alternative_therapy = caseSheet.prev_alternative;
+
   for (const [key, value] of Object.entries(caseSheet)) {
     const inputName = `cs_${key}`;
     const elements = form.querySelectorAll(`[name="${inputName}"]`);
@@ -521,6 +557,16 @@ function deserializePatientForm(p) {
       }
     });
   }
+
+  // After setting element values, toggle visibility of other wrappers
+  ["past_", "fam_", "rec_", "prev_"].forEach(prefix => {
+    const otherCheckbox = form.querySelector(`[name="cs_${prefix}other"]`);
+    const wrapper = document.getElementById(`${prefix}other_wrapper`);
+    if (wrapper) {
+      const isChecked = otherCheckbox && otherCheckbox.checked;
+      wrapper.style.display = isChecked ? "block" : "none";
+    }
+  });
 }
 
 function renderCaseSheetHTML(p) {
@@ -548,12 +594,51 @@ function renderCaseSheetHTML(p) {
     }
   }
 
-  function getCheckedItems(prefix, labelsMap) {
+  // Compatibility mapping for old keys
+  if (cs.past_diabetes && !cs.past_diabetes_mellitus) cs.past_diabetes_mellitus = cs.past_diabetes;
+  if (cs.past_thyroid && !cs.past_thyroid_disorder) cs.past_thyroid_disorder = cs.past_thyroid;
+  if (cs.past_cardiac && !cs.past_cardiac_disease) cs.past_cardiac_disease = cs.past_cardiac;
+  if (cs.past_asthma && !cs.past_asthma_respiratory) cs.past_asthma_respiratory = cs.past_asthma;
+  if (cs.past_arthritis && !cs.past_arthritis_joint_disorders) cs.past_arthritis_joint_disorders = cs.past_arthritis;
+  if (cs.past_neuro && !cs.past_neurological_disorder) cs.past_neurological_disorder = cs.past_neuro;
+  if (cs.past_kidney && !cs.past_kidney_disease) cs.past_kidney_disease = cs.past_kidney;
+  if (cs.past_liver && !cs.past_liver_disease) cs.past_liver_disease = cs.past_liver;
+  if (cs.past_skin && !cs.past_skin_disorders) cs.past_skin_disorders = cs.past_skin;
+  if (cs.past_autoimmune && !cs.past_autoimmune_disorders) cs.past_autoimmune_disorders = cs.past_autoimmune;
+  if (cs.past_cancer && !cs.past_cancer_history) cs.past_cancer_history = cs.past_cancer;
+  if (cs.past_psychological && !cs.past_psychological_disorders) cs.past_psychological_disorders = cs.past_psychological;
+
+  if (cs.fam_cardiac && !cs.fam_cardiac_disease) cs.fam_cardiac_disease = cs.fam_cardiac;
+  if (cs.fam_thyroid && !cs.fam_thyroid_disorders) cs.fam_thyroid_disorders = cs.fam_thyroid;
+  if (cs.fam_neuro && !cs.fam_neurological_disorders) cs.fam_neurological_disorders = cs.fam_neuro;
+  if (cs.fam_genetic && !cs.fam_genetic_disorders) cs.fam_genetic_disorders = cs.fam_genetic;
+
+  if (cs.rec_ozone && !cs.rec_ozone_therapy) cs.rec_ozone_therapy = cs.rec_ozone;
+  if (cs.rec_iv && !cs.rec_iv_nutritional_therapy) cs.rec_iv_nutritional_therapy = cs.rec_iv;
+  if (cs.rec_physio && !cs.rec_physiotherapy) cs.rec_physiotherapy = cs.rec_physio;
+  if (cs.rec_massage && !cs.rec_massage_therapy) cs.rec_massage_therapy = cs.rec_massage;
+  if (cs.rec_cupping && !cs.rec_cupping_therapy) cs.rec_cupping_therapy = cs.rec_cupping;
+  if (cs.rec_detox && !cs.rec_detoxification_therapy) cs.rec_detoxification_therapy = cs.rec_detox;
+  if (cs.rec_pain && !cs.rec_pain_management_therapy) cs.rec_pain_management_therapy = cs.rec_pain;
+  if (cs.rec_rehab && !cs.rec_rehabilitation_therapy) cs.rec_rehabilitation_therapy = cs.rec_rehab;
+  if (cs.rec_lifestyle && !cs.rec_lifestyle_modification_program) cs.rec_lifestyle_modification_program = cs.rec_lifestyle;
+
+  if (cs.prev_physio && !cs.prev_physiotherapy) cs.prev_physiotherapy = cs.prev_physio;
+  if (cs.prev_alternative && !cs.prev_alternative_therapy) cs.prev_alternative_therapy = cs.prev_alternative;
+
+  const config = window.hospitalCaseSheetConfig || DEFAULT_CASE_SHEET_CONFIG;
+
+  function getCheckedItems(prefix, optionsList) {
     const list = [];
-    for (const [key, label] of Object.entries(labelsMap)) {
-      if (cs[prefix + key]) {
-        list.push(label);
+    (optionsList || []).forEach(opt => {
+      const sanitized = sanitizeKey(opt);
+      if (cs[prefix + sanitized]) {
+        list.push(opt);
       }
+    });
+    if (cs[prefix + "other"]) {
+      const otherVal = cs[prefix + "other_text"];
+      list.push(otherVal ? `Other: ${otherVal}` : "Other");
     }
     return list;
   }
@@ -569,59 +654,10 @@ function renderCaseSheetHTML(p) {
     if (cs[k]) checkedAllergies.push(lbl);
   }
 
-  const famHistoryMap = {
-    diabetes: "Diabetes",
-    hypertension: "Hypertension",
-    cardiac: "Cardiac Disease",
-    cancer: "Cancer",
-    thyroid: "Thyroid Disorders",
-    neuro: "Neurological Disorders",
-    genetic: "Genetic Disorders",
-    other: "Other",
-  };
-  const checkedFamHistory = getCheckedItems("fam_", famHistoryMap);
-
-  const pastConditionsMap = {
-    diabetes: "Diabetes Mellitus",
-    hypertension: "Hypertension",
-    thyroid: "Thyroid Disorder",
-    cardiac: "Cardiac Disease",
-    asthma: "Asthma / Respiratory Disease",
-    arthritis: "Arthritis / Joint Disorders",
-    neuro: "Neurological Disorder",
-    kidney: "Kidney Disease",
-    liver: "Liver Disease",
-    skin: "Skin Disorders",
-    autoimmune: "Autoimmune Disorders",
-    cancer: "Cancer History",
-    psychological: "Psychological Disorders",
-    other: "Other",
-  };
-  const checkedPastConditions = getCheckedItems("past_", pastConditionsMap);
-
-  const recTherapiesMap = {
-    ozone: "Ozone Therapy",
-    iv: "IV Nutritional Therapy",
-    physio: "Physiotherapy",
-    massage: "Massage Therapy",
-    cupping: "Cupping Therapy",
-    detox: "Detoxification Therapy",
-    pain: "Pain Management Therapy",
-    rehab: "Rehabilitation Therapy",
-    lifestyle: "Lifestyle Modification Program",
-    other: "Other",
-  };
-  const checkedRecTherapies = getCheckedItems("rec_", recTherapiesMap);
-
-  const prevTreatmentsMap = {
-    allopathy: "Allopathy",
-    ayurveda: "Ayurveda",
-    homeopathy: "Homeopathy",
-    physio: "Physiotherapy",
-    alternative: "Alternative Therapy",
-    none: "None",
-  };
-  const checkedPrevTreatments = getCheckedItems("prev_", prevTreatmentsMap);
+  const checkedFamHistory = getCheckedItems("fam_", config.family_history);
+  const checkedPastConditions = getCheckedItems("past_", config.past_medical_history);
+  const checkedRecTherapies = getCheckedItems("rec_", config.recommended_therapies);
+  const checkedPrevTreatments = getCheckedItems("prev_", config.previous_treatments);
 
   function displayVal(val) {
     return val
@@ -1097,6 +1133,43 @@ async function savePatient(e) {
   }
 }
 
+async function populateDoctorsAndPatientsDropdowns() {
+  const docSelect = document.getElementById("cs_consulting_doctor");
+  const patSelect = document.getElementById("cs_patient_signature");
+
+  if (!docSelect && !patSelect) return;
+
+  try {
+    const docRes = await fetch(`${API_BASE}/doctors`, { headers: authHeaders() });
+    const docData = await docRes.json();
+    if (docRes.ok && docData.success && docData.doctors) {
+      const currentDocVal = docSelect ? docSelect.value : "";
+      if (docSelect) {
+        docSelect.innerHTML = '<option value="">-- Select Doctor --</option>' +
+          docData.doctors.map(d => `<option value="${esc(d.name)}">${esc(d.name)} (${esc(d.specialization)})</option>`).join("");
+        docSelect.value = currentDocVal;
+      }
+    }
+  } catch (err) {
+    console.error("Failed to populate doctors select:", err);
+  }
+
+  try {
+    const patRes = await fetch(`${API_BASE}/patients?limit=1000`, { headers: authHeaders() });
+    const patData = await patRes.json();
+    if (patRes.ok && patData.success && patData.patients) {
+      const currentPatVal = patSelect ? patSelect.value : "";
+      if (patSelect) {
+        patSelect.innerHTML = '<option value="">-- Select Patient --</option>' +
+          patData.patients.map(p => `<option value="${esc(p.full_name)}">${esc(p.full_name)}</option>`).join("");
+        patSelect.value = currentPatVal;
+      }
+    }
+  } catch (err) {
+    console.error("Failed to populate patients select:", err);
+  }
+}
+
 window.editPatient = async function (id) {
   try {
     const res = await fetch(`${API_BASE}/patients/${id}`, {
@@ -1107,6 +1180,8 @@ window.editPatient = async function (id) {
       const p = data.patient;
       document.getElementById("patientModalTitle").textContent =
         "Modify Patient Profile";
+
+      await populateDoctorsAndPatientsDropdowns();
 
       deserializePatientForm(p);
 
@@ -3463,8 +3538,9 @@ async function loadSuperPanel() {
             <td>${h.doctors_count} registered</td>
             <td>${h.rooms_count} inventory</td>
             <td>
-              <div style="display: flex; gap: 6px;">
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                 <button class="action-btn btn-edit" onclick="editHospital(${h.id})" title="Modify hospital settings">Edit</button>
+                <button class="action-btn btn-pay" onclick="configureHospitalCaseSheet(${h.id})" title="Configure services, protocols & case sheet checkboxes" style="background-color: var(--primary);">Configure</button>
                 <button class="action-btn btn-delete" onclick="deleteHospital(${h.id})" title="Remove hospital from registry">Delete</button>
               </div>
             </td>
