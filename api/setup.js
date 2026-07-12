@@ -506,6 +506,16 @@ module.exports = async function handler(req, res) {
           VALUES ('admin', 'claims', 'Insurance Claims', '📝', ${h.id})
           ON CONFLICT DO NOTHING
         `;
+        await sql`
+          INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon, hospital_id)
+          VALUES ('admin', 'support-tickets', 'Support Tickets', '🛠️', ${h.id})
+          ON CONFLICT DO NOTHING
+        `;
+        await sql`
+          INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon, hospital_id)
+          VALUES ('nurse', 'support-tickets', 'Support Tickets', '🛠️', ${h.id})
+          ON CONFLICT DO NOTHING
+        `;
       }
     }
 
