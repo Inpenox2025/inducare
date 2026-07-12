@@ -2118,40 +2118,28 @@ window.deleteStaff = async function (id) {
 
 // ─────── Event Handlers & Modal Core ───────
 function initEventListeners() {
+  // Helper: safely attach event listener, skips silently if element not found
+  function on(id, event, handler) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener(event, handler);
+  }
+
   // Save form bindings
-  document
-    .getElementById("patientForm")
-    .addEventListener("submit", savePatient);
-  document
-    .getElementById("appointmentForm")
-    .addEventListener("submit", saveAppointment);
-  document
-    .getElementById("invoiceForm")
-    .addEventListener("submit", saveInvoice);
-  document
-    .getElementById("reconciliationForm")
-    .addEventListener("submit", processReconciliation);
-  document.getElementById("staffForm").addEventListener("submit", saveStaff);
-  document.getElementById("doctorForm").addEventListener("submit", saveDoctor);
-  document.getElementById("roomForm").addEventListener("submit", saveRoom);
-  document
-    .getElementById("allocationForm")
-    .addEventListener("submit", saveAllocation);
-  document
-    .getElementById("visitForm")
-    .addEventListener("submit", saveDoctorVisit);
-  document
-    .getElementById("hospitalSetupForm")
-    .addEventListener("submit", saveHospitalSetup);
-  document
-    .getElementById("superHospitalForm")
-    .addEventListener("submit", saveSuperHospital);
-  document
-    .getElementById("superRoleForm")
-    .addEventListener("submit", saveSuperRole);
+  on("patientForm", "submit", savePatient);
+  on("appointmentForm", "submit", saveAppointment);
+  on("invoiceForm", "submit", saveInvoice);
+  on("reconciliationForm", "submit", processReconciliation);
+  on("staffForm", "submit", saveStaff);
+  on("doctorForm", "submit", saveDoctor);
+  on("roomForm", "submit", saveRoom);
+  on("allocationForm", "submit", saveAllocation);
+  on("visitForm", "submit", saveDoctorVisit);
+  on("hospitalSetupForm", "submit", saveHospitalSetup);
+  on("superHospitalForm", "submit", saveSuperHospital);
+  on("superRoleForm", "submit", saveSuperRole);
 
   // File logo upload read DataURL base64
-  document.getElementById("hosp_logo_file").addEventListener("change", (e) => {
+  on("hosp_logo_file", "change", (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
@@ -2181,66 +2169,42 @@ function initEventListeners() {
     });
   }
 
-  // Dynamic menu mapper updates
-  document
-    .getElementById("menu_role_select")
-    .addEventListener("change", (e) => {
-      loadRoleMenusConfig(e.target.value);
-    });
-
-  document.getElementById("loadMenuConfigBtn").addEventListener("click", () => {
-    const role = document.getElementById("menu_role_select").value;
-    loadRoleMenusConfig(role);
+  // Dynamic menu mapper updates (safe, using on() helper)
+  on("menu_role_select", "change", (e) => {
+    loadRoleMenusConfig(e.target.value);
   });
 
-  document
-    .getElementById("saveMenuConfigBtn")
-    .addEventListener("click", saveRoleMenu);
+  on("loadMenuConfigBtn", "click", () => {
+    const role = document.getElementById("menu_role_select");
+    if (role) loadRoleMenusConfig(role.value);
+  });
 
-  document.getElementById("addHospBtn").addEventListener("click", () => {
-    document.getElementById("superHospitalForm").reset();
-    document.getElementById("super_hosp_id").value = "";
-    document.getElementById("superHospitalModalTitle").textContent =
-      "Add Hospital Registry";
-    document.getElementById("superHospitalSubmitBtn").textContent =
-      "Create Hospital";
+  on("saveMenuConfigBtn", "click", saveRoleMenu);
+
+  on("addHospBtn", "click", () => {
+    const f = document.getElementById("superHospitalForm"); if (f) f.reset();
+    const sid = document.getElementById("super_hosp_id"); if (sid) sid.value = "";
+    const t = document.getElementById("superHospitalModalTitle"); if (t) t.textContent = "Add Hospital Registry";
+    const s = document.getElementById("superHospitalSubmitBtn"); if (s) s.textContent = "Create Hospital";
     window.tempHospitalLogoBase64 = "";
     openModal("superHospitalModal");
   });
 
-  document.getElementById("createRoleBtn").addEventListener("click", () => {
-    document.getElementById("superRoleForm").reset();
-    document.getElementById("super_role_id").value = "";
-    document.getElementById("superRoleModalTitle").textContent =
-      "Create Custom Role";
-    document.getElementById("superRoleSubmitBtn").textContent = "Create Role";
+  on("createRoleBtn", "click", () => {
+    const f = document.getElementById("superRoleForm"); if (f) f.reset();
+    const sid = document.getElementById("super_role_id"); if (sid) sid.value = "";
+    const t = document.getElementById("superRoleModalTitle"); if (t) t.textContent = "Create Custom Role";
+    const s = document.getElementById("superRoleSubmitBtn"); if (s) s.textContent = "Create Role";
     const hospGroup = document.getElementById("super_role_hosp_group");
     if (hospGroup) hospGroup.style.display = "block";
     openModal("superRoleModal");
   });
 
-  const superMenuHospitalSelect = document.getElementById(
-    "super_menu_hospital_select",
-  );
-  if (superMenuHospitalSelect) {
-    superMenuHospitalSelect.addEventListener("change", (e) => {
-      loadSuperRoles(e.target.value);
-    });
-  }
-
-  const menuRoleSelect = document.getElementById("menu_role_select");
-  if (menuRoleSelect) {
-    menuRoleSelect.addEventListener("change", (e) => {
-      loadRoleMenusConfig(e.target.value);
-    });
-  }
-
-  // Add triggers
-  document.getElementById("addDoctorBtn").addEventListener("click", () => {
-    document.getElementById("doctorForm").reset();
-    document.getElementById("doctor_id").value = "";
-    document.getElementById("doctorModalTitle").textContent =
-      "Register New Doctor";
+  // Remaining safe bindings already have null checks; keep addDoctorBtn safe too
+  on("addDoctorBtn", "click", () => {
+    const f = document.getElementById("doctorForm"); if (f) f.reset();
+    const did = document.getElementById("doctor_id"); if (did) did.value = "";
+    const t = document.getElementById("doctorModalTitle"); if (t) t.textContent = "Register New Doctor";
     openModal("doctorModal");
   });
 
@@ -2302,29 +2266,25 @@ function initEventListeners() {
     });
   }
 
-  document
-    .getElementById("allocateRoomBtn")
-    .addEventListener("click", async () => {
-      document.getElementById("allocationForm").reset();
-      await populateAllocationModalDropdowns();
-      openModal("allocationModal");
-    });
+  on("allocateRoomBtn", "click", async () => {
+    const f = document.getElementById("allocationForm"); if (f) f.reset();
+    await populateAllocationModalDropdowns();
+    openModal("allocationModal");
+  });
 
-  document.getElementById("logVisitBtn").addEventListener("click", async () => {
-    document.getElementById("visitForm").reset();
+  on("logVisitBtn", "click", async () => {
+    const f = document.getElementById("visitForm"); if (f) f.reset();
     await populateVisitModalDropdowns();
     openModal("visitModal");
   });
 
   let doctorSearchTimeout;
-  document
-    .getElementById("searchDoctorInput")
-    .addEventListener("input", (e) => {
-      clearTimeout(doctorSearchTimeout);
-      doctorSearchTimeout = setTimeout(() => {
-        loadDoctors(e.target.value.trim());
-      }, 400);
-    });
+  on("searchDoctorInput", "input", (e) => {
+    clearTimeout(doctorSearchTimeout);
+    doctorSearchTimeout = setTimeout(() => {
+      loadDoctors(e.target.value.trim());
+    }, 400);
+  });
 
   // Modal form tab clicks
   document.querySelectorAll(".modal-tab-btn").forEach((btn) => {
@@ -2339,96 +2299,66 @@ function initEventListeners() {
     });
   });
 
-  // Protocol Selection Change listener
-  document
-    .getElementById("cs_protocol_service")
-    .addEventListener("change", (e) => {
-      const selected = e.target.value;
-      const descTextarea = document.getElementById("cs_protocol_description");
-      if (selected && PROTOCOL_DESCRIPTIONS[selected]) {
-        descTextarea.value = PROTOCOL_DESCRIPTIONS[selected];
-      } else {
-        descTextarea.value = "";
-      }
-    });
+  on("cs_protocol_service", "change", (e) => {
+    const selected = e.target.value;
+    const descTextarea = document.getElementById("cs_protocol_description");
+    if (selected && PROTOCOL_DESCRIPTIONS[selected]) {
+      if (descTextarea) descTextarea.value = PROTOCOL_DESCRIPTIONS[selected];
+    } else {
+      if (descTextarea) descTextarea.value = "";
+    }
+  });
 
-  // Add triggers
-  document.getElementById("addPatientBtn").addEventListener("click", () => {
-    document.getElementById("patientForm").reset();
-    document.getElementById("patient_id").value = "";
-    document.getElementById("patientModalTitle").textContent =
-      "Register New Patient";
-
+  on("addPatientBtn", "click", () => {
+    const f = document.getElementById("patientForm"); if (f) f.reset();
+    const pid = document.getElementById("patient_id"); if (pid) pid.value = "";
+    const t = document.getElementById("patientModalTitle"); if (t) t.textContent = "Register New Patient";
     // Hide tab headers and remove modal-lg
-    document.getElementById("patientModalTabs").style.display = "none";
-    document
-      .getElementById("patientModalContainer")
-      .classList.remove("modal-lg");
-
+    const tabs = document.getElementById("patientModalTabs"); if (tabs) tabs.style.display = "none";
+    const mc = document.getElementById("patientModalContainer"); if (mc) mc.classList.remove("modal-lg");
     // Activate basic pane only
     document.querySelectorAll(".tab-content-pane").forEach((pane) => {
       pane.classList.toggle("active", pane.id === "form-tab-basic");
     });
-
     openModal("patientModal");
   });
 
-  document
-    .getElementById("bookAppointmentBtn")
-    .addEventListener("click", async () => {
-      document.getElementById("appointmentForm").reset();
-      document.getElementById("appointment_id").value = "";
-      document.getElementById("appointmentModalTitle").textContent =
-        "Schedule Visit";
+  on("bookAppointmentBtn", "click", async () => {
+    const f = document.getElementById("appointmentForm"); if (f) f.reset();
+    const aid = document.getElementById("appointment_id"); if (aid) aid.value = "";
+    const t = document.getElementById("appointmentModalTitle"); if (t) t.textContent = "Schedule Visit";
+    const today = new Date().toISOString().split("T")[0];
+    const ad = document.getElementById("app_date"); if (ad) ad.value = today;
+    const at = document.getElementById("app_time"); if (at) at.value = "10:00";
+    const ai = document.getElementById("app_autoinvoice"); if (ai) ai.checked = true;
+    const aig = document.getElementById("autoInvoiceCheckboxGroup"); if (aig) aig.style.display = "flex";
+    const asc = document.getElementById("appStatusContainer"); if (asc) asc.style.display = "none";
+    await loadPatientsDropdown("app_patient_id");
+    openModal("appointmentModal");
+  });
 
-      // Default slot times and auto invoice checks
-      const today = new Date().toISOString().split("T")[0];
-      document.getElementById("app_date").value = today;
-      document.getElementById("app_time").value = "10:00";
-      document.getElementById("app_autoinvoice").checked = true;
-      document.getElementById("autoInvoiceCheckboxGroup").style.display =
-        "flex";
-      document.getElementById("appStatusContainer").style.display = "none";
+  on("createInvoiceBtn", "click", async () => {
+    const f = document.getElementById("invoiceForm"); if (f) f.reset();
+    const t = document.getElementById("invoiceModalTitle"); if (t) t.textContent = "Create Custom Invoice";
+    const pg = document.getElementById("invPaymentModeGroup"); if (pg) pg.style.display = "none";
+    await loadPatientsDropdown("inv_patient_id");
+    openModal("invoiceModal");
+  });
 
-      await loadPatientsDropdown("app_patient_id");
-      openModal("appointmentModal");
-    });
-
-  document
-    .getElementById("createInvoiceBtn")
-    .addEventListener("click", async () => {
-      document.getElementById("invoiceForm").reset();
-      document.getElementById("invoiceModalTitle").textContent =
-        "Create Custom Invoice";
-      document.getElementById("invPaymentModeGroup").style.display = "none";
-
-      await loadPatientsDropdown("inv_patient_id");
-      openModal("invoiceModal");
-    });
-
-  document.getElementById("addStaffBtn").addEventListener("click", async () => {
-    document.getElementById("staffForm").reset();
-    document.getElementById("staff_id").value = "";
-    document.getElementById("staffModalTitle").textContent =
-      "Create Staff Account";
-
-    // Hide target hospital selector and insurance group for regular admins
+  on("addStaffBtn", "click", async () => {
+    const f = document.getElementById("staffForm"); if (f) f.reset();
+    const sid = document.getElementById("staff_id"); if (sid) sid.value = "";
+    const t = document.getElementById("staffModalTitle"); if (t) t.textContent = "Create Staff Account";
     const staffHospGroup = document.getElementById("staff_hosp_group");
     if (staffHospGroup) staffHospGroup.style.display = "none";
     const insGroup = document.getElementById("staffInsuranceCompanyGroup");
     if (insGroup) insGroup.style.display = "none";
-
     const u = getUser();
     await populateStaffRoleDropdown(u ? u.hospital_id : 1);
-
-    document.getElementById("staff_password").required = true;
-    document.getElementById("staff_password").placeholder =
-      "Enter secure password";
-    document.getElementById("staffPassHint").style.display = "none";
-    document.getElementById("staffPassLabel").innerHTML =
-      'Password <span class="req">*</span>';
-
-    document.getElementById("saveStaffBtn").textContent = "Create Account";
+    const sp = document.getElementById("staff_password"); if (sp) { sp.required = true; sp.placeholder = "Enter secure password"; }
+    const sph = document.getElementById("staffPassHint"); if (sph) sph.style.display = "none";
+    const spl = document.getElementById("staffPassLabel"); if (spl) spl.innerHTML = 'Password <span class="req">*</span>';
+    const ssb = document.getElementById("saveStaffBtn"); if (ssb) ssb.textContent = "Create Account";
     openModal("staffModal");
   });
 
@@ -2491,25 +2421,22 @@ function initEventListeners() {
   }
 
   // Dynamic input triggers (Invoice paid state reveals payment mode selection)
-  document.getElementById("inv_status").addEventListener("change", (e) => {
+  on("inv_status", "change", (e) => {
     const showPayMode = e.target.value === "paid";
-    document.getElementById("invPaymentModeGroup").style.display = showPayMode
-      ? "block"
-      : "none";
+    const pg = document.getElementById("invPaymentModeGroup");
+    if (pg) pg.style.display = showPayMode ? "block" : "none";
   });
 
   // Searches & Debounces
   let dischargedSearchTimeout;
-  document
-    .getElementById("searchDischargedInput")
-    .addEventListener("input", (e) => {
-      clearTimeout(dischargedSearchTimeout);
-      dischargedSearchTimeout = setTimeout(() => {
-        dischargedSearch = e.target.value.trim();
-        dischargedPage = 1;
-        loadDischargedPatients();
-      }, 400);
-    });
+  on("searchDischargedInput", "input", (e) => {
+    clearTimeout(dischargedSearchTimeout);
+    dischargedSearchTimeout = setTimeout(() => {
+      dischargedSearch = e.target.value.trim();
+      dischargedPage = 1;
+      loadDischargedPatients();
+    }, 400);
+  });
 
   const roomBillingForm = document.getElementById("roomBillingForm");
   if (roomBillingForm) {
@@ -2517,56 +2444,46 @@ function initEventListeners() {
   }
 
   let patientSearchTimeout;
-  document
-    .getElementById("searchPatientInput")
-    .addEventListener("input", (e) => {
-      clearTimeout(patientSearchTimeout);
-      patientSearchTimeout = setTimeout(() => {
-        patientSearch = e.target.value.trim();
-        patientPage = 1;
-        loadPatients();
-      }, 400);
-    });
+  on("searchPatientInput", "input", (e) => {
+    clearTimeout(patientSearchTimeout);
+    patientSearchTimeout = setTimeout(() => {
+      patientSearch = e.target.value.trim();
+      patientPage = 1;
+      loadPatients();
+    }, 400);
+  });
 
   let appointmentSearchTimeout;
-  document
-    .getElementById("searchAppointmentInput")
-    .addEventListener("input", (e) => {
-      clearTimeout(appointmentSearchTimeout);
-      appointmentSearchTimeout = setTimeout(() => {
-        appointmentSearch = e.target.value.trim();
-        appointmentPage = 1;
-        loadAppointments();
-      }, 400);
-    });
-
-  document
-    .getElementById("filterAppointmentDate")
-    .addEventListener("change", (e) => {
-      appointmentDate = e.target.value;
+  on("searchAppointmentInput", "input", (e) => {
+    clearTimeout(appointmentSearchTimeout);
+    appointmentSearchTimeout = setTimeout(() => {
+      appointmentSearch = e.target.value.trim();
       appointmentPage = 1;
       loadAppointments();
-    });
+    }, 400);
+  });
+
+  on("filterAppointmentDate", "change", (e) => {
+    appointmentDate = e.target.value;
+    appointmentPage = 1;
+    loadAppointments();
+  });
 
   let invoiceSearchTimeout;
-  document
-    .getElementById("searchInvoiceInput")
-    .addEventListener("input", (e) => {
-      clearTimeout(invoiceSearchTimeout);
-      invoiceSearchTimeout = setTimeout(() => {
-        invoiceSearch = e.target.value.trim();
-        invoicePage = 1;
-        loadInvoices();
-      }, 400);
-    });
-
-  document
-    .getElementById("filterInvoiceStatus")
-    .addEventListener("change", (e) => {
-      invoiceStatus = e.target.value;
+  on("searchInvoiceInput", "input", (e) => {
+    clearTimeout(invoiceSearchTimeout);
+    invoiceSearchTimeout = setTimeout(() => {
+      invoiceSearch = e.target.value.trim();
       invoicePage = 1;
       loadInvoices();
-    });
+    }, 400);
+  });
+
+  on("filterInvoiceStatus", "change", (e) => {
+    invoiceStatus = e.target.value;
+    invoicePage = 1;
+    loadInvoices();
+  });
 
   const superExportPatientsBtn = document.getElementById(
     "superExportPatientsBtn",
@@ -2651,18 +2568,18 @@ function initEventListeners() {
   });
 
   // Logout trigger
-  document.getElementById("logoutBtn").addEventListener("click", (e) => {
+  on("logoutBtn", "click", (e) => {
     e.preventDefault();
     logout();
   });
 
   // Sidebar Toggles
-  document.getElementById("sidebarToggle").addEventListener("click", () => {
-    document.getElementById("sidebar").classList.add("open");
+  on("sidebarToggle", "click", () => {
+    const sb = document.getElementById("sidebar"); if (sb) sb.classList.add("open");
   });
 
-  document.getElementById("sidebarClose").addEventListener("click", () => {
-    document.getElementById("sidebar").classList.remove("open");
+  on("sidebarClose", "click", () => {
+    const sb = document.getElementById("sidebar"); if (sb) sb.classList.remove("open");
   });
 
   // Close mobile sidebar on click outside
