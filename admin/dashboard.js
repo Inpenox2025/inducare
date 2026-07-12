@@ -3468,7 +3468,7 @@ async function loadDynamicNavigation() {
         return;
       }
 
-      if (user.role === "admin") {
+      if (user.role !== "super_admin") {
         const adminTickets = document.getElementById("navSupportTickets");
         if (adminTickets) {
           adminTickets.style.display = "";
@@ -5661,7 +5661,7 @@ async function loadSupportTickets() {
 
   const raiseTicketBtn = document.getElementById("raiseTicketBtn");
   if (raiseTicketBtn) {
-    raiseTicketBtn.style.display = (user.role === "admin" || user.role === "nurse") ? "block" : "none";
+    raiseTicketBtn.style.display = (user.role !== "super_admin" && user.role !== "insurer") ? "block" : "none";
   }
 
   const ticketChatCard = document.getElementById("ticketChatCard");
