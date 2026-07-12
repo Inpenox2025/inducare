@@ -67,6 +67,9 @@
             <a href="#" class="nav-item" data-tab="claims" id="navClaims" style="display:none;">
                 <span class="nav-icon">📝</span> Insurance Claims
             </a>
+            <a href="#" class="nav-item" data-tab="support-tickets" id="navSupportTickets" style="display:none;">
+                <span class="nav-icon">🛠️</span> Support Tickets
+            </a>
             <div class="nav-divider"></div>
             <a href="../" class="nav-item">
                 <span class="nav-icon">🌐</span> View Website
@@ -890,6 +893,58 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════ SECTION: SUPPORT TICKETS ═══════ -->
+        <section id="tab-support-tickets" class="tab-panel">
+            <div class="overview-details-grid super-split-grid" id="ticketsSplitLayout">
+                <!-- Left side: Tickets List -->
+                <div class="details-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+                        <h3>🛠️ Support Tickets Log</h3>
+                        <button class="btn btn-primary" id="raiseTicketBtn" style="padding:6px 12px; font-size:12px; display: none;">+ Raise Ticket</button>
+                    </div>
+                    <div class="table-container minimal" style="max-height: 500px; overflow:auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Ticket</th>
+                                    <th>Subject</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ticketsTableBody">
+                                <tr>
+                                    <td colspan="4" class="loading-cell">Loading support tickets...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Right side: Ticket Chat Section -->
+                <div class="details-card" id="ticketChatCard" style="display: none; flex-direction: column; height: 580px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 12px;">
+                        <div>
+                            <h3 id="chatTicketSubject">Ticket Chat</h3>
+                            <span id="chatTicketStatus" class="status-badge" style="margin-top: 4px; display: inline-block;">Open</span>
+                        </div>
+                        <button class="btn btn-primary" id="resolveTicketBtn" style="background-color: var(--success); padding: 6px 12px; font-size: 12px; display: none;">Resolve Ticket</button>
+                    </div>
+                    
+                    <!-- Chat Messages Container -->
+                    <div id="chatMessagesContainer" style="flex: 1; overflow-y: auto; padding: 12px; background: var(--bg-primary); border-radius: var(--radius-md); margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px;">
+                        <!-- Messages populated dynamically -->
+                    </div>
+
+                    <!-- Input message area -->
+                    <div id="chatInputArea" style="display: flex; gap: 8px;">
+                        <input type="text" class="form-control" id="chatMessageInput" placeholder="Type support message..." style="flex: 1;">
+                        <button class="btn btn-primary" id="sendChatMessageBtn">Send</button>
+                    </div>
                 </div>
             </div>
         </section>
@@ -2205,8 +2260,31 @@
                 </form>
             </div>
         </div>
+    <!-- 19. Raise Support Ticket Modal -->
+    <div class="modal-overlay" id="raiseTicketModal">
+        <div class="modal" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>🛠️ Raise Support Ticket</h2>
+                <button class="modal-close" data-close="raiseTicketModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="raiseTicketForm">
+                    <div class="form-group">
+                        <label for="ticketSubject">Subject / Query Topic <span class="req">*</span></label>
+                        <input type="text" class="form-control" id="ticketSubject" placeholder="e.g. Reconciliation error, Room price discrepancy" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="ticketDescription">Detailed Description <span class="req">*</span></label>
+                        <textarea class="form-control" id="ticketDescription" rows="4" placeholder="Explain the support issue in detail..." required></textarea>
+                    </div>
+                    <div class="modal-footer" style="padding-top: 16px; margin-top: 16px; border-top: 1px solid var(--border);">
+                        <button type="button" class="btn btn-outline" data-close="raiseTicketModal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Submit Ticket</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-
 
     <div class="toast" id="toast">Toast Message</div>
 

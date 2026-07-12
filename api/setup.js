@@ -282,6 +282,29 @@ module.exports = async function handler(req, res) {
     await sql`ALTER TABLE room_allocations ADD COLUMN IF NOT EXISTS hospital_id INT REFERENCES hospitals(id) ON DELETE SET NULL`;
     await sql`ALTER TABLE doctor_visits ADD COLUMN IF NOT EXISTS hospital_id INT REFERENCES hospitals(id) ON DELETE SET NULL`;
 
+    // Create Support Tickets Tables
+    await sql`
+      CREATE TABLE IF NOT EXISTS support_tickets (
+        id SERIAL PRIMARY KEY,
+        hospital_id INT REFERENCES hospitals(id) ON DELETE CASCADE,
+        subject VARCHAR(255) NOT NULL,
+        description TEXT,
+        status VARCHAR(20) DEFAULT 'open',
+        created_by INT REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS support_ticket_messages (
+        id SERIAL PRIMARY KEY,
+        ticket_id INT REFERENCES support_tickets(id) ON DELETE CASCADE,
+        sender_id INT REFERENCES users(id) ON DELETE SET NULL,
+        message TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
     // Seed default hospitals if empty
     const checkHospitals = await sql`SELECT id FROM hospitals LIMIT 1`;
     let hospital1Id;

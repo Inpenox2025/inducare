@@ -16,7 +16,8 @@
     { "source": "/api/invoices/export-pdf", "destination": "/api/invoices?action=export-pdf" },
     { "source": "/api/invoices/export-receipt-pdf", "destination": "/api/invoices?action=export-receipt-pdf" },
     { "source": "/api/invoices/:id", "destination": "/api/invoices?id=:id" },
-    { "source": "/api/super", "destination": "/api/super" }
+    { "source": "/api/super", "destination": "/api/super" },
+    { "source": "/api/tickets", "destination": "/api/tickets" }
   ],
   "headers": [
     {

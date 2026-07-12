@@ -134,6 +134,9 @@ app.all('/api/reconciliation', runHandler('./api/reconciliation'));
 // Claims Integration
 app.all('/api/claims', runHandler('./api/claims'));
 
+// Support Tickets Integration
+app.all('/api/tickets', runHandler('./api/tickets'));
+
 // 3. Serve Frontend Static Assets
 app.use(express.static(__dirname));
 

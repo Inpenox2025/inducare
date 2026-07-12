@@ -347,6 +347,7 @@ function switchTab(tabName) {
   else if (tabName === "insurer-hospitals") loadInsurerHospitals();
   else if (tabName === "insurer-claims") loadInsurerClaims();
   else if (tabName === "claims") loadAdminClaims();
+  else if (tabName === "support-tickets") loadSupportTickets();
 
   // Close mobile sidebar on navigate
   document.getElementById("sidebar").classList.remove("open");
@@ -3420,6 +3421,7 @@ async function loadDynamicNavigation() {
         { key: "insurer-hospitals", id: "navInsurerHospitals" },
         { key: "insurer-claims", id: "navInsurerClaims" },
         { key: "claims", id: "navClaims" },
+        { key: "support-tickets", id: "navSupportTickets" },
       ];
 
       allNavLinks.forEach((item) => {
@@ -3456,8 +3458,23 @@ async function loadDynamicNavigation() {
           clmLink.innerHTML = '<span class="nav-icon">📝</span> Claims Review';
           clmLink.setAttribute("data-tab", "claims");
         }
+        const superTickets = document.getElementById("navSupportTickets");
+        if (superTickets) {
+          superTickets.style.display = "";
+          superTickets.innerHTML = '<span class="nav-icon">🛠️</span> Support Tickets';
+          superTickets.setAttribute("data-tab", "support-tickets");
+        }
         switchTab("super-panel");
         return;
+      }
+
+      if (user.role === "admin") {
+        const adminTickets = document.getElementById("navSupportTickets");
+        if (adminTickets) {
+          adminTickets.style.display = "";
+          adminTickets.innerHTML = '<span class="nav-icon">🛠️</span> Support Tickets';
+          adminTickets.setAttribute("data-tab", "support-tickets");
+        }
       }
 
       let firstTab = "";
@@ -3656,14 +3673,14 @@ async function loadSuperPanel() {
           .map(
             (h) => `
           <tr>
-            <td>#${h.id}</td>
-            <td>
+            <td data-label="Hospital ID">#${h.id}</td>
+            <td data-label="Branding Name">
               ${h.logo_data ? `<img src="${h.logo_data}" style="height:20px; vertical-align:middle; margin-right:6px; border-radius:3px;">` : ""}
               <strong>${esc(h.name)}</strong>
             </td>
-            <td>${h.doctors_count} registered</td>
-            <td>${h.rooms_count} inventory</td>
-            <td>
+            <td data-label="Doctors">${h.doctors_count} registered</td>
+            <td data-label="Rooms">${h.rooms_count} inventory</td>
+            <td data-label="Actions">
               <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                 <button class="action-btn btn-edit" onclick="editHospital(${h.id})" title="Modify hospital settings">Edit</button>
                 <button class="action-btn btn-pay" onclick="configureHospitalCaseSheet(${h.id})" title="Configure services, protocols & case sheet checkboxes" style="background-color: var(--primary);">Configure</button>
@@ -3733,9 +3750,9 @@ async function loadSuperRoles(hospitalId) {
         .map(
           (r) => `
         <tr>
-          <td><code style="background-color:var(--bg-primary); padding:2px 6px; border-radius:4px; font-weight:700;">${esc(r.role_name)}</code></td>
-          <td>${esc(r.description || "N/A")}</td>
-          <td>
+          <td data-label="Role Name"><code style="background-color:var(--bg-primary); padding:2px 6px; border-radius:4px; font-weight:700;">${esc(r.role_name)}</code></td>
+          <td data-label="Description">${esc(r.description || "N/A")}</td>
+          <td data-label="Actions">
             ${
               r.id
                 ? `
@@ -3861,12 +3878,12 @@ function renderSuperPatientsTable(list) {
     .map(
       (p) => `
     <tr>
-      <td>#${p.id}</td>
-      <td><strong>${esc(p.full_name)}</strong></td>
-      <td>${esc(p.mobile_no || "—")}</td>
-      <td>${esc(p.email || "—")}</td>
-      <td><span style="background-color: var(--primary-glow); color: var(--primary); padding: 4px 8px; border-radius: 4px; font-size:11px; font-weight:700;">${esc(p.hospital_name || "Unassigned")}</span></td>
-      <td>${formatDate(p.created_at)}</td>
+      <td data-label="Patient ID">#${p.id}</td>
+      <td data-label="Patient Name"><strong>${esc(p.full_name)}</strong></td>
+      <td data-label="Mobile No">${esc(p.mobile_no || "—")}</td>
+      <td data-label="Email">${esc(p.email || "—")}</td>
+      <td data-label="Assigned Hospital"><span style="background-color: var(--primary-glow); color: var(--primary); padding: 4px 8px; border-radius: 4px; font-size:11px; font-weight:700;">${esc(p.hospital_name || "Unassigned")}</span></td>
+      <td data-label="Created At">${formatDate(p.created_at)}</td>
     </tr>
   `,
     )
@@ -5625,6 +5642,288 @@ document.addEventListener("DOMContentLoaded", () => {
       } finally {
         saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
+      }
+    });
+  }
+});
+
+// ══════════════════════════════════════════════════════════
+// SUPPORT TICKETS (CHAT LOGS & RESOLUTIONS)
+// ══════════════════════════════════════════════════════════
+let activeSupportTicketId = null;
+
+async function loadSupportTickets() {
+  const user = getUser();
+  if (!user) return;
+
+  const ticketsTableBody = document.getElementById("ticketsTableBody");
+  if (!ticketsTableBody) return;
+
+  const raiseTicketBtn = document.getElementById("raiseTicketBtn");
+  if (raiseTicketBtn) {
+    raiseTicketBtn.style.display = (user.role === "admin" || user.role === "nurse") ? "block" : "none";
+  }
+
+  const ticketChatCard = document.getElementById("ticketChatCard");
+  if (ticketChatCard) ticketChatCard.style.display = "none";
+  activeSupportTicketId = null;
+
+  ticketsTableBody.innerHTML = '<tr><td colspan="4" class="loading-cell"><span class="spinner"></span> Loading support tickets...</td></tr>';
+
+  try {
+    const res = await fetch(`${API_BASE}/tickets`, {
+      headers: authHeaders()
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      if (data.tickets.length === 0) {
+        ticketsTableBody.innerHTML = '<tr><td colspan="4" class="empty-cell">No support tickets found.</td></tr>';
+      } else {
+        ticketsTableBody.innerHTML = data.tickets.map(t => {
+          const statusClass = t.status === "open" ? "status-unpaid" : "status-paid";
+          const resolvedText = t.status === "open" ? "Open" : "Resolved";
+          const hospitalNameLabel = user.role === "super_admin" ? `<br><small style="color:var(--text3); font-weight:600;">${esc(t.hospital_name || "Unknown Hospital")}</small>` : "";
+          
+          return `
+            <tr>
+              <td data-label="Ticket">#${t.id} ${hospitalNameLabel}</td>
+              <td data-label="Subject">
+                <strong>${esc(t.subject)}</strong>
+                ${t.description ? `<br><small style="color:var(--text3);">${esc(t.description)}</small>` : ""}
+              </td>
+              <td data-label="Status">
+                <span class="status-badge ${statusClass}">${resolvedText}</span>
+              </td>
+              <td data-label="Actions">
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                  <button class="action-btn btn-edit" onclick="openTicketChat(${t.id})" style="background-color: var(--primary); color:#fff; border:none;">View Chat</button>
+                  ${user.role === "super_admin" ? `<button class="action-btn btn-delete" onclick="deleteSupportTicket(${t.id})">Delete</button>` : ""}
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join("");
+      }
+    } else {
+      ticketsTableBody.innerHTML = `<tr><td colspan="4" class="empty-cell" style="color:var(--error);">${esc(data.error || "Failed to load tickets")}</td></tr>`;
+    }
+  } catch (err) {
+    ticketsTableBody.innerHTML = '<tr><td colspan="4" class="empty-cell" style="color:var(--error);">Connection error loading tickets</td></tr>';
+  }
+}
+
+async function openTicketChat(ticketId) {
+  const user = getUser();
+  if (!user) return;
+
+  const ticketChatCard = document.getElementById("ticketChatCard");
+  const chatMessagesContainer = document.getElementById("chatMessagesContainer");
+  const chatTicketSubject = document.getElementById("chatTicketSubject");
+  const chatTicketStatus = document.getElementById("chatTicketStatus");
+  const resolveTicketBtn = document.getElementById("resolveTicketBtn");
+
+  if (!ticketChatCard || !chatMessagesContainer) return;
+
+  activeSupportTicketId = ticketId;
+  ticketChatCard.style.display = "flex";
+  chatMessagesContainer.innerHTML = '<span class="loading-cell"><span class="spinner"></span> Loading messages...</span>';
+
+  try {
+    const res = await fetch(`${API_BASE}/tickets?action=messages&ticket_id=${ticketId}`, {
+      headers: authHeaders()
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      const ticket = data.ticket;
+      chatTicketSubject.textContent = `#${ticket.id}: ${ticket.subject}`;
+      chatTicketStatus.textContent = ticket.status === "open" ? "Open" : "Resolved";
+      chatTicketStatus.className = `status-badge ${ticket.status === "open" ? "status-unpaid" : "status-paid"}`;
+
+      if (resolveTicketBtn) {
+        resolveTicketBtn.style.display = (user.role === "super_admin" && ticket.status === "open") ? "block" : "none";
+      }
+
+      const chatInputArea = document.getElementById("chatInputArea");
+      if (chatInputArea) {
+        chatInputArea.style.display = ticket.status === "open" ? "flex" : "none";
+      }
+
+      if (data.messages.length === 0) {
+        chatMessagesContainer.innerHTML = '<div style="text-align:center; padding:12px; color:var(--text3); font-size:13px;">No chat messages yet.</div>';
+      } else {
+        chatMessagesContainer.innerHTML = data.messages.map(m => {
+          const isMe = parseInt(m.sender_id) === parseInt(user.id);
+          const alignStyle = isMe ? "align-self: flex-end; background-color: var(--primary); color: #ffffff;" : "align-self: flex-start; background-color: #ffffff; color: var(--text1); border: 1px solid var(--border);";
+          const senderLabel = isMe ? "You" : `${esc(m.username)} (${m.sender_role === "super_admin" ? "Super Admin" : "Hospital Admin"})`;
+          
+          return `
+            <div style="max-width: 80%; padding: 8px 12px; border-radius: 12px; ${alignStyle}">
+              <div style="font-size: 10px; font-weight: bold; margin-bottom: 4px; opacity: 0.85;">${esc(senderLabel)}</div>
+              <div style="font-size: 13px; line-height: 1.4; word-break: break-word;">${esc(m.message)}</div>
+              <div style="font-size: 9px; text-align: right; margin-top: 4px; opacity: 0.7;">${formatDate(m.created_at)}</div>
+            </div>
+          `;
+        }).join("");
+        
+        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+      }
+    } else {
+      chatMessagesContainer.innerHTML = `<span style="color:var(--error); font-size:13px;">${esc(data.error || "Failed to load chat")}</span>`;
+    }
+  } catch (err) {
+    chatMessagesContainer.innerHTML = '<span style="color:var(--error); font-size:13px;">Connection error loading chat</span>';
+  }
+}
+
+async function sendSupportMessage() {
+  if (!activeSupportTicketId) return;
+  const inputEl = document.getElementById("chatMessageInput");
+  if (!inputEl) return;
+  const message = inputEl.value.trim();
+  if (!message) return;
+
+  const sendBtn = document.getElementById("sendChatMessageBtn");
+  if (sendBtn) sendBtn.disabled = true;
+
+  try {
+    const res = await fetch(`${API_BASE}/tickets?action=message`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        ticket_id: activeSupportTicketId,
+        message: message
+      })
+    });
+    const result = await res.json();
+    if (res.ok && result.success) {
+      inputEl.value = "";
+      await openTicketChat(activeSupportTicketId);
+    } else {
+      showToast(result.error || "Failed to send message", "error");
+    }
+  } catch (err) {
+    showToast("Network error sending message", "error");
+  } finally {
+    if (sendBtn) sendBtn.disabled = false;
+  }
+}
+
+async function resolveSupportTicket(ticketId) {
+  if (!ticketId) return;
+  if (!confirm("Are you sure you want to mark this support ticket as resolved?")) return;
+
+  const resolveBtn = document.getElementById("resolveTicketBtn");
+  if (resolveBtn) resolveBtn.disabled = true;
+
+  try {
+    const res = await fetch(`${API_BASE}/tickets?action=resolve`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ ticket_id: ticketId })
+    });
+    const result = await res.json();
+    if (res.ok && result.success) {
+      showToast("Support ticket resolved successfully!", "success");
+      await loadSupportTickets();
+      await openTicketChat(ticketId);
+    } else {
+      showToast(result.error || "Failed to resolve ticket", "error");
+    }
+  } catch (err) {
+    showToast("Network error resolving ticket", "error");
+  } finally {
+    if (resolveBtn) resolveBtn.disabled = false;
+  }
+}
+
+async function deleteSupportTicket(ticketId) {
+  if (!ticketId) return;
+  if (!confirm("Are you sure you want to permanently delete this support ticket and all associated messages?")) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/tickets?action=delete`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ ticket_id: ticketId })
+    });
+    const result = await res.json();
+    if (res.ok && result.success) {
+      showToast("Support ticket deleted successfully!", "success");
+      if (activeSupportTicketId === ticketId) {
+        document.getElementById("ticketChatCard").style.display = "none";
+        activeSupportTicketId = null;
+      }
+      await loadSupportTickets();
+    } else {
+      showToast(result.error || "Failed to delete ticket", "error");
+    }
+  } catch (err) {
+    showToast("Network error deleting ticket", "error");
+  }
+}
+
+// Bind support tickets DOM events on load
+document.addEventListener("DOMContentLoaded", () => {
+  const raiseForm = document.getElementById("raiseTicketForm");
+  if (raiseForm) {
+    raiseForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const subject = document.getElementById("ticketSubject").value.trim();
+      const description = document.getElementById("ticketDescription").value.trim();
+      
+      const submitBtn = raiseForm.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = "Submitting...";
+      submitBtn.disabled = true;
+
+      try {
+        const res = await fetch(`${API_BASE}/tickets?action=create`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ subject, description })
+        });
+        const result = await res.json();
+        if (res.ok && result.success) {
+          showToast("Support ticket raised successfully!", "success");
+          raiseForm.reset();
+          closeModal("raiseTicketModal");
+          await loadSupportTickets();
+          if (result.ticket_id) {
+            await openTicketChat(result.ticket_id);
+          }
+        } else {
+          showToast(result.error || "Failed to raise ticket", "error");
+        }
+      } catch (err) {
+        showToast("Network error raising ticket", "error");
+      } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+      }
+    });
+  }
+
+  const raiseTicketBtn = document.getElementById("raiseTicketBtn");
+  if (raiseTicketBtn) {
+    raiseTicketBtn.addEventListener("click", () => openModal("raiseTicketModal"));
+  }
+
+  const resolveTicketBtn = document.getElementById("resolveTicketBtn");
+  if (resolveTicketBtn) {
+    resolveTicketBtn.addEventListener("click", () => resolveSupportTicket(activeSupportTicketId));
+  }
+
+  const sendChatMessageBtn = document.getElementById("sendChatMessageBtn");
+  if (sendChatMessageBtn) {
+    sendChatMessageBtn.addEventListener("click", sendSupportMessage);
+  }
+
+  const chatMessageInput = document.getElementById("chatMessageInput");
+  if (chatMessageInput) {
+    chatMessageInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendSupportMessage();
       }
     });
   }
