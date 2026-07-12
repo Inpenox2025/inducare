@@ -32,6 +32,11 @@
   box-sizing: border-box;
 }
 
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   font-family: 'Inter', sans-serif;
   background-color: var(--bg-primary);
@@ -1217,5 +1222,17 @@ textarea.form-control {
   .tax-form-row {
     grid-template-columns: 1fr !important;
     gap: 16px !important;
+  }
+  .date-display {
+    display: none !important;
+  }
+  .topbar {
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .modal {
+    padding: 16px !important;
+    max-height: 95vh !important;
+    border-radius: var(--radius-md) !important;
   }
 }
