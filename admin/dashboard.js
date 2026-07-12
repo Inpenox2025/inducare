@@ -3532,15 +3532,6 @@ async function loadDynamicNavigation() {
         return;
       }
 
-      if (user.role !== "super_admin") {
-        const adminTickets = document.getElementById("navSupportTickets");
-        if (adminTickets) {
-          adminTickets.style.display = "";
-          adminTickets.innerHTML = '<span class="nav-icon">🛠️</span> Support Tickets';
-          adminTickets.setAttribute("data-tab", "support-tickets");
-        }
-      }
-
       let firstTab = "";
       data.menus.forEach((menu) => {
         const mapped = allNavLinks.find((item) => item.key === menu.menu_key);
