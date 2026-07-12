@@ -2686,6 +2686,71 @@ function initEventListeners() {
     }
   });
 
+  // Support Tickets Bindings
+  const raiseForm = document.getElementById("raiseTicketForm");
+  if (raiseForm) {
+    raiseForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const subject = document.getElementById("ticketSubject").value.trim();
+      const description = document.getElementById("ticketDescription").value.trim();
+      
+      const submitBtn = raiseForm.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = "Submitting...";
+      submitBtn.disabled = true;
+
+      try {
+        const res = await fetch(`${API_BASE}/tickets?action=create`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ subject, description })
+        });
+        const result = await res.json();
+        if (res.ok && result.success) {
+          showToast("Support ticket raised successfully!", "success");
+          raiseForm.reset();
+          closeModal("raiseTicketModal");
+          await loadSupportTickets();
+          if (result.ticket_id) {
+            await openTicketChat(result.ticket_id);
+          }
+        } else {
+          showToast(result.error || "Failed to raise ticket", "error");
+        }
+      } catch (err) {
+        showToast("Network error raising ticket", "error");
+      } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+      }
+    });
+  }
+
+  const raiseTicketBtn = document.getElementById("raiseTicketBtn");
+  if (raiseTicketBtn) {
+    raiseTicketBtn.addEventListener("click", () => openModal("raiseTicketModal"));
+  }
+
+  const resolveTicketBtn = document.getElementById("resolveTicketBtn");
+  if (resolveTicketBtn) {
+    resolveTicketBtn.addEventListener("click", () => resolveSupportTicket(activeSupportTicketId));
+  }
+
+  const sendChatMessageBtn = document.getElementById("sendChatMessageBtn");
+  if (sendChatMessageBtn) {
+    sendChatMessageBtn.addEventListener("click", sendSupportMessage);
+  }
+
+  const chatMessageInput = document.getElementById("chatMessageInput");
+  if (chatMessageInput) {
+    chatMessageInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendSupportMessage();
+      }
+    });
+  }
+
 
 // ─────── Overlay Helpers ───────
 function openModal(id) {
@@ -5862,70 +5927,5 @@ async function deleteSupportTicket(ticketId) {
   }
 }
 
-// Bind support tickets DOM events on load
-document.addEventListener("DOMContentLoaded", () => {
-  const raiseForm = document.getElementById("raiseTicketForm");
-  if (raiseForm) {
-    raiseForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const subject = document.getElementById("ticketSubject").value.trim();
-      const description = document.getElementById("ticketDescription").value.trim();
-      
-      const submitBtn = raiseForm.querySelector('button[type="submit"]');
-      const originalText = submitBtn.innerHTML;
-      submitBtn.innerHTML = "Submitting...";
-      submitBtn.disabled = true;
 
-      try {
-        const res = await fetch(`${API_BASE}/tickets?action=create`, {
-          method: "POST",
-          headers: authHeaders(),
-          body: JSON.stringify({ subject, description })
-        });
-        const result = await res.json();
-        if (res.ok && result.success) {
-          showToast("Support ticket raised successfully!", "success");
-          raiseForm.reset();
-          closeModal("raiseTicketModal");
-          await loadSupportTickets();
-          if (result.ticket_id) {
-            await openTicketChat(result.ticket_id);
-          }
-        } else {
-          showToast(result.error || "Failed to raise ticket", "error");
-        }
-      } catch (err) {
-        showToast("Network error raising ticket", "error");
-      } finally {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-      }
-    });
-  }
-
-  const raiseTicketBtn = document.getElementById("raiseTicketBtn");
-  if (raiseTicketBtn) {
-    raiseTicketBtn.addEventListener("click", () => openModal("raiseTicketModal"));
-  }
-
-  const resolveTicketBtn = document.getElementById("resolveTicketBtn");
-  if (resolveTicketBtn) {
-    resolveTicketBtn.addEventListener("click", () => resolveSupportTicket(activeSupportTicketId));
-  }
-
-  const sendChatMessageBtn = document.getElementById("sendChatMessageBtn");
-  if (sendChatMessageBtn) {
-    sendChatMessageBtn.addEventListener("click", sendSupportMessage);
-  }
-
-  const chatMessageInput = document.getElementById("chatMessageInput");
-  if (chatMessageInput) {
-    chatMessageInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        sendSupportMessage();
-      }
-    });
-  }
-});
 
