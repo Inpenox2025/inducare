@@ -2239,11 +2239,10 @@ function initEventListeners() {
   document.getElementById("addDoctorBtn").addEventListener("click", () => {
     document.getElementById("doctorForm").reset();
     document.getElementById("doctor_id").value = "";
-      document.getElementById("doctorModalTitle").textContent =
-        "Register New Doctor";
-      openModal("doctorModal");
-    });
-  }
+    document.getElementById("doctorModalTitle").textContent =
+      "Register New Doctor";
+    openModal("doctorModal");
+  });
 
   const addRoomBtn = document.getElementById("addRoomBtn");
   if (addRoomBtn) {
@@ -2750,7 +2749,7 @@ function initEventListeners() {
       }
     });
   }
-
+}
 
 // ─────── Overlay Helpers ───────
 function openModal(id) {
