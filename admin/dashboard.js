@@ -268,9 +268,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   initDateTime();
   initTabNavigation();
   initEventListeners();
-
-  // Load initial tab
-  switchTab("overview");
 });
 
 // Update the Current Date label
@@ -2666,6 +2663,17 @@ function initEventListeners() {
 
   document.getElementById("sidebarClose").addEventListener("click", () => {
     document.getElementById("sidebar").classList.remove("open");
+  });
+
+  // Close mobile sidebar on click outside
+  document.addEventListener("click", (e) => {
+    const sidebar = document.getElementById("sidebar");
+    const toggleBtn = document.getElementById("sidebarToggle");
+    if (sidebar && sidebar.classList.contains("open")) {
+      if (!sidebar.contains(e.target) && (!toggleBtn || !toggleBtn.contains(e.target))) {
+        sidebar.classList.remove("open");
+      }
+    }
   });
 
   // Keyboard closures

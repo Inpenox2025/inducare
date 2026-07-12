@@ -1235,4 +1235,26 @@ textarea.form-control {
     max-height: 95vh !important;
     border-radius: var(--radius-md) !important;
   }
+  .toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  .toolbar-left {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  .toolbar-right {
+    width: 100% !important;
+  }
+  .toolbar-right .btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+  .filter-select {
+    width: 100% !important;
+  }
 }

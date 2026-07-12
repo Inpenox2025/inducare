@@ -182,23 +182,38 @@ module.exports = async function handler(req, res) {
             if (search) {
               const searchPattern = `%${search}%`;
               countRows = await sql`
-                SELECT COUNT(*) as total FROM patients 
-                WHERE hospital_id = ${queryHospitalId}
-                  AND (full_name ILIKE ${searchPattern} OR mobile_no ILIKE ${searchPattern})
+                SELECT COUNT(DISTINCT p.id) as total 
+                FROM patients p
+                JOIN claims c ON p.id = c.patient_id
+                WHERE p.hospital_id = ${queryHospitalId}
+                  AND c.insurance_company_id = ${insurerCompanyId}
+                  AND (p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern})
               `;
               dataRows = await sql`
-                SELECT * FROM patients 
-                WHERE hospital_id = ${queryHospitalId}
-                  AND (full_name ILIKE ${searchPattern} OR mobile_no ILIKE ${searchPattern})
-                ORDER BY full_name ASC 
+                SELECT DISTINCT p.* 
+                FROM patients p
+                JOIN claims c ON p.id = c.patient_id
+                WHERE p.hospital_id = ${queryHospitalId}
+                  AND c.insurance_company_id = ${insurerCompanyId}
+                  AND (p.full_name ILIKE ${searchPattern} OR p.mobile_no ILIKE ${searchPattern})
+                ORDER BY p.full_name ASC 
                 LIMIT ${limit} OFFSET ${offset}
               `;
             } else {
-              countRows = await sql`SELECT COUNT(*) as total FROM patients WHERE hospital_id = ${queryHospitalId}`;
+              countRows = await sql`
+                SELECT COUNT(DISTINCT p.id) as total 
+                FROM patients p
+                JOIN claims c ON p.id = c.patient_id
+                WHERE p.hospital_id = ${queryHospitalId}
+                  AND c.insurance_company_id = ${insurerCompanyId}
+              `;
               dataRows = await sql`
-                SELECT * FROM patients 
-                WHERE hospital_id = ${queryHospitalId}
-                ORDER BY full_name ASC 
+                SELECT DISTINCT p.* 
+                FROM patients p
+                JOIN claims c ON p.id = c.patient_id
+                WHERE p.hospital_id = ${queryHospitalId}
+                  AND c.insurance_company_id = ${insurerCompanyId}
+                ORDER BY p.full_name ASC 
                 LIMIT ${limit} OFFSET ${offset}
               `;
             }

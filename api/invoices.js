@@ -1433,9 +1433,9 @@ module.exports = async function handler(req, res) {
                 SELECT i.*, p.full_name as patient_name, p.mobile_no as patient_mobile
                 FROM invoices i
                 JOIN patients p ON i.patient_id = p.id
-                JOIN hospital_insurers hi ON i.hospital_id = hi.hospital_id
+                JOIN claims c ON i.id = c.invoice_id
                 WHERE i.patient_id = ${queryPatientId}
-                  AND hi.insurance_company_id = ${insurerCompanyId}
+                  AND c.insurance_company_id = ${insurerCompanyId}
                   AND (i.status = 'unpaid' OR i.status = 'partially_paid')
                 ORDER BY i.created_at DESC
               `;
