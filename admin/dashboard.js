@@ -2670,12 +2670,18 @@ function initEventListeners() {
 
 // ─────── Overlay Helpers ───────
 function openModal(id) {
-  document.getElementById(id).classList.add("show");
+  const el = document.getElementById(id);
+  if (el) el.classList.add("show");
 }
 
 function closeModal(id) {
-  document.getElementById(id).classList.remove("show");
+  const el = document.getElementById(id);
+  if (el) el.classList.remove("show");
 }
+
+// Expose modal helpers globally so inline onclick="openModal(...)" in HTML always works
+window.openModal = openModal;
+window.closeModal = closeModal;
 
 // Pagination Drawing Utility
 function renderPagination(
