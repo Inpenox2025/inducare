@@ -2650,13 +2650,19 @@ function initEventListeners() {
 
 // ─────── Overlay Helpers ───────
 function openModal(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.add("show");
+  const el = typeof id === "string" ? document.getElementById(id) : id;
+  if (el) {
+    el.style.display = "flex";
+    el.classList.add("show");
+  }
 }
 
 function closeModal(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.remove("show");
+  const el = typeof id === "string" ? document.getElementById(id) : id;
+  if (el) {
+    el.classList.remove("show");
+    el.style.display = "none";
+  }
 }
 
 // Expose modal helpers globally so inline onclick="openModal(...)" in HTML always works
@@ -5924,7 +5930,7 @@ let html5QrcodeInstance = null;
 let activeBarcodeTargetInputId = null;
 
 // Initialize Pharmacy & Lab DOM Event Handlers
-document.addEventListener("DOMContentLoaded", () => {
+function initPharmacyAndLabEvents() {
   // Pharmacy Inventory handlers
   on("openMedicineModalBtn", "click", () => openMedicineModal());
   on("medicineForm", "submit", (e) => saveMedicineForm(e));
@@ -6003,7 +6009,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   on("lab_discount", "input", updateLabBillTotals);
   on("lab_tax", "input", updateLabBillTotals);
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initPharmacyAndLabEvents);
+} else {
+  initPharmacyAndLabEvents();
+}
 
 // ──────── 1. PHARMACY MEDICINE INVENTORY ────────
 async function loadPharmacyInventory(searchQuery = "") {
