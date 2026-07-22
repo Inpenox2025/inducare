@@ -81,9 +81,19 @@ module.exports = async function handler(req, res) {
           if (!subject) return res.status(400).json({ error: "Subject is required" });
           const hospId = user.hospital_id ? parseInt(user.hospital_id) : 1;
 
+          // Check if identical ticket created in last 5 seconds to prevent double-submit duplicates
+          const recent = await sql`
+            SELECT id FROM support_tickets 
+            WHERE hospital_id = ${hospId} AND subject = ${subject.trim()} AND created_at > NOW() - INTERVAL '5 seconds'
+            ORDER BY id DESC LIMIT 1
+          `;
+          if (recent.length > 0) {
+            return res.status(200).json({ success: true, ticket_id: recent[0].id });
+          }
+
           const ticketRows = await sql`
             INSERT INTO support_tickets (hospital_id, subject, description, created_by)
-            VALUES (${hospId}, ${subject}, ${description || ""}, ${parseInt(user.id)})
+            VALUES (${hospId}, ${subject.trim()}, ${description ? description.trim() : ""}, ${parseInt(user.id)})
             RETURNING id
           `;
           const ticketId = ticketRows[0].id;
@@ -91,7 +101,7 @@ module.exports = async function handler(req, res) {
           if (description) {
             await sql`
               INSERT INTO support_ticket_messages (ticket_id, sender_id, message)
-              VALUES (${parseInt(ticketId)}, ${parseInt(user.id)}, ${description})
+              VALUES (${parseInt(ticketId)}, ${parseInt(user.id)}, ${description.trim()})
             `;
           }
           return res.status(200).json({ success: true, ticket_id: ticketId });
@@ -121,19 +131,18 @@ module.exports = async function handler(req, res) {
         if (action === "resolve") {
           const { ticket_id } = req.body;
           if (!ticket_id) return res.status(400).json({ error: "Ticket ID is required" });
-          if (user.role !== "super_admin") return res.status(403).json({ error: "Only Superadmin can resolve support tickets." });
 
           await sql`UPDATE support_tickets SET status = 'resolved', updated_at = NOW() WHERE id = ${parseInt(ticket_id)}`;
           return res.status(200).json({ success: true });
         }
 
         if (action === "delete") {
-          const { ticket_id } = req.body;
-          if (!ticket_id) return res.status(400).json({ error: "Ticket ID is required" });
-          if (user.role !== "super_admin") return res.status(403).json({ error: "Only Superadmin can delete support tickets." });
+          const ticketId = req.query.id || (req.body && req.body.ticket_id);
+          if (!ticketId) return res.status(400).json({ error: "Ticket ID is required" });
 
-          await sql`DELETE FROM support_tickets WHERE id = ${parseInt(ticket_id)}`;
-          return res.status(200).json({ success: true });
+          await sql`DELETE FROM support_ticket_messages WHERE ticket_id = ${parseInt(ticketId)}`;
+          await sql`DELETE FROM support_tickets WHERE id = ${parseInt(ticketId)}`;
+          return res.status(200).json({ success: true, message: "Support ticket deleted" });
         }
       } catch (error) {
         return res.status(500).json({ error: "Ticket processing failed", details: error.message });

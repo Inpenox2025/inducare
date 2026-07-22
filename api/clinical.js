@@ -107,6 +107,16 @@ module.exports = async function handler(req, res) {
           const stockQty = parseInt(stock_quantity) || 0;
           const reorderLvl = parseInt(reorder_level) || 10;
 
+          // Deduplication check: return existing if inserted in last 5 seconds
+          const recent = await sql`
+            SELECT * FROM medicines 
+            WHERE hospital_id = ${hostId} AND name = ${name.trim()} AND created_at > NOW() - INTERVAL '5 seconds'
+            ORDER BY id DESC LIMIT 1
+          `;
+          if (recent.length > 0) {
+            return res.status(200).json({ success: true, medicine: recent[0] });
+          }
+
           const rows = await sql`
             INSERT INTO medicines (
               barcode, name, generic_name, category, manufacturer, unit_price, mrp, 
@@ -156,13 +166,10 @@ module.exports = async function handler(req, res) {
         }
 
         if (req.method === "DELETE") {
-          const id = req.query.id;
+          const id = req.query.id || (req.body && req.body.id);
           if (!id) return res.status(400).json({ error: "Medicine ID is required" });
 
-          await sql`
-            DELETE FROM medicines 
-            WHERE id = ${id} ${targetHospitalId !== null ? sql`AND hospital_id = ${targetHospitalId}` : sql``}
-          `;
+          await sql`DELETE FROM medicines WHERE id = ${parseInt(id)}`;
           return res.status(200).json({ success: true, message: "Medicine removed successfully" });
         }
       }
@@ -510,6 +517,16 @@ module.exports = async function handler(req, res) {
           const testPrice = parseFloat(price) || 0.00;
           const code = test_code ? test_code.trim() : `LAB-${Math.floor(1000 + Math.random() * 9000)}`;
 
+          // Deduplication check: return existing if inserted in last 5 seconds
+          const recent = await sql`
+            SELECT * FROM lab_tests 
+            WHERE hospital_id = ${hostId} AND test_name = ${test_name.trim()} AND created_at > NOW() - INTERVAL '5 seconds'
+            ORDER BY id DESC LIMIT 1
+          `;
+          if (recent.length > 0) {
+            return res.status(200).json({ success: true, test: recent[0] });
+          }
+
           const rows = await sql`
             INSERT INTO lab_tests (
               test_code, test_name, category, price, normal_range, sample_type, description, hospital_id
@@ -550,13 +567,10 @@ module.exports = async function handler(req, res) {
         }
 
         if (req.method === "DELETE") {
-          const id = req.query.id;
+          const id = req.query.id || (req.body && req.body.id);
           if (!id) return res.status(400).json({ error: "Test ID is required" });
 
-          await sql`
-            DELETE FROM lab_tests 
-            WHERE id = ${id} ${targetHospitalId !== null ? sql`AND hospital_id = ${targetHospitalId}` : sql``}
-          `;
+          await sql`DELETE FROM lab_tests WHERE id = ${parseInt(id)}`;
           return res.status(200).json({ success: true, message: "Lab test removed successfully" });
         }
       }

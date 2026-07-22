@@ -5659,13 +5659,22 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// ══════════════════════════════════════════════════════════
-// SUPPORT TICKETS (CHAT LOGS & RESOLUTIONS)
-// ══════════════════════════════════════════════════════════
+// Global Form Submit Lock Set (Prevents parallel double-submit requests)
+const activeSubmitLocks = new Set();
+
+function isFormSubmitting(formId) {
+  if (activeSubmitLocks.has(formId)) return true;
+  activeSubmitLocks.add(formId);
+  setTimeout(() => activeSubmitLocks.delete(formId), 1500);
+  return false;
+}
+
 let activeSupportTicketId = null;
 
 async function saveRaiseTicketForm(e) {
   if (e) e.preventDefault();
+  if (isFormSubmitting("raiseTicketForm")) return;
+
   const raiseForm = document.getElementById("raiseTicketForm");
   if (!raiseForm) return;
 
@@ -5957,16 +5966,12 @@ function initPharmacyAndLabEvents() {
   on("openPharmaInvoiceModalBtn", "click", () => openPharmaInvoiceModal());
   on("pharmaItemSearchInput", "input", (e) => handlePharmaMedicineSearch(e.target.value));
   on("triggerDynamicAddMedBtn", "click", () => openDynamicMedicineModal());
-  on("dynamicMedicineForm", "submit", (e) => saveDynamicMedicine(e));
-  on("pharmaInvoiceForm", "submit", (e) => savePharmaInvoice(e));
-  on("pharmaPaymentForm", "submit", (e) => savePharmaPayment(e));
 
   on("pharma_discount", "input", updatePharmaBillTotals);
   on("pharma_tax", "input", updatePharmaBillTotals);
 
   // Lab Inventory handlers
   on("openLabTestModalBtn", "click", () => openLabTestModal());
-  on("labTestForm", "submit", (e) => saveLabTestForm(e));
   on("labTestSearchInput", "input", (e) => loadLabInventory(e.target.value));
 
   // Lab Billing handlers
@@ -5991,8 +5996,6 @@ function initPharmacyAndLabEvents() {
   });
 
   on("openLabInvoiceModalBtn", "click", () => openLabInvoiceModal());
-  on("labInvoiceForm", "submit", (e) => saveLabInvoice(e));
-  on("labPaymentForm", "submit", (e) => saveLabPayment(e));
 
   on("lab_discount", "input", updateLabBillTotals);
   on("lab_tax", "input", updateLabBillTotals);
@@ -6096,7 +6099,8 @@ async function openMedicineModal(id = null) {
 }
 
 async function saveMedicineForm(e) {
-  e.preventDefault();
+  if (e) e.preventDefault();
+  if (isFormSubmitting("medicineForm")) return;
   const id = document.getElementById("medicine_id").value;
   const method = id ? "PUT" : "POST";
   const url = id ? `${API_BASE}/pharmacy?action=medicines&id=${id}` : `${API_BASE}/pharmacy?action=medicines`;
@@ -6501,7 +6505,8 @@ function openDynamicMedicineModal() {
 }
 
 async function saveDynamicMedicine(e) {
-  e.preventDefault();
+  if (e) e.preventDefault();
+  if (isFormSubmitting("dynamicMedicineForm")) return;
   const name = document.getElementById("dyn_med_name").value.trim();
   const barcode = document.getElementById("dyn_med_barcode").value.trim();
   const category = document.getElementById("dyn_med_category").value.trim();
@@ -6530,7 +6535,8 @@ async function saveDynamicMedicine(e) {
 }
 
 async function savePharmaInvoice(e) {
-  e.preventDefault();
+  if (e) e.preventDefault();
+  if (isFormSubmitting("pharmaInvoiceForm")) return;
   const patient_id = document.getElementById("pharma_patient_id").value;
   const doctor_id = document.getElementById("pharma_doctor_id").value;
 
@@ -6582,7 +6588,8 @@ function openPharmaPaymentModal(invoiceId, invoiceNo, patientName, dueAmt) {
 }
 
 async function savePharmaPayment(e) {
-  e.preventDefault();
+  if (e) e.preventDefault();
+  if (isFormSubmitting("pharmaPaymentForm")) return;
   const invoiceId = document.getElementById("pay_pharma_invoice_id").value;
   const amountPaid = parseFloat(document.getElementById("pay_pharma_amount").value) || 0.00;
   const paymentMode = document.getElementById("pay_pharma_mode").value;
@@ -6692,7 +6699,8 @@ async function openLabTestModal(id = null) {
 }
 
 async function saveLabTestForm(e) {
-  e.preventDefault();
+  if (e) e.preventDefault();
+  if (isFormSubmitting("labTestForm")) return;
   const id = document.getElementById("lab_test_id").value;
   const method = id ? "PUT" : "POST";
   const url = id ? `${API_BASE}/lab?action=tests&id=${id}` : `${API_BASE}/lab?action=tests`;
@@ -6914,7 +6922,8 @@ function updateLabBillTotals() {
 }
 
 async function saveLabInvoice(e) {
-  e.preventDefault();
+  if (e) e.preventDefault();
+  if (isFormSubmitting("labInvoiceForm")) return;
   const patient_id = document.getElementById("lab_patient_id").value;
   const doctor_id = document.getElementById("lab_doctor_id").value;
   const checkboxes = document.querySelectorAll('input[name="selected_lab_tests"]:checked');
@@ -6977,7 +6986,8 @@ function openLabPaymentModal(invoiceId, invoiceNo, patientName, dueAmt) {
 }
 
 async function saveLabPayment(e) {
-  e.preventDefault();
+  if (e) e.preventDefault();
+  if (isFormSubmitting("labPaymentForm")) return;
   const invoiceId = document.getElementById("pay_lab_invoice_id").value;
   const amountPaid = parseFloat(document.getElementById("pay_lab_amount").value) || 0.00;
   const paymentMode = document.getElementById("pay_lab_mode").value;
