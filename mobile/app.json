@@ -34,11 +34,6 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "inducare-mobile-app"
-      }
     }
   }
 }
