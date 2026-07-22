@@ -1,28 +1,22 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   StyleSheet,
   View,
   Text,
-  TextInput,
   TouchableOpacity,
+  Switch,
   Alert
 } from 'react-native';
-import { Colors, Shadows } from '../theme/colors';
+import { getThemeColors, Shadows } from '../theme/colors';
 import { api } from '../services/api';
 
-export default function SettingsScreen({ user, onLogout }) {
-  const [serverUrl, setServerUrl] = useState(api.baseUrl);
-
-  const handleSaveServerUrl = () => {
-    if (!serverUrl.trim()) return;
-    api.setBaseUrl(serverUrl.trim());
-    Alert.alert('Saved', `API Base URL updated to: ${serverUrl.trim()}`);
-  };
+export default function SettingsScreen({ user, onLogout, isDarkMode, onToggleTheme }) {
+  const colors = getThemeColors(isDarkMode);
 
   const handleLogout = async () => {
     Alert.alert(
       'Sign Out',
-      'Are you sure you want to sign out of the mobile portal?',
+      'Are you sure you want to sign out',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -38,49 +32,73 @@ export default function SettingsScreen({ user, onLogout }) {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.profileCard, Shadows.card]}>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+      {/* Profile Header */}
+      <View style={[styles.profileCard, Shadows.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={styles.avatarText}>👨‍⚕️</Text>
-        <Text style={styles.userName}>{user?.full_name || user?.username || 'User'}</Text>
-        <Text style={styles.userRole}>{(user?.role || 'Staff').toUpperCase()}</Text>
-        <Text style={styles.hospitalName}>🏥 {user?.hospital_name || 'Inducare Medical Center'}</Text>
+        <Text style={[styles.userName, { color: colors.text }]}>{user?.full_name || user?.username || 'Hospital User'}</Text>
+        <Text style={[styles.userRole, { color: colors.accent }]}>{(user?.role || 'Staff').toUpperCase()}</Text>
+        <Text style={[styles.hospitalName, { color: colors.textMuted }]}>🏥 {user?.hospital_name || 'Inspenox Medical Center'}</Text>
       </View>
 
-      <View style={[styles.card, Shadows.card]}>
-        <Text style={styles.cardTitle}>⚙️ Server Connection Settings</Text>
-        <Text style={styles.label}>Live Backend API Endpoint URL</Text>
-        <TextInput
-          style={styles.input}
-          value={serverUrl}
-          onChangeText={setServerUrl}
-          autoCapitalize="none"
-          keyboardType="url"
-        />
-        <TouchableOpacity style={styles.saveBtn} onPress={handleSaveServerUrl}>
-          <Text style={styles.saveBtnText}>Update API Endpoint</Text>
-        </TouchableOpacity>
+      {/* App Theme Settings Card */}
+      <View style={[styles.card, Shadows.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Text style={[styles.cardTitle, { color: colors.text }]}>🎨 Appearance & Theme</Text>
+        
+        <View style={styles.settingRow}>
+          <View>
+            <Text style={[styles.settingLabel, { color: colors.text }]}>
+              {isDarkMode ? '🌙 Dark Mode' : '☀️ Light Mode'}
+            </Text>
+            <Text style={[styles.settingSub, { color: colors.textMuted }]}>
+              Toggle app color scheme theme
+            </Text>
+          </View>
+          <Switch
+            value={isDarkMode}
+            onValueChange={onToggleTheme}
+            trackColor={{ false: '#cbd5e1', true: '#10b981' }}
+            thumbColor={isDarkMode ? '#ffffff' : '#f8fafc'}
+          />
+        </View>
       </View>
 
+      {/* App Version Info Card */}
+      <View style={[styles.card, Shadows.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Text style={[styles.cardTitle, { color: colors.text }]}>📱 App Metadata</Text>
+        <View style={styles.metaRow}>
+          <Text style={[styles.metaLabel, { color: colors.textMuted }]}>App Name</Text>
+          <Text style={[styles.metaVal, { color: colors.text }]}>Icare Mobile</Text>
+        </View>
+        <View style={styles.metaRow}>
+          <Text style={[styles.metaLabel, { color: colors.textMuted }]}>Build Version</Text>
+          <Text style={[styles.metaVal, { color: colors.accent }]}>v1.0.0 (Play Store Release)</Text>
+        </View>
+      </View>
+
+      {/* Sign Out Button */}
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-        <Text style={styles.logoutBtnText}>🔴 Sign Out of Portal</Text>
+        <Text style={styles.logoutBtnText}>🚪 Sign Out of Portal</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDark, padding: 16 },
-  profileCard: { backgroundColor: Colors.bgCardDark, borderRadius: 20, padding: 24, alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: Colors.borderDark },
-  avatarText: { fontSize: 54, marginBottom: 8 },
-  userName: { color: '#ffffff', fontSize: 20, fontWeight: '800' },
-  userRole: { color: Colors.accent, fontSize: 12, fontWeight: '800', marginTop: 2, letterSpacing: 1 },
-  hospitalName: { color: Colors.textMutedLight, fontSize: 13, marginTop: 8 },
-  card: { backgroundColor: Colors.bgCardDark, borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: Colors.borderDark },
-  cardTitle: { color: '#ffffff', fontSize: 15, fontWeight: '800', marginBottom: 12 },
-  label: { color: Colors.textMutedLight, fontSize: 12, marginBottom: 6 },
-  input: { backgroundColor: '#0f172a', borderWidth: 1, borderColor: Colors.borderDark, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: '#ffffff', fontSize: 13 },
-  saveBtn: { backgroundColor: Colors.accent, borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginTop: 12 },
-  saveBtnText: { color: '#0f172a', fontWeight: '800', fontSize: 13 },
-  logoutBtn: { backgroundColor: 'rgba(239, 68, 68, 0.2)', borderWidth: 1, borderColor: Colors.danger, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
-  logoutBtnText: { color: Colors.danger, fontWeight: '800', fontSize: 14 },
+  container: { flex: 1, padding: 16 },
+  profileCard: { borderRadius: 20, padding: 20, alignItems: 'center', marginBottom: 16, borderWidth: 1 },
+  avatarText: { fontSize: 48, marginBottom: 6 },
+  userName: { fontSize: 18, fontWeight: '800' },
+  userRole: { fontSize: 12, fontWeight: '800', marginTop: 2, letterSpacing: 1 },
+  hospitalName: { fontSize: 13, marginTop: 6 },
+  card: { borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1 },
+  cardTitle: { fontSize: 15, fontWeight: '800', marginBottom: 12 },
+  settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  settingLabel: { fontSize: 14, fontWeight: '700' },
+  settingSub: { fontSize: 11, marginTop: 2 },
+  metaRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
+  metaLabel: { fontSize: 13 },
+  metaVal: { fontSize: 13, fontWeight: '700' },
+  logoutBtn: { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderWidth: 1, borderColor: '#ef4444', borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
+  logoutBtnText: { color: '#ef4444', fontWeight: '800', fontSize: 14 },
 });

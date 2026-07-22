@@ -11,10 +11,11 @@ import {
   Alert,
   ScrollView
 } from 'react-native';
-import { Colors, Shadows } from '../theme/colors';
+import { getThemeColors, Shadows } from '../theme/colors';
 import { api } from '../services/api';
 
-export default function LabScreen() {
+export default function LabScreen({ isDarkMode = true }) {
+  const colors = getThemeColors(isDarkMode);
   const [activeTab, setActiveTab] = useState('catalog'); // 'catalog' | 'orders' | 'receipts'
   const [labTests, setLabTests] = useState([]);
   const [invoices, setInvoices] = useState([]);

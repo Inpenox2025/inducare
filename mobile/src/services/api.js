@@ -70,6 +70,20 @@ class ApiService {
     return await res.json();
   }
 
+  async savePatient(payload) {
+    const res = await fetch(`${this.baseUrl}/patients`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  }
+
+  async getCaseSheet(patientId) {
+    const res = await fetch(`${this.baseUrl}/patients?id=${patientId}`, { headers: this.getHeaders() });
+    return await res.json();
+  }
+
   // --- Pharmacy API ---
   async getMedicines(query = '') {
     const url = query ? `${this.baseUrl}/pharmacy?action=medicines&q=${encodeURIComponent(query)}` : `${this.baseUrl}/pharmacy?action=medicines`;

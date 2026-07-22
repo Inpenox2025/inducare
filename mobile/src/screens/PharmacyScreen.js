@@ -11,10 +11,11 @@ import {
   Alert,
   ScrollView
 } from 'react-native';
-import { Colors, Shadows } from '../theme/colors';
+import { getThemeColors, Shadows } from '../theme/colors';
 import { api } from '../services/api';
 
-export default function PharmacyScreen() {
+export default function PharmacyScreen({ isDarkMode = true }) {
+  const colors = getThemeColors(isDarkMode);
   const [activeTab, setActiveTab] = useState('inventory'); // 'inventory' | 'billing' | 'receipts'
   const [medicines, setMedicines] = useState([]);
   const [invoices, setInvoices] = useState([]);
