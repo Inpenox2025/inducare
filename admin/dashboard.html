@@ -2668,19 +2668,30 @@
         </div>
     </div>
 
-    <!-- 17. Camera Barcode Scanner Modal -->
+    <!-- 17. USB Hardware Barcode Scanner Modal -->
     <div class="modal-overlay" id="barcodeScannerModal">
-        <div class="modal" style="max-width:500px;">
+        <div class="modal" style="max-width:520px;">
             <div class="modal-header">
-                <h2>📷 Scan Medicine Barcode</h2>
+                <h2>🔌 USB Hardware Barcode Gun Scanner</h2>
                 <button class="modal-close" data-close="barcodeScannerModal" id="stopCameraScanBtn">✕</button>
             </div>
             <div class="modal-body" style="text-align:center;">
-                <p style="font-size:12px; color:var(--text3); margin-bottom:12px;">Point camera towards medicine barcode. Scanner will auto-detect code.</p>
-                <div id="barcodeReaderStream" style="width:100%; min-height:250px; background:#000; border-radius:8px; overflow:hidden;"></div>
-                <div id="scannerStatusMsg" style="margin-top:12px; font-weight:600; font-size:13px; color:var(--primary);">Initializing camera scanner...</div>
-                <div class="modal-footer" style="margin-top:16px; padding:0;">
-                    <button type="button" class="btn btn-outline" data-close="barcodeScannerModal" id="closeScannerModalBtn">Cancel Scanner</button>
+                <div style="background:var(--bg-secondary, #f8fafc); border:1.5px dashed var(--border); border-radius:12px; padding:24px 16px; margin-bottom:16px;">
+                    <div style="font-size:36px; margin-bottom:8px;">🔌 ⚡ 📦</div>
+                    <h4 style="margin:0; font-size:15px; font-weight:700; color:var(--text1);">Ready for Hardware USB Barcode Gun</h4>
+                    <p style="font-size:12.5px; color:var(--text3); margin-top:6px; line-height:1.4;">
+                        Plug your USB barcode gun into the computer. Point the laser beam at any medicine strip or box barcode and press the trigger button on the gun.
+                    </p>
+                    <div style="margin-top:16px;">
+                        <input type="text" class="form-control" id="usbScannerGunInput" placeholder="⚡ Scan barcode using USB gun..." style="text-align:center; font-size:15px; font-weight:700; letter-spacing:1px; border:2px solid var(--primary);" autofocus>
+                    </div>
+                </div>
+                <div id="scannerStatusMsg" style="font-weight:600; font-size:13px; color:#10b981; display:flex; align-items:center; justify-content:center; gap:6px;">
+                    <span style="display:inline-block; width:10px; height:10px; background:#10b981; border-radius:50%; box-shadow:0 0 8px #10b981;"></span>
+                    USB Scanner Ready & Listening for Scans
+                </div>
+                <div class="modal-footer" style="margin-top:16px; padding:0; justify-content:center;">
+                    <button type="button" class="btn btn-outline" data-close="barcodeScannerModal" id="closeScannerModalBtn">Done / Close</button>
                 </div>
             </div>
         </div>

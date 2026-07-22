@@ -6155,68 +6155,92 @@ async function deleteMedicine(id) {
   }
 }
 
-// ──────── 2. BARCODE SCANNING INTEGRATION ────────
+// ──────── 2. HARDWARE USB BARCODE SCANNER INTEGRATION ────────
+let usbBarcodeBuffer = "";
+let usbBarcodeTimer = null;
+
+// Global USB Barcode Gun Listener (Listens to rapid keypresses from hardware barcode guns)
+window.addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+  const targetTagName = e.target ? e.target.tagName.toUpperCase() : "";
+  const isInputFocused = targetTagName === "INPUT" || targetTagName === "TEXTAREA" || targetTagName === "SELECT";
+
+  if (e.key === "Enter") {
+    if (usbBarcodeBuffer.length >= 3) {
+      e.preventDefault();
+      const scannedBarcode = usbBarcodeBuffer.trim();
+      usbBarcodeBuffer = "";
+      handleHardwareBarcodeScan(scannedBarcode, isInputFocused ? e.target : null);
+    } else {
+      usbBarcodeBuffer = "";
+    }
+    return;
+  }
+
+  if (e.key && e.key.length === 1) {
+    usbBarcodeBuffer += e.key;
+    clearTimeout(usbBarcodeTimer);
+    usbBarcodeTimer = setTimeout(() => {
+      usbBarcodeBuffer = "";
+    }, 100);
+  }
+});
+
+async function handleHardwareBarcodeScan(barcode, targetElement) {
+  if (!barcode) return;
+  console.log("🔌 [USB BARCODE GUN SCANNED]:", barcode);
+  showToast(`🔌 USB Scanned Barcode: ${barcode}`, "success");
+
+  // 1. Fill target element if specific input is focused
+  if (targetElement && (targetElement.id === "med_barcode" || targetElement.id === "dyn_med_barcode" || targetElement.id === "phr_bill_barcode" || targetElement.id === "pharmacySearchInput")) {
+    targetElement.value = barcode;
+    targetElement.dispatchEvent(new Event("input", { bubbles: true }));
+    return;
+  }
+
+  const helperInput = document.getElementById("usbScannerGunInput");
+  if (helperInput) helperInput.value = barcode;
+
+  // 2. Context-aware actions
+  if (activeTab === "pharmacy-inventory") {
+    const searchInput = document.getElementById("pharmacySearchInput");
+    if (searchInput) {
+      searchInput.value = barcode;
+      searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  } else if (activeTab === "pharma-billing" || document.getElementById("pharmaInvoiceModal").classList.contains("show")) {
+    try {
+      const res = await fetch(`${API_BASE}/pharmacy?action=medicines&barcode=${encodeURIComponent(barcode)}`, { headers: authHeaders() });
+      const data = await res.json();
+      if (res.ok && data.success && data.medicine) {
+        addMedicineToCart(data.medicine.id, data.medicine.name, data.medicine.unit_price);
+        showToast(`Added "${data.medicine.name}" to cart via USB scan!`, "success");
+      } else {
+        openDynamicMedicineModal();
+        const dynBarcode = document.getElementById("dyn_med_barcode");
+        if (dynBarcode) dynBarcode.value = barcode;
+        showToast(`Barcode "${barcode}" not found in inventory. Register it dynamically!`, "error");
+      }
+    } catch (err) {
+      console.error("USB Barcode lookup error:", err);
+    }
+  }
+}
+
 function startBarcodeScan(targetInputId) {
   activeBarcodeTargetInputId = targetInputId;
-  const statusMsg = document.getElementById("scannerStatusMsg");
-  statusMsg.textContent = "Initializing camera scanner...";
   openModal("barcodeScannerModal");
-
-  if (typeof Html5Qrcode === "undefined") {
-    statusMsg.textContent = "Camera scanner library loading... If camera is unavailable, use USB scanner or manual entry.";
-  }
-
-  try {
-    if (html5QrcodeInstance) {
-      html5QrcodeInstance.stop().catch(() => {}).finally(() => {
-        initCameraStream();
-      });
-    } else {
-      initCameraStream();
+  setTimeout(() => {
+    const helperInput = document.getElementById("usbScannerGunInput");
+    if (helperInput) {
+      helperInput.focus();
+      helperInput.select();
     }
-  } catch (err) {
-    statusMsg.textContent = "Camera access unavailable. Connect USB hardware barcode scanner or type barcode manually.";
-  }
-}
-
-function initCameraStream() {
-  const statusMsg = document.getElementById("scannerStatusMsg");
-  if (typeof Html5Qrcode === "undefined") return;
-
-  html5QrcodeInstance = new Html5Qrcode("barcodeReaderStream");
-  html5QrcodeInstance.start(
-    { facingMode: "environment" },
-    { fps: 10, qrbox: { width: 250, height: 150 } },
-    (decodedText) => {
-      onBarcodeScannedSuccess(decodedText);
-    },
-    () => {}
-  ).catch((err) => {
-    console.warn("Camera start failed:", err);
-    statusMsg.textContent = "Camera scanner inactive. Hardware USB barcode guns work automatically on input focus!";
-  });
-}
-
-function onBarcodeScannedSuccess(barcodeText) {
-  if (!barcodeText) return;
-  stopBarcodeScan();
-
-  if (activeBarcodeTargetInputId) {
-    const inputEl = document.getElementById(activeBarcodeTargetInputId);
-    if (inputEl) {
-      inputEl.value = barcodeText.trim();
-      inputEl.dispatchEvent(new Event("input", { bubbles: true }));
-      showToast(`Scanned Barcode: ${barcodeText}`, "success");
-    }
-  }
+  }, 200);
 }
 
 function stopBarcodeScan() {
-  if (html5QrcodeInstance) {
-    html5QrcodeInstance.stop().catch(() => {}).finally(() => {
-      html5QrcodeInstance = null;
-    });
-  }
   closeModal("barcodeScannerModal");
 }
 
