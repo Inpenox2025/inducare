@@ -2514,6 +2514,8 @@
                 </form>
             </div>
         </div>
+    </div>
+
     <!-- 19. Raise Support Ticket Modal -->
     <div class="modal-overlay" id="raiseTicketModal">
         <div class="modal" style="max-width: 500px;">
@@ -2534,6 +2536,31 @@
                     <div class="modal-footer" style="padding-top: 16px; margin-top: 16px; border-top: 1px solid var(--border);">
                         <button type="button" class="btn btn-outline" data-close="raiseTicketModal">Cancel</button>
                         <button type="submit" class="btn btn-primary">Submit Ticket</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 20. Support Ticket Chat & Conversation Modal -->
+    <div class="modal-overlay" id="ticketChatModal">
+        <div class="modal modal-lg" style="max-width: 650px;">
+            <div class="modal-header">
+                <h2>💬 Support Ticket Messages & Conversation</h2>
+                <button class="modal-close" data-close="ticketChatModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <div style="background:var(--bg-secondary, #f8fafc); border:1px solid var(--border); padding:12px; border-radius:8px; margin-bottom:14px;">
+                    <div>Ticket #: <strong id="chatTicketNo">—</strong></div>
+                    <div>Subject: <strong id="chatTicketSubject">—</strong></div>
+                </div>
+                <div id="ticketChatMessages" style="max-height:300px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:14px; background:#fff; display:flex; flex-direction:column; gap:10px;">
+                    <div style="text-align:center; color:var(--text3); padding:20px;">Loading conversation...</div>
+                </div>
+                <form id="chatMessageForm" onsubmit="event.preventDefault(); sendSupportMessage();">
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" class="form-control" id="chatMessageInput" placeholder="Type your reply message here..." style="flex:1;" required>
+                        <button type="submit" class="btn btn-primary" id="sendChatMessageBtn">Send Message</button>
                     </div>
                 </form>
             </div>

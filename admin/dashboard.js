@@ -5775,17 +5775,16 @@ async function openTicketChat(ticketId) {
   const user = getUser();
   if (!user) return;
 
-  const ticketChatCard = document.getElementById("ticketChatCard");
-  const chatMessagesContainer = document.getElementById("chatMessagesContainer");
-  const chatTicketSubject = document.getElementById("chatTicketSubject");
-  const chatTicketStatus = document.getElementById("chatTicketStatus");
-  const resolveTicketBtn = document.getElementById("resolveTicketBtn");
-
-  if (!ticketChatCard || !chatMessagesContainer) return;
-
   activeSupportTicketId = ticketId;
-  ticketChatCard.style.display = "flex";
-  chatMessagesContainer.innerHTML = '<span class="loading-cell"><span class="spinner"></span> Loading messages...</span>';
+  const chatMessages = document.getElementById("ticketChatMessages");
+  const chatTicketNo = document.getElementById("chatTicketNo");
+  const chatTicketSubject = document.getElementById("chatTicketSubject");
+
+  if (chatTicketNo) chatTicketNo.textContent = `#${ticketId}`;
+  if (chatTicketSubject) chatTicketSubject.textContent = `Loading ticket details...`;
+  if (chatMessages) chatMessages.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text3);">⏳ Loading conversation...</div>';
+
+  openModal("ticketChatModal");
 
   try {
     const res = await fetch(`${API_BASE}/tickets?action=messages&ticket_id=${ticketId}`, {
@@ -5794,26 +5793,13 @@ async function openTicketChat(ticketId) {
     const data = await res.json();
     if (res.ok && data.success) {
       const ticket = data.ticket;
-      chatTicketSubject.textContent = `#${ticket.id}: ${ticket.subject}`;
-      chatTicketStatus.textContent = ticket.status === "open" ? "Open" : "Resolved";
-      chatTicketStatus.className = `status-badge ${ticket.status === "open" ? "status-unpaid" : "status-paid"}`;
+      if (chatTicketSubject) chatTicketSubject.textContent = ticket.subject;
 
-      if (resolveTicketBtn) {
-        resolveTicketBtn.style.display = (user.role === "super_admin" && ticket.status === "open") ? "block" : "none";
-      }
-
-      const chatInputArea = document.getElementById("chatInputArea");
-      if (chatInputArea) {
-        chatInputArea.style.display = ticket.status === "open" ? "flex" : "none";
-      }
-
-      if (data.messages.length === 0) {
-        chatMessagesContainer.innerHTML = '<div style="text-align:center; padding:12px; color:var(--text3); font-size:13px;">No chat messages yet.</div>';
-      } else {
-        chatMessagesContainer.innerHTML = data.messages.map(m => {
+      if (data.messages && data.messages.length > 0) {
+        chatMessages.innerHTML = data.messages.map(m => {
           const isMe = parseInt(m.sender_id) === parseInt(user.id);
-          const alignStyle = isMe ? "align-self: flex-end; background-color: var(--primary); color: #ffffff;" : "align-self: flex-start; background-color: #ffffff; color: var(--text1); border: 1px solid var(--border);";
-          const senderLabel = isMe ? "You" : `${esc(m.username)} (${m.sender_role === "super_admin" ? "Super Admin" : "Hospital Admin"})`;
+          const alignStyle = isMe ? "align-self: flex-end; background: var(--primary, #0f172a); color: #ffffff;" : "align-self: flex-start; background: var(--bg-secondary, #f1f5f9); color: var(--text1, #0f172a); border: 1px solid var(--border);";
+          const senderLabel = isMe ? "You" : `${esc(m.username || 'User')} (${esc(m.sender_role || 'User')})`;
           
           return `
             <div style="max-width: 80%; padding: 8px 12px; border-radius: 12px; ${alignStyle}">
@@ -5823,14 +5809,15 @@ async function openTicketChat(ticketId) {
             </div>
           `;
         }).join("");
-        
-        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      } else {
+        chatMessages.innerHTML = '<div style="text-align:center; color:var(--text3); padding:20px;">No messages in this conversation yet.</div>';
       }
     } else {
-      chatMessagesContainer.innerHTML = `<span style="color:var(--error); font-size:13px;">${esc(data.error || "Failed to load chat")}</span>`;
+      if (chatMessages) chatMessages.innerHTML = `<div style="color:var(--danger); text-align:center; padding:20px;">${esc(data.error || "Failed to load chat")}</div>`;
     }
   } catch (err) {
-    chatMessagesContainer.innerHTML = '<span style="color:var(--error); font-size:13px;">Connection error loading chat</span>';
+    if (chatMessages) chatMessages.innerHTML = '<div style="color:var(--danger); text-align:center; padding:20px;">Connection error loading chat</div>';
   }
 }
 
