@@ -2522,7 +2522,7 @@
                 <button class="modal-close" data-close="raiseTicketModal">✕</button>
             </div>
             <div class="modal-body">
-                <form id="raiseTicketForm">
+                <form id="raiseTicketForm" onsubmit="saveRaiseTicketForm(event)">
                     <div class="form-group">
                         <label for="ticketSubject">Subject / Query Topic <span class="req">*</span></label>
                         <input type="text" class="form-control" id="ticketSubject" placeholder="e.g. Reconciliation error, Room price discrepancy" required>
@@ -2552,7 +2552,7 @@
                 <button class="modal-close" data-close="medicineModal">✕</button>
             </div>
             <div class="modal-body">
-                <form id="medicineForm" autocomplete="off">
+                <form id="medicineForm" autocomplete="off" onsubmit="saveMedicineForm(event)">
                     <input type="hidden" id="medicine_id" name="id">
                     <div class="form-row">
                         <div class="form-group" style="flex:0.6;">
@@ -2634,7 +2634,7 @@
             </div>
             <div class="modal-body">
                 <p style="font-size:13px; color:var(--text2); margin-bottom:16px;">Add this new medicine directly to inventory now so it can immediately be added to the active prescription bill.</p>
-                <form id="dynamicMedicineForm" autocomplete="off">
+                <form id="dynamicMedicineForm" autocomplete="off" onsubmit="saveDynamicMedicine(event)">
                     <div class="form-group">
                         <label for="dyn_med_name">Medicine Name <span class="req">*</span></label>
                         <input type="text" class="form-control" id="dyn_med_name" required>
@@ -2705,7 +2705,7 @@
                 <button class="modal-close" data-close="pharmaInvoiceModal">✕</button>
             </div>
             <div class="modal-body">
-                <form id="pharmaInvoiceForm" autocomplete="off">
+                <form id="pharmaInvoiceForm" autocomplete="off" onsubmit="savePharmaInvoice(event)">
                     <div class="form-row">
                         <div class="form-group" style="flex:1;">
                             <label for="pharma_patient_id">Select Patient <span class="req">*</span></label>
@@ -2807,7 +2807,7 @@
                 <button class="modal-close" data-close="pharmaPaymentModal">✕</button>
             </div>
             <div class="modal-body">
-                <form id="pharmaPaymentForm" autocomplete="off">
+                <form id="pharmaPaymentForm" autocomplete="off" onsubmit="savePharmaPayment(event)">
                     <input type="hidden" id="pay_pharma_invoice_id">
                     <div style="background:var(--bg-secondary, #f8fafc); padding:12px; border-radius:8px; margin-bottom:16px; font-size:13px;">
                         <div>Invoice #: <strong id="pay_pharma_inv_no">—</strong></div>
@@ -2848,7 +2848,7 @@
                 <button class="modal-close" data-close="labTestModal">✕</button>
             </div>
             <div class="modal-body">
-                <form id="labTestForm" autocomplete="off">
+                <form id="labTestForm" autocomplete="off" onsubmit="saveLabTestForm(event)">
                     <input type="hidden" id="lab_test_id" name="id">
                     <div class="form-row">
                         <div class="form-group" style="flex:0.6;">
@@ -2905,7 +2905,7 @@
                 <button class="modal-close" data-close="labInvoiceModal">✕</button>
             </div>
             <div class="modal-body">
-                <form id="labInvoiceForm" autocomplete="off">
+                <form id="labInvoiceForm" autocomplete="off" onsubmit="saveLabInvoice(event)">
                     <div class="form-row">
                         <div class="form-group" style="flex:1;">
                             <label for="lab_patient_id">Select Patient <span class="req">*</span></label>
@@ -2977,7 +2977,7 @@
                 <button class="modal-close" data-close="labPaymentModal">✕</button>
             </div>
             <div class="modal-body">
-                <form id="labPaymentForm" autocomplete="off">
+                <form id="labPaymentForm" autocomplete="off" onsubmit="saveLabPayment(event)">
                     <input type="hidden" id="pay_lab_invoice_id">
                     <div style="background:var(--bg-secondary, #f8fafc); padding:12px; border-radius:8px; margin-bottom:16px; font-size:13px;">
                         <div>Lab Order #: <strong id="pay_lab_inv_no">—</strong></div>
