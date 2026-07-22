@@ -8,7 +8,7 @@ import {
   RefreshControl,
   ActivityIndicator
 } from 'react-native';
-import { getThemeColors, Shadows } from '../theme/colors';
+import { Colors, getThemeColors, Shadows } from '../theme/colors';
 import { api } from '../services/api';
 
 export default function DashboardScreen({ user, onNavigate, isDarkMode = true }) {
@@ -56,71 +56,95 @@ export default function DashboardScreen({ user, onNavigate, isDarkMode = true })
 
   return (
     <ScrollView
-      style={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffffff" />}
+      style={[styles.container, { backgroundColor: colors.bg }]}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
+      }
     >
-      {/* Top Header Card */}
-      <View style={styles.topCard}>
+      {/* Welcome Banner */}
+      <View style={[styles.welcomeCard, Shadows.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.welcomeText}>Welcome back,</Text>
-          <Text style={styles.userNameText}>{user?.full_name || user?.username || 'User'}</Text>
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleBadgeText}>
-              {(user?.role || 'Staff').toUpperCase()} • {user?.hospital_name || 'Inducare Medical Center'}
-            </Text>
+          <Text style={[styles.welcomeText, { color: colors.textMuted }]}>Welcome back,</Text>
+          <Text style={[styles.userNameText, { color: colors.text }]}>{user?.full_name || user?.username || 'Staff User'}</Text>
+          <View style={[styles.roleBadge, { backgroundColor: colors.cardSub }]}>
+            <Text style={[styles.roleBadgeText, { color: colors.accent }]}>{(user?.role || 'HOSPITAL STAFF').toUpperCase()}</Text>
           </View>
         </View>
         <Text style={styles.userAvatar}>👨‍⚕️</Text>
       </View>
 
-      {/* Stats Grid */}
-      <Text style={styles.sectionHeader}>📊 Operational Overview</Text>
+      {/* Metrics Grid */}
+      <Text style={[styles.sectionHeader, { color: colors.text }]}>📊 Operational Summary</Text>
+
       {loading ? (
-        <ActivityIndicator color={Colors.accent} style={{ marginVertical: 30 }} />
+        <ActivityIndicator color={colors.accent} style={{ marginVertical: 30 }} />
       ) : (
         <View style={styles.statsGrid}>
-          <TouchableOpacity style={[styles.statBox, Shadows.card]} onPress={() => onNavigate('Pharmacy')}>
-            <Text style={styles.statIcon}>💊</Text>
-            <Text style={styles.statNumber}>{stats.medicinesCount}</Text>
-            <Text style={styles.statLabel}>Pharmacy Medicines</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.statBox, Shadows.card]} onPress={() => onNavigate('Laboratory')}>
-            <Text style={styles.statIcon}>🧪</Text>
-            <Text style={styles.statNumber}>{stats.labTestsCount}</Text>
-            <Text style={styles.statLabel}>Lab Diagnostic Catalog</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.statBox, Shadows.card]} onPress={() => onNavigate('Patients')}>
+          <TouchableOpacity
+            style={[styles.statBox, Shadows.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => onNavigate && onNavigate('Patients')}
+          >
             <Text style={styles.statIcon}>👥</Text>
-            <Text style={styles.statNumber}>{stats.patientsCount}</Text>
-            <Text style={styles.statLabel}>Registered Patients</Text>
+            <Text style={[styles.statNumber, { color: colors.text }]}>{stats.patientsCount}</Text>
+            <Text style={[styles.statLabel, { color: colors.textMuted }]}>Patients Registry</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.statBox, Shadows.card]} onPress={() => onNavigate('Support')}>
+          <TouchableOpacity
+            style={[styles.statBox, Shadows.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => onNavigate && onNavigate('Pharmacy')}
+          >
+            <Text style={styles.statIcon}>💊</Text>
+            <Text style={[styles.statNumber, { color: colors.text }]}>{stats.medicinesCount}</Text>
+            <Text style={[styles.statLabel, { color: colors.textMuted }]}>Pharmacy Items</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.statBox, Shadows.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => onNavigate && onNavigate('Laboratory')}
+          >
+            <Text style={styles.statIcon}>🧪</Text>
+            <Text style={[styles.statNumber, { color: colors.text }]}>{stats.labTestsCount}</Text>
+            <Text style={[styles.statLabel, { color: colors.textMuted }]}>Diagnostic Tests</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.statBox, Shadows.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => onNavigate && onNavigate('Support')}
+          >
             <Text style={styles.statIcon}>🛠️</Text>
-            <Text style={styles.statNumber}>{stats.openTicketsCount}</Text>
-            <Text style={styles.statLabel}>Open Support Tickets</Text>
+            <Text style={[styles.statNumber, { color: colors.accent }]}>{stats.openTicketsCount}</Text>
+            <Text style={[styles.statLabel, { color: colors.textMuted }]}>Open Support Tickets</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* Quick Launchers */}
-      <Text style={styles.sectionHeader}>⚡ Quick Actions</Text>
+      {/* Quick Access Launchers */}
+      <Text style={[styles.sectionHeader, { color: colors.text }]}>🚀 Quick Launchers</Text>
+
       <View style={styles.quickLaunchers}>
-        <TouchableOpacity style={styles.launcherBtn} onPress={() => onNavigate('Pharmacy')}>
+        <TouchableOpacity
+          style={[styles.launcherBtn, Shadows.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => onNavigate && onNavigate('Pharmacy')}
+        >
           <Text style={styles.launcherIcon}>🧾</Text>
-          <Text style={styles.launcherText}>New Pharmacy Bill</Text>
+          <Text style={[styles.launcherText, { color: colors.text }]}>New Pharmacy Bill & Prescription</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.launcherBtn} onPress={() => onNavigate('Laboratory')}>
+        <TouchableOpacity
+          style={[styles.launcherBtn, Shadows.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => onNavigate && onNavigate('Laboratory')}
+        >
           <Text style={styles.launcherIcon}>🔬</Text>
-          <Text style={styles.launcherText}>New Lab Order</Text>
+          <Text style={[styles.launcherText, { color: colors.text }]}>Generate Diagnostic Lab Order</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.launcherBtn} onPress={() => onNavigate('Support')}>
-          <Text style={styles.launcherIcon}>🛠️</Text>
-          <Text style={styles.launcherText}>Raise Support Ticket</Text>
+        <TouchableOpacity
+          style={[styles.launcherBtn, Shadows.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => onNavigate && onNavigate('Support')}
+        >
+          <Text style={styles.launcherIcon}>💬</Text>
+          <Text style={[styles.launcherText, { color: colors.text }]}>Raise Support Ticket / Live Chat</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -130,31 +154,27 @@ export default function DashboardScreen({ user, onNavigate, isDarkMode = true })
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.bgDark,
+  },
+  content: {
     padding: 16,
   },
-  topCard: {
-    backgroundColor: Colors.bgCardDark,
-    borderRadius: 16,
+  welcomeCard: {
+    borderRadius: 20,
     padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: Colors.borderDark,
   },
   welcomeText: {
-    color: Colors.textMutedLight,
     fontSize: 13,
   },
   userNameText: {
-    color: '#ffffff',
     fontSize: 20,
     fontWeight: '800',
     marginTop: 2,
   },
   roleBadge: {
-    backgroundColor: '#0f172a',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
@@ -162,7 +182,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   roleBadgeText: {
-    color: Colors.accent,
     fontSize: 11,
     fontWeight: '700',
   },
@@ -173,7 +192,6 @@ const styles = StyleSheet.create({
   sectionHeader: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#ffffff',
     marginBottom: 14,
   },
   statsGrid: {
@@ -184,11 +202,9 @@ const styles = StyleSheet.create({
   },
   statBox: {
     width: '48%',
-    backgroundColor: Colors.bgCardDark,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: Colors.borderDark,
   },
   statIcon: {
     fontSize: 28,
@@ -197,11 +213,9 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#ffffff',
   },
   statLabel: {
     fontSize: 12,
-    color: Colors.textMutedLight,
     marginTop: 4,
   },
   quickLaunchers: {
@@ -209,13 +223,11 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   launcherBtn: {
-    backgroundColor: Colors.bgCardDark,
     borderRadius: 14,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: Colors.borderDark,
   },
   launcherIcon: {
     fontSize: 22,
@@ -224,6 +236,5 @@ const styles = StyleSheet.create({
   launcherText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#ffffff',
   },
 });
