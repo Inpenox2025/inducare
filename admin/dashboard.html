@@ -43,6 +43,18 @@
             <a href="#" class="nav-item" data-tab="receipts-panel" id="navReceiptsPanel">
                 <span class="nav-icon">🧾</span> Payment Receipts
             </a>
+            <a href="#" class="nav-item" data-tab="pharmacy-inventory" id="navPharmacyInventory" style="display:none;">
+                <span class="nav-icon">💊</span> Pharmacy Inventory
+            </a>
+            <a href="#" class="nav-item" data-tab="pharma-billing" id="navPharmaBilling" style="display:none;">
+                <span class="nav-icon">🧾</span> Pharma Bills & Receipts
+            </a>
+            <a href="#" class="nav-item" data-tab="lab-inventory" id="navLabInventory" style="display:none;">
+                <span class="nav-icon">🧪</span> Lab Tests Inventory
+            </a>
+            <a href="#" class="nav-item" data-tab="lab-billing" id="navLabBilling" style="display:none;">
+                <span class="nav-icon">🔬</span> Lab Bills & Receipts
+            </a>
             <a href="#" class="nav-item" data-tab="doctors" id="navDoctors">
                 <span class="nav-icon">👨‍⚕️</span> Doctors Management
             </a>
@@ -757,6 +769,26 @@
                             <input type="checkbox" name="menu_tab" value="support-tickets" data-label="Support Tickets"
                                 data-icon="🛠️"> 🛠️ Support Tickets
                         </label>
+                        <label
+                            style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight:600; cursor:pointer;">
+                            <input type="checkbox" name="menu_tab" value="pharmacy-inventory" data-label="Pharmacy Inventory"
+                                data-icon="💊"> 💊 Pharmacy Inventory
+                        </label>
+                        <label
+                            style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight:600; cursor:pointer;">
+                            <input type="checkbox" name="menu_tab" value="pharma-billing" data-label="Pharma Bills & Receipts"
+                                data-icon="🧾"> 🧾 Pharma Bills & Receipts
+                        </label>
+                        <label
+                            style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight:600; cursor:pointer;">
+                            <input type="checkbox" name="menu_tab" value="lab-inventory" data-label="Lab Tests Inventory"
+                                data-icon="🧪"> 🧪 Lab Tests Inventory
+                        </label>
+                        <label
+                            style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight:600; cursor:pointer;">
+                            <input type="checkbox" name="menu_tab" value="lab-billing" data-label="Lab Bills & Receipts"
+                                data-icon="🔬"> 🔬 Lab Bills & Receipts
+                        </label>
                     </div>
                 </div>
             </div>
@@ -1039,6 +1071,222 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════ SECTION: PHARMACY INVENTORY ═══════ -->
+        <section id="tab-pharmacy-inventory" class="tab-panel">
+            <div class="details-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+                    <div>
+                        <h3>💊 Medicine Inventory Management</h3>
+                        <p style="font-size:13px; color:var(--text3); margin-top:4px;">Manage stock, price tags, rack placement, and barcode scanning for medicines.</p>
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <input type="text" class="form-control" id="pharmacySearchInput" placeholder="🔍 Search Name, Generic, Barcode..." style="width:240px; font-size:13px;">
+                        <button class="btn btn-outline" id="scanBarcodeBtn" type="button">📷 Scan Barcode</button>
+                        <button class="btn btn-primary" id="openMedicineModalBtn" type="button">+ Add Medicine</button>
+                    </div>
+                </div>
+                <div class="table-container minimal">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Barcode</th>
+                                <th>Medicine Name</th>
+                                <th>Generic Name</th>
+                                <th>Category</th>
+                                <th>Stock Qty</th>
+                                <th>Unit Price</th>
+                                <th>MRP</th>
+                                <th>Expiry Date</th>
+                                <th>Rack</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="medicinesTableBody">
+                            <tr>
+                                <td colspan="10" class="empty-cell">Loading medicine inventory...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════ SECTION: PHARMA BILLS & RECEIPTS ═══════ -->
+        <section id="tab-pharma-billing" class="tab-panel">
+            <div class="details-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+                    <div>
+                        <h3>🧾 Pharmacy Bills & Payment Receipts</h3>
+                        <p style="font-size:13px; color:var(--text3); margin-top:4px;">Separate pharmacy billing with patient and prescribed doctor linkage.</p>
+                    </div>
+                    <div style="display:flex; gap:12px; align-items:center;">
+                        <div style="display:inline-flex; background:var(--bg-secondary, #f1f5f9); padding:3px; border-radius:8px;">
+                            <button type="button" class="btn btn-sm" id="pharmaBillsToggleBtn" style="background:var(--primary, #0f172a); color:#fff; font-weight:600; border-radius:6px; padding:6px 14px;">🧾 Pharma Bills</button>
+                            <button type="button" class="btn btn-sm" id="pharmaReceiptsToggleBtn" style="background:transparent; color:var(--text2, #475569); font-weight:600; border-radius:6px; padding:6px 14px;">📄 Payment Receipts</button>
+                        </div>
+                        <button class="btn btn-primary" id="openPharmaInvoiceModalBtn" type="button">+ Create Pharmacy Bill</button>
+                    </div>
+                </div>
+
+                <!-- Sub-Panel 1: Pharma Bills -->
+                <div id="pharmaBillsSubPanel">
+                    <div class="table-container minimal">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Invoice #</th>
+                                    <th>Date</th>
+                                    <th>Patient Name</th>
+                                    <th>Prescribed Doctor</th>
+                                    <th>Net Amount</th>
+                                    <th>Paid Amount</th>
+                                    <th>Balance Due</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pharmaInvoicesTableBody">
+                                <tr>
+                                    <td colspan="9" class="empty-cell">Loading pharmacy bills...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Sub-Panel 2: Pharma Payment Receipts -->
+                <div id="pharmaReceiptsSubPanel" style="display:none;">
+                    <div class="table-container minimal">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Receipt #</th>
+                                    <th>Invoice #</th>
+                                    <th>Date</th>
+                                    <th>Patient Name</th>
+                                    <th>Prescribed Doctor</th>
+                                    <th>Amount Paid</th>
+                                    <th>Payment Mode</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pharmaReceiptsTableBody">
+                                <tr>
+                                    <td colspan="8" class="empty-cell">Loading payment receipts...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════ SECTION: LAB TESTS INVENTORY ═══════ -->
+        <section id="tab-lab-inventory" class="tab-panel">
+            <div class="details-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+                    <div>
+                        <h3>🧪 Lab Tests Inventory Catalog</h3>
+                        <p style="font-size:13px; color:var(--text3); margin-top:4px;">Manage lab diagnostic test catalog, pricing, sample types, and normal ranges.</p>
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <input type="text" class="form-control" id="labTestSearchInput" placeholder="🔍 Search Test Name, Code..." style="width:240px; font-size:13px;">
+                        <button class="btn btn-primary" id="openLabTestModalBtn" type="button">+ Add Lab Test</button>
+                    </div>
+                </div>
+                <div class="table-container minimal">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Test Code</th>
+                                <th>Test Name</th>
+                                <th>Category</th>
+                                <th>Sample Type</th>
+                                <th>Price</th>
+                                <th>Reference / Normal Range</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="labTestsTableBody">
+                            <tr>
+                                <td colspan="7" class="empty-cell">Loading lab test catalog...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════ SECTION: LAB BILLS & RECEIPTS ═══════ -->
+        <section id="tab-lab-billing" class="tab-panel">
+            <div class="details-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+                    <div>
+                        <h3>🔬 Lab Bills & Payment Receipts</h3>
+                        <p style="font-size:13px; color:var(--text3); margin-top:4px;">Separate laboratory billing with patient and prescribed doctor linkage and reports generation.</p>
+                    </div>
+                    <div style="display:flex; gap:12px; align-items:center;">
+                        <div style="display:inline-flex; background:var(--bg-secondary, #f1f5f9); padding:3px; border-radius:8px;">
+                            <button type="button" class="btn btn-sm" id="labBillsToggleBtn" style="background:var(--primary, #0f172a); color:#fff; font-weight:600; border-radius:6px; padding:6px 14px;">🔬 Lab Orders & Bills</button>
+                            <button type="button" class="btn btn-sm" id="labReceiptsToggleBtn" style="background:transparent; color:var(--text2, #475569); font-weight:600; border-radius:6px; padding:6px 14px;">📄 Payment Receipts</button>
+                        </div>
+                        <button class="btn btn-primary" id="openLabInvoiceModalBtn" type="button">+ Create Lab Order / Bill</button>
+                    </div>
+                </div>
+
+                <!-- Sub-Panel 1: Lab Bills -->
+                <div id="labBillsSubPanel">
+                    <div class="table-container minimal">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Lab Order #</th>
+                                    <th>Date</th>
+                                    <th>Patient Name</th>
+                                    <th>Prescribed Doctor</th>
+                                    <th>Net Amount</th>
+                                    <th>Paid Amount</th>
+                                    <th>Balance Due</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="labInvoicesTableBody">
+                                <tr>
+                                    <td colspan="9" class="empty-cell">Loading lab orders...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Sub-Panel 2: Lab Payment Receipts -->
+                <div id="labReceiptsSubPanel" style="display:none;">
+                    <div class="table-container minimal">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Receipt #</th>
+                                    <th>Order #</th>
+                                    <th>Date</th>
+                                    <th>Patient Name</th>
+                                    <th>Prescribed Doctor</th>
+                                    <th>Amount Paid</th>
+                                    <th>Payment Mode</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="labReceiptsTableBody">
+                                <tr>
+                                    <td colspan="8" class="empty-cell">Loading lab payment receipts...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </section>
@@ -2291,8 +2539,487 @@
         </div>
     </div>
 
+    <!-- ═══════════════════════════════════════
+         PHARMACY MODALS
+         ═══════════════════════════════════════ -->
+
+    <!-- 15. Medicine Add / Edit Modal -->
+    <div class="modal-overlay" id="medicineModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="medicineModalTitle">💊 Add Medicine to Inventory</h2>
+                <button class="modal-close" data-close="medicineModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="medicineForm" autocomplete="off">
+                    <input type="hidden" id="medicine_id" name="id">
+                    <div class="form-row">
+                        <div class="form-group" style="flex:0.6;">
+                            <label for="med_barcode">Barcode / SKU Code</label>
+                            <div style="display:flex; gap:6px;">
+                                <input type="text" class="form-control" id="med_barcode" placeholder="Scan or type barcode...">
+                                <button type="button" class="btn btn-outline" id="scanModalBarcodeBtn" title="Scan with camera">📷</button>
+                            </div>
+                        </div>
+                        <div class="form-group" style="flex:1;">
+                            <label for="med_name">Medicine Name <span class="req">*</span></label>
+                            <input type="text" class="form-control" id="med_name" placeholder="e.g. Paracetamol 500mg" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="med_generic">Generic Name</label>
+                            <input type="text" class="form-control" id="med_generic" placeholder="e.g. Acetaminophen">
+                        </div>
+                        <div class="form-group">
+                            <label for="med_category">Category</label>
+                            <input type="text" class="form-control" id="med_category" placeholder="e.g. Analgesic / Antibiotic" value="General">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="med_manufacturer">Manufacturer / Brand</label>
+                            <input type="text" class="form-control" id="med_manufacturer" placeholder="e.g. Cipla / Sun Pharma">
+                        </div>
+                        <div class="form-group">
+                            <label for="med_rack">Rack Location</label>
+                            <input type="text" class="form-control" id="med_rack" placeholder="e.g. A-12 / Shelf 3">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="med_unit_price">Unit Price (₹) <span class="req">*</span></label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="med_unit_price" placeholder="0.00" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="med_mrp">MRP (₹)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="med_mrp" placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="med_stock">Initial Stock Quantity <span class="req">*</span></label>
+                            <input type="number" min="0" class="form-control" id="med_stock" value="50" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="med_reorder">Reorder Threshold Qty</label>
+                            <input type="number" min="0" class="form-control" id="med_reorder" value="10">
+                        </div>
+                        <div class="form-group">
+                            <label for="med_expiry">Expiry Date</label>
+                            <input type="date" class="form-control" id="med_expiry">
+                        </div>
+                    </div>
+
+                    <div class="modal-footer" style="padding-top:16px; margin-top:16px; border-top:1px solid var(--border);">
+                        <button type="button" class="btn btn-outline" data-close="medicineModal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Medicine</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 16. Dynamic Add Medicine Inline Modal (Triggered when search medicine fails) -->
+    <div class="modal-overlay" id="dynamicMedicineModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>✨ Medicine Not Found - Add Dynamically</h2>
+                <button class="modal-close" data-close="dynamicMedicineModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size:13px; color:var(--text2); margin-bottom:16px;">Add this new medicine directly to inventory now so it can immediately be added to the active prescription bill.</p>
+                <form id="dynamicMedicineForm" autocomplete="off">
+                    <div class="form-group">
+                        <label for="dyn_med_name">Medicine Name <span class="req">*</span></label>
+                        <input type="text" class="form-control" id="dyn_med_name" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="dyn_med_barcode">Barcode / SKU</label>
+                            <input type="text" class="form-control" id="dyn_med_barcode" placeholder="Optional barcode">
+                        </div>
+                        <div class="form-group">
+                            <label for="dyn_med_category">Category</label>
+                            <input type="text" class="form-control" id="dyn_med_category" value="General">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="dyn_med_unit_price">Unit Selling Price (₹) <span class="req">*</span></label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="dyn_med_unit_price" value="10.00" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="dyn_med_stock">Initial Stock Qty <span class="req">*</span></label>
+                            <input type="number" min="1" class="form-control" id="dyn_med_stock" value="100" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="padding-top:16px; margin-top:16px; border-top:1px solid var(--border);">
+                        <button type="button" class="btn btn-outline" data-close="dynamicMedicineModal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save & Add to Bill</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 17. Camera Barcode Scanner Modal -->
+    <div class="modal-overlay" id="barcodeScannerModal">
+        <div class="modal" style="max-width:500px;">
+            <div class="modal-header">
+                <h2>📷 Scan Medicine Barcode</h2>
+                <button class="modal-close" data-close="barcodeScannerModal" id="stopCameraScanBtn">✕</button>
+            </div>
+            <div class="modal-body" style="text-align:center;">
+                <p style="font-size:12px; color:var(--text3); margin-bottom:12px;">Point camera towards medicine barcode. Scanner will auto-detect code.</p>
+                <div id="barcodeReaderStream" style="width:100%; min-height:250px; background:#000; border-radius:8px; overflow:hidden;"></div>
+                <div id="scannerStatusMsg" style="margin-top:12px; font-weight:600; font-size:13px; color:var(--primary);">Initializing camera scanner...</div>
+                <div class="modal-footer" style="margin-top:16px; padding:0;">
+                    <button type="button" class="btn btn-outline" data-close="barcodeScannerModal" id="closeScannerModalBtn">Cancel Scanner</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 18. Create Pharmacy Bill Modal -->
+    <div class="modal-overlay" id="pharmaInvoiceModal">
+        <div class="modal modal-lg" style="max-width:850px;">
+            <div class="modal-header">
+                <h2>🧾 Create Pharmacy Bill & Prescription Invoice</h2>
+                <button class="modal-close" data-close="pharmaInvoiceModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="pharmaInvoiceForm" autocomplete="off">
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;">
+                            <label for="pharma_patient_id">Select Patient <span class="req">*</span></label>
+                            <select class="form-control" id="pharma_patient_id" required>
+                                <option value="">-- Choose Patient --</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex:1;">
+                            <label for="pharma_doctor_id">Prescribed Doctor <span class="req">*</span></label>
+                            <select class="form-control" id="pharma_doctor_id" required>
+                                <option value="">-- Choose Prescribed Doctor --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Search Medicine / Barcode Input Bar -->
+                    <div style="background:var(--bg-secondary, #f8fafc); border:1px solid var(--border); padding:14px; border-radius:8px; margin-bottom:16px;">
+                        <label style="font-weight:700; font-size:12px; margin-bottom:6px; display:block;">🔍 Search & Add Medicine to Bill (or Scan Barcode)</label>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <input type="text" class="form-control" id="pharmaItemSearchInput" placeholder="Scan barcode or type medicine name..." style="flex:1;">
+                            <button type="button" class="btn btn-outline" id="scanPharmaBillBarcodeBtn">📷 Scan</button>
+                            <button type="button" class="btn btn-primary" id="searchMedicineBtn">Search</button>
+                        </div>
+                        <div id="pharmaSearchResults" style="display:none; margin-top:8px; max-height:160px; overflow-y:auto; background:#fff; border:1px solid var(--border); border-radius:6px;"></div>
+                        <div id="noMedicineFoundAlert" style="display:none; margin-top:8px; padding:10px; background:#fff1f2; border:1px solid #fecdd3; border-radius:6px; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                            <span style="font-size:13px; color:#be123c; font-weight:600;">⚠️ Medicine not found in inventory!</span>
+                            <button type="button" class="btn btn-sm btn-primary" id="triggerDynamicAddMedBtn" style="background:#e11d48; border-color:#e11d48;">➕ Add Medicine Dynamically</button>
+                        </div>
+                    </div>
+
+                    <!-- Itemized Billed Medicines Table -->
+                    <h4 style="font-size:13px; font-weight:700; color:var(--text2); margin-bottom:8px;">💊 Billed Items</h4>
+                    <div class="table-container minimal" style="max-height:220px; overflow-y:auto; margin-bottom:16px;">
+                        <table class="data-table" style="font-size:12px;">
+                            <thead>
+                                <tr>
+                                    <th>Medicine Name</th>
+                                    <th>Unit Price</th>
+                                    <th>Quantity</th>
+                                    <th>Total (₹)</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pharmaBillItemsTableBody">
+                                <tr>
+                                    <td colspan="5" class="empty-cell">No medicines added to bill yet. Scan or search above.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Payment & Totals -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="pharma_discount">Discount (₹)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="pharma_discount" value="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="pharma_tax">Tax (₹)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="pharma_tax" value="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="pharma_paid">Initial Paid Amount (₹)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="pharma_paid" value="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="pharma_pay_mode">Payment Mode</label>
+                            <select class="form-control" id="pharma_pay_mode">
+                                <option value="cash">Cash</option>
+                                <option value="upi">UPI / Online</option>
+                                <option value="card">Debit/Credit Card</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-secondary, #f8fafc); padding:12px; border-radius:8px; margin-top:12px;">
+                        <div>
+                            <span style="font-size:12px; color:var(--text3);">Total Items: </span><strong id="pharmaTotalItemCount">0</strong>
+                        </div>
+                        <div style="text-align:right;">
+                            <span style="font-size:14px; font-weight:700; color:var(--text1);">Net Total: <span id="pharmaNetTotalDisplay" style="color:var(--primary);">₹ 0.00</span></span>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer" style="padding-top:16px; margin-top:16px; border-top:1px solid var(--border);">
+                        <button type="button" class="btn btn-outline" data-close="pharmaInvoiceModal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Generate Pharmacy Bill</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 19. Record Pharmacy Payment Modal -->
+    <div class="modal-overlay" id="pharmaPaymentModal">
+        <div class="modal" style="max-width:480px;">
+            <div class="modal-header">
+                <h2>🧾 Record Pharmacy Payment Receipt</h2>
+                <button class="modal-close" data-close="pharmaPaymentModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="pharmaPaymentForm" autocomplete="off">
+                    <input type="hidden" id="pay_pharma_invoice_id">
+                    <div style="background:var(--bg-secondary, #f8fafc); padding:12px; border-radius:8px; margin-bottom:16px; font-size:13px;">
+                        <div>Invoice #: <strong id="pay_pharma_inv_no">—</strong></div>
+                        <div>Patient: <strong id="pay_pharma_patient_name">—</strong></div>
+                        <div>Balance Due: <strong id="pay_pharma_due_display" style="color:#dc2626;">₹ 0.00</strong></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="pay_pharma_amount">Amount Paid Today (₹) <span class="req">*</span></label>
+                        <input type="number" step="0.01" min="0.01" class="form-control" id="pay_pharma_amount" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="pay_pharma_mode">Payment Method <span class="req">*</span></label>
+                        <select class="form-control" id="pay_pharma_mode" required>
+                            <option value="cash">Cash</option>
+                            <option value="upi">UPI / Online Transfer</option>
+                            <option value="card">Card Payment</option>
+                        </select>
+                    </div>
+                    <div class="modal-footer" style="padding-top:16px; margin-top:16px; border-top:1px solid var(--border);">
+                        <button type="button" class="btn btn-outline" data-close="pharmaPaymentModal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Submit Receipt</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ═══════════════════════════════════════
+         LAB MODALS
+         ═══════════════════════════════════════ -->
+
+    <!-- 20. Lab Test Add / Edit Modal -->
+    <div class="modal-overlay" id="labTestModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="labTestModalTitle">🧪 Add Lab Test to Catalog</h2>
+                <button class="modal-close" data-close="labTestModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="labTestForm" autocomplete="off">
+                    <input type="hidden" id="lab_test_id" name="id">
+                    <div class="form-row">
+                        <div class="form-group" style="flex:0.6;">
+                            <label for="lab_test_code">Test Code</label>
+                            <input type="text" class="form-control" id="lab_test_code" placeholder="e.g. CBC-101">
+                        </div>
+                        <div class="form-group" style="flex:1;">
+                            <label for="lab_test_name">Test Name <span class="req">*</span></label>
+                            <input type="text" class="form-control" id="lab_test_name" placeholder="e.g. Complete Blood Count (CBC)" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="lab_test_category">Category</label>
+                            <input type="text" class="form-control" id="lab_test_category" placeholder="e.g. Hematology / Biochemistry" value="Pathology">
+                        </div>
+                        <div class="form-group">
+                            <label for="lab_test_sample">Sample Type</label>
+                            <input type="text" class="form-control" id="lab_test_sample" placeholder="e.g. EDTA Blood / Serum / Urine" value="Blood">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="lab_test_price">Test Fee / Price (₹) <span class="req">*</span></label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="lab_test_price" placeholder="500.00" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="lab_test_range">Reference / Normal Range</label>
+                            <input type="text" class="form-control" id="lab_test_range" placeholder="e.g. 13.5 - 17.5 g/dL">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lab_test_desc">Description / Instructions</label>
+                        <textarea class="form-control" id="lab_test_desc" rows="2" placeholder="Fasting requirements or test notes..."></textarea>
+                    </div>
+
+                    <div class="modal-footer" style="padding-top:16px; margin-top:16px; border-top:1px solid var(--border);">
+                        <button type="button" class="btn btn-outline" data-close="labTestModal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Lab Test</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 21. Create Lab Bill & Order Modal -->
+    <div class="modal-overlay" id="labInvoiceModal">
+        <div class="modal modal-lg" style="max-width:800px;">
+            <div class="modal-header">
+                <h2>🔬 Create Lab Diagnostic Bill & Order</h2>
+                <button class="modal-close" data-close="labInvoiceModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="labInvoiceForm" autocomplete="off">
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;">
+                            <label for="lab_patient_id">Select Patient <span class="req">*</span></label>
+                            <select class="form-control" id="lab_patient_id" required>
+                                <option value="">-- Choose Patient --</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex:1;">
+                            <label for="lab_doctor_id">Prescribed Doctor <span class="req">*</span></label>
+                            <select class="form-control" id="lab_doctor_id" required>
+                                <option value="">-- Choose Prescribed Doctor --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lab_test_select">Select Lab Diagnostic Tests <span class="req">*</span></label>
+                        <div id="labTestCheckboxes" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:10px; max-height:200px; overflow-y:auto; padding:12px; border:1px solid var(--border); border-radius:8px; background:var(--bg-secondary, #f8fafc);">
+                            <span style="font-size:12px; color:var(--text3);">Loading lab test catalog...</span>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="lab_discount">Discount (₹)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="lab_discount" value="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="lab_tax">Tax (₹)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="lab_tax" value="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="lab_paid">Initial Paid Amount (₹)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="lab_paid" value="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="lab_pay_mode">Payment Mode</label>
+                            <select class="form-control" id="lab_pay_mode">
+                                <option value="cash">Cash</option>
+                                <option value="upi">UPI / Online</option>
+                                <option value="card">Debit/Credit Card</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-secondary, #f8fafc); padding:12px; border-radius:8px; margin-top:12px;">
+                        <div>
+                            <span style="font-size:12px; color:var(--text3);">Selected Tests: </span><strong id="labSelectedCount">0</strong>
+                        </div>
+                        <div style="text-align:right;">
+                            <span style="font-size:14px; font-weight:700; color:var(--text1);">Net Total: <span id="labNetTotalDisplay" style="color:var(--primary);">₹ 0.00</span></span>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer" style="padding-top:16px; margin-top:16px; border-top:1px solid var(--border);">
+                        <button type="button" class="btn btn-outline" data-close="labInvoiceModal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Create Lab Order</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 22. Record Lab Payment Modal -->
+    <div class="modal-overlay" id="labPaymentModal">
+        <div class="modal" style="max-width:480px;">
+            <div class="modal-header">
+                <h2>🔬 Record Lab Payment Receipt</h2>
+                <button class="modal-close" data-close="labPaymentModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="labPaymentForm" autocomplete="off">
+                    <input type="hidden" id="pay_lab_invoice_id">
+                    <div style="background:var(--bg-secondary, #f8fafc); padding:12px; border-radius:8px; margin-bottom:16px; font-size:13px;">
+                        <div>Lab Order #: <strong id="pay_lab_inv_no">—</strong></div>
+                        <div>Patient: <strong id="pay_lab_patient_name">—</strong></div>
+                        <div>Balance Due: <strong id="pay_lab_due_display" style="color:#dc2626;">₹ 0.00</strong></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="pay_lab_amount">Amount Paid Today (₹) <span class="req">*</span></label>
+                        <input type="number" step="0.01" min="0.01" class="form-control" id="pay_lab_amount" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="pay_lab_mode">Payment Method <span class="req">*</span></label>
+                        <select class="form-control" id="pay_lab_mode" required>
+                            <option value="cash">Cash</option>
+                            <option value="upi">UPI / Online Transfer</option>
+                            <option value="card">Card Payment</option>
+                        </select>
+                    </div>
+                    <div class="modal-footer" style="padding-top:16px; margin-top:16px; border-top:1px solid var(--border);">
+                        <button type="button" class="btn btn-outline" data-close="labPaymentModal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Submit Receipt</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 23. Lab Report Entry & View Modal -->
+    <div class="modal-overlay" id="labReportEntryModal">
+        <div class="modal modal-lg" style="max-width:750px;">
+            <div class="modal-header">
+                <h2>🧪 Enter Lab Test Results & Generate Report</h2>
+                <button class="modal-close" data-close="labReportEntryModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <div style="background:var(--bg-secondary, #f8fafc); padding:12px; border-radius:8px; margin-bottom:16px; font-size:13px;">
+                    <div>Lab Order #: <strong id="rpt_inv_no">—</strong></div>
+                    <div>Patient Name: <strong id="rpt_patient_name">—</strong> | Prescribed By: <strong id="rpt_doctor_name">—</strong></div>
+                </div>
+
+                <div id="labReportItemsContainer">
+                    <!-- Dynamic test result input forms rendered here -->
+                </div>
+
+                <div class="modal-footer" style="padding-top:16px; margin-top:16px; border-top:1px solid var(--border);">
+                    <button type="button" class="btn btn-outline" data-close="labReportEntryModal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="toast" id="toast">Toast Message</div>
 
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="/admin/dashboard.js"></script>
 </body>
 

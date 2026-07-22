@@ -348,6 +348,10 @@ function switchTab(tabName) {
   else if (tabName === "insurer-claims") loadInsurerClaims();
   else if (tabName === "claims") loadAdminClaims();
   else if (tabName === "support-tickets") loadSupportTickets();
+  else if (tabName === "pharmacy-inventory") loadPharmacyInventory();
+  else if (tabName === "pharma-billing") loadPharmaBilling();
+  else if (tabName === "lab-inventory") loadLabInventory();
+  else if (tabName === "lab-billing") loadLabBilling();
 
   // Close mobile sidebar on navigate
   document.getElementById("sidebar").classList.remove("open");
@@ -3409,6 +3413,10 @@ async function loadDynamicNavigation() {
         { key: "insurer-claims", id: "navInsurerClaims" },
         { key: "claims", id: "navClaims" },
         { key: "support-tickets", id: "navSupportTickets" },
+        { key: "pharmacy-inventory", id: "navPharmacyInventory" },
+        { key: "pharma-billing", id: "navPharmaBilling" },
+        { key: "lab-inventory", id: "navLabInventory" },
+        { key: "lab-billing", id: "navLabBilling" },
       ];
 
       allNavLinks.forEach((item) => {
@@ -5839,6 +5847,1163 @@ async function deleteSupportTicket(ticketId) {
     showToast("Network error deleting ticket", "error");
   }
 }
+
+/* ═════════════════════════════════════════════════════════════════════
+   PHARMACY & LAB INTEGRATION SYSTEM
+   ═════════════════════════════════════════════════════════════════════ */
+
+let currentPharmacyCart = [];
+let html5QrcodeInstance = null;
+let activeBarcodeTargetInputId = null;
+
+// Initialize Pharmacy & Lab DOM Event Handlers
+document.addEventListener("DOMContentLoaded", () => {
+  // Pharmacy Inventory handlers
+  on("openMedicineModalBtn", "click", () => openMedicineModal());
+  on("medicineForm", "submit", (e) => saveMedicineForm(e));
+  on("pharmacySearchInput", "input", (e) => {
+    const q = e.target.value;
+    loadPharmacyInventory(q);
+  });
+
+  // Barcode Scanner handlers
+  on("scanBarcodeBtn", "click", () => startBarcodeScan("pharmacySearchInput"));
+  on("scanModalBarcodeBtn", "click", () => startBarcodeScan("med_barcode"));
+  on("scanPharmaBillBarcodeBtn", "click", () => startBarcodeScan("pharmaItemSearchInput"));
+  on("stopCameraScanBtn", "click", () => stopBarcodeScan());
+  on("closeScannerModalBtn", "click", () => stopBarcodeScan());
+
+  // Pharmacy Billing handlers
+  on("pharmaBillsToggleBtn", "click", () => {
+    document.getElementById("pharmaBillsSubPanel").style.display = "";
+    document.getElementById("pharmaReceiptsSubPanel").style.display = "none";
+    document.getElementById("pharmaBillsToggleBtn").style.background = "var(--primary, #0f172a)";
+    document.getElementById("pharmaBillsToggleBtn").style.color = "#fff";
+    document.getElementById("pharmaReceiptsToggleBtn").style.background = "transparent";
+    document.getElementById("pharmaReceiptsToggleBtn").style.color = "var(--text2, #475569)";
+    loadPharmaInvoices();
+  });
+
+  on("pharmaReceiptsToggleBtn", "click", () => {
+    document.getElementById("pharmaBillsSubPanel").style.display = "none";
+    document.getElementById("pharmaReceiptsSubPanel").style.display = "";
+    document.getElementById("pharmaReceiptsToggleBtn").style.background = "var(--primary, #0f172a)";
+    document.getElementById("pharmaReceiptsToggleBtn").style.color = "#fff";
+    document.getElementById("pharmaBillsToggleBtn").style.background = "transparent";
+    document.getElementById("pharmaBillsToggleBtn").style.color = "var(--text2, #475569)";
+    loadPharmaReceipts();
+  });
+
+  on("openPharmaInvoiceModalBtn", "click", () => openPharmaInvoiceModal());
+  on("pharmaItemSearchInput", "input", (e) => handlePharmaMedicineSearch(e.target.value));
+  on("triggerDynamicAddMedBtn", "click", () => openDynamicMedicineModal());
+  on("dynamicMedicineForm", "submit", (e) => saveDynamicMedicine(e));
+  on("pharmaInvoiceForm", "submit", (e) => savePharmaInvoice(e));
+  on("pharmaPaymentForm", "submit", (e) => savePharmaPayment(e));
+
+  on("pharma_discount", "input", updatePharmaBillTotals);
+  on("pharma_tax", "input", updatePharmaBillTotals);
+
+  // Lab Inventory handlers
+  on("openLabTestModalBtn", "click", () => openLabTestModal());
+  on("labTestForm", "submit", (e) => saveLabTestForm(e));
+  on("labTestSearchInput", "input", (e) => loadLabInventory(e.target.value));
+
+  // Lab Billing handlers
+  on("labBillsToggleBtn", "click", () => {
+    document.getElementById("labBillsSubPanel").style.display = "";
+    document.getElementById("labReceiptsSubPanel").style.display = "none";
+    document.getElementById("labBillsToggleBtn").style.background = "var(--primary, #0f172a)";
+    document.getElementById("labBillsToggleBtn").style.color = "#fff";
+    document.getElementById("labReceiptsToggleBtn").style.background = "transparent";
+    document.getElementById("labReceiptsToggleBtn").style.color = "var(--text2, #475569)";
+    loadLabInvoices();
+  });
+
+  on("labReceiptsToggleBtn", "click", () => {
+    document.getElementById("labBillsSubPanel").style.display = "none";
+    document.getElementById("labReceiptsSubPanel").style.display = "";
+    document.getElementById("labReceiptsToggleBtn").style.background = "var(--primary, #0f172a)";
+    document.getElementById("labReceiptsToggleBtn").style.color = "#fff";
+    document.getElementById("labBillsToggleBtn").style.background = "transparent";
+    document.getElementById("labBillsToggleBtn").style.color = "var(--text2, #475569)";
+    loadLabReceipts();
+  });
+
+  on("openLabInvoiceModalBtn", "click", () => openLabInvoiceModal());
+  on("labInvoiceForm", "submit", (e) => saveLabInvoice(e));
+  on("labPaymentForm", "submit", (e) => saveLabPayment(e));
+
+  on("lab_discount", "input", updateLabBillTotals);
+  on("lab_tax", "input", updateLabBillTotals);
+});
+
+// ──────── 1. PHARMACY MEDICINE INVENTORY ────────
+async function loadPharmacyInventory(searchQuery = "") {
+  const tbody = document.getElementById("medicinesTableBody");
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="10" class="loading-cell">Loading medicine inventory...</td></tr>';
+
+  try {
+    const url = searchQuery
+      ? `${API_BASE}/pharmacy?action=medicines&q=${encodeURIComponent(searchQuery)}`
+      : `${API_BASE}/pharmacy?action=medicines`;
+
+    const res = await fetch(url, { headers: authHeaders() });
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      if (data.medicines.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="empty-cell">No medicines found in inventory. Click "+ Add Medicine" to register stock.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.medicines.map((m) => {
+        const isLowStock = parseInt(m.stock_quantity) <= parseInt(m.reorder_level || 10);
+        const stockBadge = isLowStock
+          ? `<span style="background:#fee2e2; color:#991b1b; padding:3px 8px; border-radius:12px; font-weight:700; font-size:11px;">⚠️ ${m.stock_quantity} (Low)</span>`
+          : `<span style="background:#dcfce7; color:#166534; padding:3px 8px; border-radius:12px; font-weight:700; font-size:11px;">${m.stock_quantity}</span>`;
+
+        return `
+          <tr>
+            <td><code>${esc(m.barcode || "—")}</code></td>
+            <td><strong>${esc(m.name)}</strong></td>
+            <td style="color:var(--text3);">${esc(m.generic_name || "—")}</td>
+            <td><span style="background:var(--bg-secondary); padding:2px 6px; border-radius:4px; font-size:11px;">${esc(m.category || "General")}</span></td>
+            <td>${stockBadge}</td>
+            <td style="font-weight:600;">₹ ${parseFloat(m.unit_price).toFixed(2)}</td>
+            <td style="color:var(--text3);">₹ ${parseFloat(m.mrp || m.unit_price).toFixed(2)}</td>
+            <td>${m.expiry_date ? formatDate(m.expiry_date) : "—"}</td>
+            <td>${esc(m.rack_location || "—")}</td>
+            <td>
+              <button class="action-btn btn-edit" onclick="openMedicineModal(${m.id})" title="Edit Medicine">Edit</button>
+              <button class="action-btn btn-delete" onclick="deleteMedicine(${m.id})" title="Remove Medicine">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    } else {
+      tbody.innerHTML = `<tr><td colspan="10" class="empty-cell" style="color:var(--danger);">${esc(data.error || "Failed to load inventory")}</td></tr>`;
+    }
+  } catch (err) {
+    console.error("loadPharmacyInventory error:", err);
+    tbody.innerHTML = '<tr><td colspan="10" class="empty-cell" style="color:var(--danger);">Network error loading inventory</td></tr>';
+  }
+}
+
+async function openMedicineModal(id = null) {
+  const modalTitle = document.getElementById("medicineModalTitle");
+  const form = document.getElementById("medicineForm");
+  if (!form) return;
+
+  form.reset();
+  document.getElementById("medicine_id").value = "";
+
+  if (id) {
+    modalTitle.textContent = "✏️ Edit Medicine Details";
+    try {
+      const res = await fetch(`${API_BASE}/pharmacy?action=medicines&id=${id}`, { headers: authHeaders() });
+      const data = await res.json();
+      if (res.ok && data.success && data.medicine) {
+        const m = data.medicine;
+        document.getElementById("medicine_id").value = m.id;
+        document.getElementById("med_barcode").value = m.barcode || "";
+        document.getElementById("med_name").value = m.name || "";
+        document.getElementById("med_generic").value = m.generic_name || "";
+        document.getElementById("med_category").value = m.category || "General";
+        document.getElementById("med_manufacturer").value = m.manufacturer || "";
+        document.getElementById("med_rack").value = m.rack_location || "";
+        document.getElementById("med_unit_price").value = m.unit_price || "0.00";
+        document.getElementById("med_mrp").value = m.mrp || "0.00";
+        document.getElementById("med_stock").value = m.stock_quantity || "0";
+        document.getElementById("med_reorder").value = m.reorder_level || "10";
+        document.getElementById("med_expiry").value = m.expiry_date ? m.expiry_date.split("T")[0] : "";
+      }
+    } catch (err) {
+      showToast("Error loading medicine data", "error");
+    }
+  } else {
+    modalTitle.textContent = "💊 Add Medicine to Inventory";
+  }
+
+  showModal("medicineModal");
+}
+
+async function saveMedicineForm(e) {
+  e.preventDefault();
+  const id = document.getElementById("medicine_id").value;
+  const method = id ? "PUT" : "POST";
+  const url = id ? `${API_BASE}/pharmacy?action=medicines&id=${id}` : `${API_BASE}/pharmacy?action=medicines`;
+
+  const payload = {
+    id: id ? parseInt(id) : null,
+    barcode: document.getElementById("med_barcode").value.trim(),
+    name: document.getElementById("med_name").value.trim(),
+    generic_name: document.getElementById("med_generic").value.trim(),
+    category: document.getElementById("med_category").value.trim(),
+    manufacturer: document.getElementById("med_manufacturer").value.trim(),
+    rack_location: document.getElementById("med_rack").value.trim(),
+    unit_price: parseFloat(document.getElementById("med_unit_price").value) || 0.00,
+    mrp: parseFloat(document.getElementById("med_mrp").value) || 0.00,
+    stock_quantity: parseInt(document.getElementById("med_stock").value) || 0,
+    reorder_level: parseInt(document.getElementById("med_reorder").value) || 10,
+    expiry_date: document.getElementById("med_expiry").value || null,
+  };
+
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: authHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast(id ? "Medicine updated successfully!" : "New medicine added to inventory!", "success");
+      hideModal("medicineModal");
+      loadPharmacyInventory();
+    } else {
+      showToast(data.error || "Failed to save medicine", "error");
+    }
+  } catch (err) {
+    showToast("Network error saving medicine", "error");
+  }
+}
+
+async function deleteMedicine(id) {
+  if (!confirm("Are you sure you want to delete this medicine from inventory?")) return;
+  try {
+    const res = await fetch(`${API_BASE}/pharmacy?action=medicines&id=${id}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast("Medicine deleted successfully", "success");
+      loadPharmacyInventory();
+    } else {
+      showToast(data.error || "Failed to delete medicine", "error");
+    }
+  } catch (err) {
+    showToast("Network error deleting medicine", "error");
+  }
+}
+
+// ──────── 2. BARCODE SCANNING INTEGRATION ────────
+function startBarcodeScan(targetInputId) {
+  activeBarcodeTargetInputId = targetInputId;
+  const statusMsg = document.getElementById("scannerStatusMsg");
+  statusMsg.textContent = "Initializing camera scanner...";
+  showModal("barcodeScannerModal");
+
+  if (typeof Html5Qrcode === "undefined") {
+    statusMsg.textContent = "Camera scanner library loading... If camera is unavailable, use USB scanner or manual entry.";
+  }
+
+  try {
+    if (html5QrcodeInstance) {
+      html5QrcodeInstance.stop().catch(() => {}).finally(() => {
+        initCameraStream();
+      });
+    } else {
+      initCameraStream();
+    }
+  } catch (err) {
+    statusMsg.textContent = "Camera access unavailable. Connect USB hardware barcode scanner or type barcode manually.";
+  }
+}
+
+function initCameraStream() {
+  const statusMsg = document.getElementById("scannerStatusMsg");
+  if (typeof Html5Qrcode === "undefined") return;
+
+  html5QrcodeInstance = new Html5Qrcode("barcodeReaderStream");
+  html5QrcodeInstance.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: { width: 250, height: 150 } },
+    (decodedText) => {
+      onBarcodeScannedSuccess(decodedText);
+    },
+    () => {}
+  ).catch((err) => {
+    console.warn("Camera start failed:", err);
+    statusMsg.textContent = "Camera scanner inactive. Hardware USB barcode guns work automatically on input focus!";
+  });
+}
+
+function onBarcodeScannedSuccess(barcodeText) {
+  if (!barcodeText) return;
+  stopBarcodeScan();
+
+  if (activeBarcodeTargetInputId) {
+    const inputEl = document.getElementById(activeBarcodeTargetInputId);
+    if (inputEl) {
+      inputEl.value = barcodeText.trim();
+      inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+      showToast(`Scanned Barcode: ${barcodeText}`, "success");
+    }
+  }
+}
+
+function stopBarcodeScan() {
+  if (html5QrcodeInstance) {
+    html5QrcodeInstance.stop().catch(() => {}).finally(() => {
+      html5QrcodeInstance = null;
+    });
+  }
+  hideModal("barcodeScannerModal");
+}
+
+// ──────── 3. PHARMACY BILLING & PAYMENT RECEIPTS ────────
+async function loadPharmaBilling() {
+  loadPharmaInvoices();
+}
+
+async function loadPharmaInvoices() {
+  const tbody = document.getElementById("pharmaInvoicesTableBody");
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="9" class="loading-cell">Loading pharmacy bills...</td></tr>';
+
+  try {
+    const res = await fetch(`${API_BASE}/pharmacy?action=invoices`, { headers: authHeaders() });
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      if (data.invoices.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="empty-cell">No pharmacy bills created yet. Click "+ Create Pharmacy Bill".</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.invoices.map((inv) => {
+        const dueVal = parseFloat(inv.due_amount) || 0.00;
+        let statusBadge = '<span style="background:#fef3c7; color:#92400e; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:700;">UNPAID</span>';
+        if (inv.status === "paid") {
+          statusBadge = '<span style="background:#dcfce7; color:#166534; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:700;">PAID</span>';
+        } else if (inv.status === "partially_paid") {
+          statusBadge = '<span style="background:#e0f2fe; color:#075985; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:700;">PARTIAL</span>';
+        }
+
+        const payBtn = dueVal > 0
+          ? `<button class="action-btn btn-edit" onclick="openPharmaPaymentModal(${inv.id}, '${inv.invoice_no}', '${esc(inv.patient_name || 'Patient')}', ${dueVal})" title="Record Payment">Record Payment</button>`
+          : '';
+
+        return `
+          <tr>
+            <td><code>${esc(inv.invoice_no)}</code></td>
+            <td>${formatDate(inv.created_at)}</td>
+            <td><strong>${esc(inv.patient_name || "—")}</strong></td>
+            <td style="color:var(--text2);">Dr. ${esc(inv.doctor_name || "General")}</td>
+            <td style="font-weight:700;">₹ ${parseFloat(inv.net_amount).toFixed(2)}</td>
+            <td style="color:#16a34a; font-weight:600;">₹ ${parseFloat(inv.paid_amount).toFixed(2)}</td>
+            <td style="color:#dc2626; font-weight:600;">₹ ${dueVal.toFixed(2)}</td>
+            <td>${statusBadge}</td>
+            <td>
+              <button class="action-btn btn-outline" onclick="exportPharmaInvoicePDF(${inv.id})" title="Download Bill PDF">📄 Bill PDF</button>
+              ${payBtn}
+            </td>
+          </tr>
+        `;
+      }).join("");
+    } else {
+      tbody.innerHTML = `<tr><td colspan="9" class="empty-cell" style="color:var(--danger);">${esc(data.error || "Failed to load bills")}</td></tr>`;
+    }
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="9" class="empty-cell" style="color:var(--danger);">Network error loading pharmacy bills</td></tr>';
+  }
+}
+
+async function loadPharmaReceipts() {
+  const tbody = document.getElementById("pharmaReceiptsTableBody");
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="8" class="loading-cell">Loading payment receipts...</td></tr>';
+
+  try {
+    const res = await fetch(`${API_BASE}/pharmacy?action=receipts`, { headers: authHeaders() });
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      if (data.receipts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-cell">No pharmacy payment receipts recorded yet.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.receipts.map((rct) => `
+        <tr>
+          <td><code>${esc(rct.receipt_no)}</code></td>
+          <td><code>${esc(rct.invoice_no)}</code></td>
+          <td>${formatDate(rct.payment_date || rct.created_at)}</td>
+          <td><strong>${esc(rct.patient_name || "—")}</strong></td>
+          <td style="color:var(--text2);">Dr. ${esc(rct.doctor_name || "General")}</td>
+          <td style="font-weight:700; color:#16a34a;">₹ ${parseFloat(rct.amount_paid).toFixed(2)}</td>
+          <td><span style="text-transform:uppercase; font-size:11px; font-weight:700; background:var(--bg-secondary); padding:2px 6px; border-radius:4px;">${esc(rct.payment_mode)}</span></td>
+          <td>
+            <button class="action-btn btn-outline" onclick="exportPharmaInvoicePDF(${rct.pharmacy_invoice_id})" title="Print Receipt / Bill">📄 Receipt PDF</button>
+          </td>
+        </tr>
+      `).join("");
+    } else {
+      tbody.innerHTML = `<tr><td colspan="8" class="empty-cell" style="color:var(--danger);">${esc(data.error || "Failed to load receipts")}</td></tr>`;
+    }
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-cell" style="color:var(--danger);">Network error loading receipts</td></tr>';
+  }
+}
+
+async function openPharmaInvoiceModal() {
+  const form = document.getElementById("pharmaInvoiceForm");
+  if (!form) return;
+  form.reset();
+
+  currentPharmacyCart = [];
+  renderPharmaCartItems();
+
+  const patSelect = document.getElementById("pharma_patient_id");
+  const docSelect = document.getElementById("pharma_doctor_id");
+
+  patSelect.innerHTML = '<option value="">Loading patients...</option>';
+  docSelect.innerHTML = '<option value="">Loading doctors...</option>';
+
+  showModal("pharmaInvoiceModal");
+
+  // Fetch patients & doctors
+  try {
+    const [patRes, docRes] = await Promise.all([
+      fetch(`${API_BASE}/patients`, { headers: authHeaders() }),
+      fetch(`${API_BASE}/doctors`, { headers: authHeaders() }),
+    ]);
+
+    const patData = await patRes.json();
+    const docData = await docRes.json();
+
+    if (patRes.ok && patData.success) {
+      patSelect.innerHTML = '<option value="">-- Select Patient --</option>' +
+        patData.patients.map((p) => `<option value="${p.id}">${esc(p.full_name)} (${p.mobile_no || "ID:" + p.id})</option>`).join("");
+    }
+
+    if (docRes.ok && docData.success) {
+      docSelect.innerHTML = '<option value="">-- Select Prescribed Doctor --</option>' +
+        docData.doctors.map((d) => `<option value="${d.id}">Dr. ${esc(d.name)} (${esc(d.specialization || "General")})</option>`).join("");
+    }
+  } catch (err) {
+    showToast("Error loading patients and doctors dropdown list", "error");
+  }
+}
+
+async function handlePharmaMedicineSearch(query) {
+  const resultsDiv = document.getElementById("pharmaSearchResults");
+  const alertDiv = document.getElementById("noMedicineFoundAlert");
+  if (!query || query.trim().length === 0) {
+    resultsDiv.style.display = "none";
+    alertDiv.style.display = "none";
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/pharmacy?action=medicines&q=${encodeURIComponent(query.trim())}`, { headers: authHeaders() });
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      if (data.medicines.length === 0) {
+        resultsDiv.style.display = "none";
+        alertDiv.style.display = "flex";
+      } else {
+        alertDiv.style.display = "none";
+        resultsDiv.style.display = "block";
+        resultsDiv.innerHTML = data.medicines.map((m) => `
+          <div onclick="addMedicineToCart(${m.id}, '${esc(m.name)}', ${m.unit_price})" style="padding:8px 12px; border-bottom:1px solid var(--border); cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='transparent'">
+            <div>
+              <strong>${esc(m.name)}</strong> <span style="font-size:11px; color:var(--text3);">(${esc(m.generic_name || m.category || "General")})</span>
+              ${m.barcode ? `<span style="font-size:10px; background:#e2e8f0; padding:1px 4px; border-radius:3px; margin-left:6px;">${esc(m.barcode)}</span>` : ""}
+            </div>
+            <div style="text-align:right;">
+              <span style="font-weight:700; color:var(--primary);">₹ ${parseFloat(m.unit_price).toFixed(2)}</span>
+              <span style="font-size:11px; color:${parseInt(m.stock_quantity) <= 5 ? '#dc2626' : 'var(--text3)'}; display:block;">Stock: ${m.stock_quantity}</span>
+            </div>
+          </div>
+        `).join("");
+      }
+    }
+  } catch (err) {
+    console.error("handlePharmaMedicineSearch error:", err);
+  }
+}
+
+function addMedicineToCart(id, name, unitPrice) {
+  const existing = currentPharmacyCart.find((item) => item.medicine_id === id);
+  if (existing) {
+    existing.quantity += 1;
+    existing.total_price = existing.quantity * existing.unit_price;
+  } else {
+    currentPharmacyCart.push({
+      medicine_id: id,
+      medicine_name: name,
+      unit_price: parseFloat(unitPrice) || 0.00,
+      quantity: 1,
+      total_price: parseFloat(unitPrice) || 0.00,
+    });
+  }
+
+  document.getElementById("pharmaItemSearchInput").value = "";
+  document.getElementById("pharmaSearchResults").style.display = "none";
+  document.getElementById("noMedicineFoundAlert").style.display = "none";
+
+  renderPharmaCartItems();
+}
+
+function updateCartQty(index, newQty) {
+  const qty = parseInt(newQty) || 1;
+  if (qty <= 0) {
+    currentPharmacyCart.splice(index, 1);
+  } else {
+    currentPharmacyCart[index].quantity = qty;
+    currentPharmacyCart[index].total_price = qty * currentPharmacyCart[index].unit_price;
+  }
+  renderPharmaCartItems();
+}
+
+function removeFromCart(index) {
+  currentPharmacyCart.splice(index, 1);
+  renderPharmaCartItems();
+}
+
+function renderPharmaCartItems() {
+  const tbody = document.getElementById("pharmaBillItemsTableBody");
+  if (!tbody) return;
+
+  if (currentPharmacyCart.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">No medicines added to bill yet. Scan or search above.</td></tr>';
+  } else {
+    tbody.innerHTML = currentPharmacyCart.map((item, idx) => `
+      <tr>
+        <td><strong>${esc(item.medicine_name)}</strong></td>
+        <td>₹ ${item.unit_price.toFixed(2)}</td>
+        <td style="width:100px;">
+          <input type="number" min="1" class="form-control" value="${item.quantity}" onchange="updateCartQty(${idx}, this.value)" style="padding:4px 8px; font-size:12px;">
+        </td>
+        <td style="font-weight:700;">₹ ${item.total_price.toFixed(2)}</td>
+        <td>
+          <button type="button" class="action-btn btn-delete" onclick="removeFromCart(${idx})">✕</button>
+        </td>
+      </tr>
+    `).join("");
+  }
+
+  updatePharmaBillTotals();
+}
+
+function updatePharmaBillTotals() {
+  const itemsTotal = currentPharmacyCart.reduce((sum, item) => sum + item.total_price, 0);
+  const discount = parseFloat(document.getElementById("pharma_discount").value) || 0.00;
+  const tax = parseFloat(document.getElementById("pharma_tax").value) || 0.00;
+  const netTotal = Math.max(0.00, itemsTotal - discount + tax);
+
+  document.getElementById("pharmaTotalItemCount").textContent = currentPharmacyCart.length;
+  document.getElementById("pharmaNetTotalDisplay").textContent = `₹ ${netTotal.toFixed(2)}`;
+}
+
+// Dynamic Inline Medicine Addition Trigger
+function openDynamicMedicineModal() {
+  const searchInputVal = document.getElementById("pharmaItemSearchInput").value.trim();
+  document.getElementById("dynamicMedicineForm").reset();
+  if (searchInputVal) {
+    document.getElementById("dyn_med_name").value = searchInputVal;
+  }
+  showModal("dynamicMedicineModal");
+}
+
+async function saveDynamicMedicine(e) {
+  e.preventDefault();
+  const name = document.getElementById("dyn_med_name").value.trim();
+  const barcode = document.getElementById("dyn_med_barcode").value.trim();
+  const category = document.getElementById("dyn_med_category").value.trim();
+  const unit_price = parseFloat(document.getElementById("dyn_med_unit_price").value) || 0.00;
+  const stock_quantity = parseInt(document.getElementById("dyn_med_stock").value) || 100;
+
+  try {
+    const res = await fetch(`${API_BASE}/pharmacy?action=medicines`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        name, barcode, category, unit_price, mrp: unit_price, stock_quantity, reorder_level: 10
+      })
+    });
+    const data = await res.json();
+    if (res.ok && data.success && data.medicine) {
+      showToast(`Medicine "${name}" added dynamically!`, "success");
+      hideModal("dynamicMedicineModal");
+      addMedicineToCart(data.medicine.id, data.medicine.name, data.medicine.unit_price);
+    } else {
+      showToast(data.error || "Failed to add dynamic medicine", "error");
+    }
+  } catch (err) {
+    showToast("Network error creating dynamic medicine", "error");
+  }
+}
+
+async function savePharmaInvoice(e) {
+  e.preventDefault();
+  const patient_id = document.getElementById("pharma_patient_id").value;
+  const doctor_id = document.getElementById("pharma_doctor_id").value;
+
+  if (!patient_id) {
+    showToast("Please select a patient for the pharmacy bill", "error");
+    return;
+  }
+  if (currentPharmacyCart.length === 0) {
+    showToast("Please add at least one medicine item to the bill", "error");
+    return;
+  }
+
+  const payload = {
+    patient_id: parseInt(patient_id),
+    doctor_id: doctor_id ? parseInt(doctor_id) : null,
+    items: currentPharmacyCart,
+    discount_amount: parseFloat(document.getElementById("pharma_discount").value) || 0.00,
+    tax_amount: parseFloat(document.getElementById("pharma_tax").value) || 0.00,
+    paid_amount: parseFloat(document.getElementById("pharma_paid").value) || 0.00,
+    payment_mode: document.getElementById("pharma_pay_mode").value || "cash",
+  };
+
+  try {
+    const res = await fetch(`${API_BASE}/pharmacy?action=invoices`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast("Pharmacy bill generated successfully!", "success");
+      hideModal("pharmaInvoiceModal");
+      loadPharmaInvoices();
+    } else {
+      showToast(data.error || "Failed to generate pharmacy bill", "error");
+    }
+  } catch (err) {
+    showToast("Network error generating pharmacy bill", "error");
+  }
+}
+
+function openPharmaPaymentModal(invoiceId, invoiceNo, patientName, dueAmt) {
+  document.getElementById("pay_pharma_invoice_id").value = invoiceId;
+  document.getElementById("pay_pharma_inv_no").textContent = invoiceNo;
+  document.getElementById("pay_pharma_patient_name").textContent = patientName;
+  document.getElementById("pay_pharma_due_display").textContent = `₹ ${dueAmt.toFixed(2)}`;
+  document.getElementById("pay_pharma_amount").value = dueAmt.toFixed(2);
+  showModal("pharmaPaymentModal");
+}
+
+async function savePharmaPayment(e) {
+  e.preventDefault();
+  const invoiceId = document.getElementById("pay_pharma_invoice_id").value;
+  const amountPaid = parseFloat(document.getElementById("pay_pharma_amount").value) || 0.00;
+  const paymentMode = document.getElementById("pay_pharma_mode").value;
+
+  try {
+    const res = await fetch(`${API_BASE}/pharmacy?action=receipts`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        pharmacy_invoice_id: parseInt(invoiceId),
+        amount_paid: amountPaid,
+        payment_mode: paymentMode,
+      })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast("Payment receipt recorded successfully!", "success");
+      hideModal("pharmaPaymentModal");
+      loadPharmaInvoices();
+    } else {
+      showToast(data.error || "Failed to record payment", "error");
+    }
+  } catch (err) {
+    showToast("Network error submitting receipt", "error");
+  }
+}
+
+function exportPharmaInvoicePDF(id) {
+  window.open(`${API_BASE}/pharmacy/export-pdf?id=${id}`, "_blank");
+}
+
+
+// ──────── 4. LAB TESTS INVENTORY ────────
+async function loadLabInventory(searchQuery = "") {
+  const tbody = document.getElementById("labTestsTableBody");
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="7" class="loading-cell">Loading lab test catalog...</td></tr>';
+
+  try {
+    const url = searchQuery
+      ? `${API_BASE}/lab?action=tests&q=${encodeURIComponent(searchQuery)}`
+      : `${API_BASE}/lab?action=tests`;
+
+    const res = await fetch(url, { headers: authHeaders() });
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      if (data.tests.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">No lab tests registered in catalog. Click "+ Add Lab Test".</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.tests.map((t) => `
+        <tr>
+          <td><code>${esc(t.test_code || "—")}</code></td>
+          <td><strong>${esc(t.test_name)}</strong></td>
+          <td><span style="background:var(--bg-secondary); padding:2px 6px; border-radius:4px; font-size:11px;">${esc(t.category || "Pathology")}</span></td>
+          <td>${esc(t.sample_type || "Blood")}</td>
+          <td style="font-weight:700; color:var(--primary);">₹ ${parseFloat(t.price).toFixed(2)}</td>
+          <td style="color:var(--text2);">${esc(t.normal_range || "—")}</td>
+          <td>
+            <button class="action-btn btn-edit" onclick="openLabTestModal(${t.id})" title="Edit Test">Edit</button>
+            <button class="action-btn btn-delete" onclick="deleteLabTest(${t.id})" title="Remove Test">Delete</button>
+          </td>
+        </tr>
+      `).join("");
+    } else {
+      tbody.innerHTML = `<tr><td colspan="7" class="empty-cell" style="color:var(--danger);">${esc(data.error || "Failed to load lab tests")}</td></tr>`;
+    }
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-cell" style="color:var(--danger);">Network error loading lab test catalog</td></tr>';
+  }
+}
+
+async function openLabTestModal(id = null) {
+  const modalTitle = document.getElementById("labTestModalTitle");
+  const form = document.getElementById("labTestForm");
+  if (!form) return;
+
+  form.reset();
+  document.getElementById("lab_test_id").value = "";
+
+  if (id) {
+    modalTitle.textContent = "✏️ Edit Lab Test Details";
+    try {
+      const res = await fetch(`${API_BASE}/lab?action=tests&id=${id}`, { headers: authHeaders() });
+      const data = await res.json();
+      if (res.ok && data.success && data.test) {
+        const t = data.test;
+        document.getElementById("lab_test_id").value = t.id;
+        document.getElementById("lab_test_code").value = t.test_code || "";
+        document.getElementById("lab_test_name").value = t.test_name || "";
+        document.getElementById("lab_test_category").value = t.category || "Pathology";
+        document.getElementById("lab_test_sample").value = t.sample_type || "Blood";
+        document.getElementById("lab_test_price").value = t.price || "0.00";
+        document.getElementById("lab_test_range").value = t.normal_range || "";
+        document.getElementById("lab_test_desc").value = t.description || "";
+      }
+    } catch (err) {
+      showToast("Error loading lab test data", "error");
+    }
+  } else {
+    modalTitle.textContent = "🧪 Add Lab Test to Catalog";
+  }
+
+  showModal("labTestModal");
+}
+
+async function saveLabTestForm(e) {
+  e.preventDefault();
+  const id = document.getElementById("lab_test_id").value;
+  const method = id ? "PUT" : "POST";
+  const url = id ? `${API_BASE}/lab?action=tests&id=${id}` : `${API_BASE}/lab?action=tests`;
+
+  const payload = {
+    id: id ? parseInt(id) : null,
+    test_code: document.getElementById("lab_test_code").value.trim(),
+    test_name: document.getElementById("lab_test_name").value.trim(),
+    category: document.getElementById("lab_test_category").value.trim(),
+    sample_type: document.getElementById("lab_test_sample").value.trim(),
+    price: parseFloat(document.getElementById("lab_test_price").value) || 0.00,
+    normal_range: document.getElementById("lab_test_range").value.trim(),
+    description: document.getElementById("lab_test_desc").value.trim(),
+  };
+
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: authHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast(id ? "Lab test updated successfully!" : "New lab test added to catalog!", "success");
+      hideModal("labTestModal");
+      loadLabInventory();
+    } else {
+      showToast(data.error || "Failed to save lab test", "error");
+    }
+  } catch (err) {
+    showToast("Network error saving lab test", "error");
+  }
+}
+
+async function deleteLabTest(id) {
+  if (!confirm("Are you sure you want to delete this lab test from catalog?")) return;
+  try {
+    const res = await fetch(`${API_BASE}/lab?action=tests&id=${id}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast("Lab test deleted successfully", "success");
+      loadLabInventory();
+    } else {
+      showToast(data.error || "Failed to delete lab test", "error");
+    }
+  } catch (err) {
+    showToast("Network error deleting lab test", "error");
+  }
+}
+
+
+// ──────── 5. LAB BILLING, RECEIPTS & REPORTS ────────
+async function loadLabBilling() {
+  loadLabInvoices();
+}
+
+async function loadLabInvoices() {
+  const tbody = document.getElementById("labInvoicesTableBody");
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="9" class="loading-cell">Loading lab orders...</td></tr>';
+
+  try {
+    const res = await fetch(`${API_BASE}/lab?action=invoices`, { headers: authHeaders() });
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      if (data.invoices.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="empty-cell">No lab orders created yet. Click "+ Create Lab Order / Bill".</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.invoices.map((inv) => {
+        const dueVal = parseFloat(inv.due_amount) || 0.00;
+        let statusBadge = '<span style="background:#fef3c7; color:#92400e; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:700;">UNPAID</span>';
+        if (inv.status === "paid") {
+          statusBadge = '<span style="background:#dcfce7; color:#166534; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:700;">PAID</span>';
+        } else if (inv.status === "partially_paid") {
+          statusBadge = '<span style="background:#e0f2fe; color:#075985; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:700;">PARTIAL</span>';
+        }
+
+        const payBtn = dueVal > 0
+          ? `<button class="action-btn btn-edit" onclick="openLabPaymentModal(${inv.id}, '${inv.invoice_no}', '${esc(inv.patient_name || 'Patient')}', ${dueVal})" title="Record Payment">Record Payment</button>`
+          : '';
+
+        return `
+          <tr>
+            <td><code>${esc(inv.invoice_no)}</code></td>
+            <td>${formatDate(inv.created_at)}</td>
+            <td><strong>${esc(inv.patient_name || "—")}</strong></td>
+            <td style="color:var(--text2);">Dr. ${esc(inv.doctor_name || "General")}</td>
+            <td style="font-weight:700;">₹ ${parseFloat(inv.net_amount).toFixed(2)}</td>
+            <td style="color:#16a34a; font-weight:600;">₹ ${parseFloat(inv.paid_amount).toFixed(2)}</td>
+            <td style="color:#dc2626; font-weight:600;">₹ ${dueVal.toFixed(2)}</td>
+            <td>${statusBadge}</td>
+            <td>
+              <button class="action-btn btn-primary" onclick="openLabReportEntryModal(${inv.id}, '${esc(inv.invoice_no)}', '${esc(inv.patient_name || 'Patient')}', '${esc(inv.doctor_name || 'Doctor')}')" title="Enter / View Lab Report Results">🧪 Test Reports</button>
+              <button class="action-btn btn-outline" onclick="exportLabInvoicePDF(${inv.id})" title="Download Bill PDF">📄 Bill PDF</button>
+              ${payBtn}
+            </td>
+          </tr>
+        `;
+      }).join("");
+    } else {
+      tbody.innerHTML = `<tr><td colspan="9" class="empty-cell" style="color:var(--danger);">${esc(data.error || "Failed to load lab orders")}</td></tr>`;
+    }
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="9" class="empty-cell" style="color:var(--danger);">Network error loading lab orders</td></tr>';
+  }
+}
+
+async function loadLabReceipts() {
+  const tbody = document.getElementById("labReceiptsTableBody");
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="8" class="loading-cell">Loading lab payment receipts...</td></tr>';
+
+  try {
+    const res = await fetch(`${API_BASE}/lab?action=receipts`, { headers: authHeaders() });
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      if (data.receipts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-cell">No lab payment receipts recorded yet.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.receipts.map((rct) => `
+        <tr>
+          <td><code>${esc(rct.receipt_no)}</code></td>
+          <td><code>${esc(rct.invoice_no)}</code></td>
+          <td>${formatDate(rct.payment_date || rct.created_at)}</td>
+          <td><strong>${esc(rct.patient_name || "—")}</strong></td>
+          <td style="color:var(--text2);">Dr. ${esc(rct.doctor_name || "General")}</td>
+          <td style="font-weight:700; color:#16a34a;">₹ ${parseFloat(rct.amount_paid).toFixed(2)}</td>
+          <td><span style="text-transform:uppercase; font-size:11px; font-weight:700; background:var(--bg-secondary); padding:2px 6px; border-radius:4px;">${esc(rct.payment_mode)}</span></td>
+          <td>
+            <button class="action-btn btn-outline" onclick="exportLabInvoicePDF(${rct.lab_invoice_id})" title="Print Receipt / Bill">📄 Receipt PDF</button>
+          </td>
+        </tr>
+      `).join("");
+    } else {
+      tbody.innerHTML = `<tr><td colspan="8" class="empty-cell" style="color:var(--danger);">${esc(data.error || "Failed to load receipts")}</td></tr>`;
+    }
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-cell" style="color:var(--danger);">Network error loading lab receipts</td></tr>';
+  }
+}
+
+async function openLabInvoiceModal() {
+  const form = document.getElementById("labInvoiceForm");
+  if (!form) return;
+  form.reset();
+
+  const patSelect = document.getElementById("lab_patient_id");
+  const docSelect = document.getElementById("lab_doctor_id");
+  const checkboxesDiv = document.getElementById("labTestCheckboxes");
+
+  patSelect.innerHTML = '<option value="">Loading patients...</option>';
+  docSelect.innerHTML = '<option value="">Loading doctors...</option>';
+  checkboxesDiv.innerHTML = '<span style="font-size:12px; color:var(--text3);">Loading lab tests catalog...</span>';
+
+  showModal("labInvoiceModal");
+
+  try {
+    const [patRes, docRes, testRes] = await Promise.all([
+      fetch(`${API_BASE}/patients`, { headers: authHeaders() }),
+      fetch(`${API_BASE}/doctors`, { headers: authHeaders() }),
+      fetch(`${API_BASE}/lab?action=tests`, { headers: authHeaders() }),
+    ]);
+
+    const patData = await patRes.json();
+    const docData = await docRes.json();
+    const testData = await testRes.json();
+
+    if (patRes.ok && patData.success) {
+      patSelect.innerHTML = '<option value="">-- Select Patient --</option>' +
+        patData.patients.map((p) => `<option value="${p.id}">${esc(p.full_name)} (${p.mobile_no || "ID:" + p.id})</option>`).join("");
+    }
+
+    if (docRes.ok && docData.success) {
+      docSelect.innerHTML = '<option value="">-- Select Prescribed Doctor --</option>' +
+        docData.doctors.map((d) => `<option value="${d.id}">Dr. ${esc(d.name)} (${esc(d.specialization || "General")})</option>`).join("");
+    }
+
+    if (testRes.ok && testData.success) {
+      if (testData.tests.length === 0) {
+        checkboxesDiv.innerHTML = '<span style="font-size:12px; color:var(--danger);">No tests found in catalog. Add tests to Lab Inventory first!</span>';
+      } else {
+        checkboxesDiv.innerHTML = testData.tests.map((t) => `
+          <label style="display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; cursor:pointer; background:#fff; padding:6px 10px; border-radius:6px; border:1px solid var(--border);">
+            <input type="checkbox" name="selected_lab_tests" value="${t.id}" data-name="${esc(t.test_name)}" data-price="${t.price}" data-range="${esc(t.normal_range || '')}" onchange="updateLabBillTotals()">
+            <span>${esc(t.test_name)} <strong style="color:var(--primary);">₹ ${parseFloat(t.price).toFixed(2)}</strong></span>
+          </label>
+        `).join("");
+      }
+    }
+  } catch (err) {
+    showToast("Error loading modal options", "error");
+  }
+
+  updateLabBillTotals();
+}
+
+function updateLabBillTotals() {
+  const checkboxes = document.querySelectorAll('input[name="selected_lab_tests"]:checked');
+  let itemsTotal = 0.00;
+  checkboxes.forEach((cb) => {
+    itemsTotal += parseFloat(cb.getAttribute("data-price")) || 0.00;
+  });
+
+  const discount = parseFloat(document.getElementById("lab_discount").value) || 0.00;
+  const tax = parseFloat(document.getElementById("lab_tax").value) || 0.00;
+  const netTotal = Math.max(0.00, itemsTotal - discount + tax);
+
+  document.getElementById("labSelectedCount").textContent = checkboxes.length;
+  document.getElementById("labNetTotalDisplay").textContent = `₹ ${netTotal.toFixed(2)}`;
+}
+
+async function saveLabInvoice(e) {
+  e.preventDefault();
+  const patient_id = document.getElementById("lab_patient_id").value;
+  const doctor_id = document.getElementById("lab_doctor_id").value;
+  const checkboxes = document.querySelectorAll('input[name="selected_lab_tests"]:checked');
+
+  if (!patient_id) {
+    showToast("Please select a patient for the lab order", "error");
+    return;
+  }
+  if (checkboxes.length === 0) {
+    showToast("Please select at least one lab test item", "error");
+    return;
+  }
+
+  const tests = [];
+  checkboxes.forEach((cb) => {
+    tests.push({
+      lab_test_id: parseInt(cb.value),
+      test_name: cb.getAttribute("data-name"),
+      price: parseFloat(cb.getAttribute("data-price")),
+      normal_range: cb.getAttribute("data-range") || ""
+    });
+  });
+
+  const payload = {
+    patient_id: parseInt(patient_id),
+    doctor_id: doctor_id ? parseInt(doctor_id) : null,
+    tests,
+    discount_amount: parseFloat(document.getElementById("lab_discount").value) || 0.00,
+    tax_amount: parseFloat(document.getElementById("lab_tax").value) || 0.00,
+    paid_amount: parseFloat(document.getElementById("lab_paid").value) || 0.00,
+    payment_mode: document.getElementById("lab_pay_mode").value || "cash",
+  };
+
+  try {
+    const res = await fetch(`${API_BASE}/lab?action=invoices`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast("Lab order generated successfully!", "success");
+      hideModal("labInvoiceModal");
+      loadLabInvoices();
+    } else {
+      showToast(data.error || "Failed to create lab order", "error");
+    }
+  } catch (err) {
+    showToast("Network error creating lab order", "error");
+  }
+}
+
+function openLabPaymentModal(invoiceId, invoiceNo, patientName, dueAmt) {
+  document.getElementById("pay_lab_invoice_id").value = invoiceId;
+  document.getElementById("pay_lab_inv_no").textContent = invoiceNo;
+  document.getElementById("pay_lab_patient_name").textContent = patientName;
+  document.getElementById("pay_lab_due_display").textContent = `₹ ${dueAmt.toFixed(2)}`;
+  document.getElementById("pay_lab_amount").value = dueAmt.toFixed(2);
+  showModal("labPaymentModal");
+}
+
+async function saveLabPayment(e) {
+  e.preventDefault();
+  const invoiceId = document.getElementById("pay_lab_invoice_id").value;
+  const amountPaid = parseFloat(document.getElementById("pay_lab_amount").value) || 0.00;
+  const paymentMode = document.getElementById("pay_lab_mode").value;
+
+  try {
+    const res = await fetch(`${API_BASE}/lab?action=receipts`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        lab_invoice_id: parseInt(invoiceId),
+        amount_paid: amountPaid,
+        payment_mode: paymentMode,
+      })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast("Lab payment receipt recorded successfully!", "success");
+      hideModal("labPaymentModal");
+      loadLabInvoices();
+    } else {
+      showToast(data.error || "Failed to record payment", "error");
+    }
+  } catch (err) {
+    showToast("Network error submitting lab receipt", "error");
+  }
+}
+
+async function openLabReportEntryModal(invoiceId, invoiceNo, patientName, doctorName) {
+  document.getElementById("rpt_inv_no").textContent = invoiceNo;
+  document.getElementById("rpt_patient_name").textContent = patientName;
+  document.getElementById("rpt_doctor_name").textContent = doctorName;
+
+  const container = document.getElementById("labReportItemsContainer");
+  container.innerHTML = '<div style="text-align:center; padding:20px;">Loading lab test report entries...</div>';
+  showModal("labReportEntryModal");
+
+  try {
+    const res = await fetch(`${API_BASE}/lab?action=reports&invoice_id=${invoiceId}`, { headers: authHeaders() });
+    const data = await res.json();
+
+    if (res.ok && data.success && data.reports) {
+      if (data.reports.length === 0) {
+        container.innerHTML = '<div class="empty-cell">No lab reports found for this order.</div>';
+        return;
+      }
+
+      container.innerHTML = data.reports.map((rpt) => `
+        <div style="background:var(--bg-secondary, #f8fafc); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h4 style="margin:0; font-size:14px; font-weight:700;">🧪 ${esc(rpt.test_name)}</h4>
+            <span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:12px; ${rpt.status === 'completed' ? 'background:#dcfce7; color:#166534;' : 'background:#fef3c7; color:#92400e;'}">
+              ${rpt.status === 'completed' ? 'COMPLETED' : 'PENDING'}
+            </span>
+          </div>
+
+          <form onsubmit="saveLabReportEntry(event, ${rpt.id})" style="display:flex; flex-direction:column; gap:10px;">
+            <div class="form-row">
+              <div class="form-group" style="flex:1;">
+                <label style="font-size:11px;">Observed Test Result Value <span class="req">*</span></label>
+                <input type="text" class="form-control" id="rpt_val_${rpt.id}" value="${esc(rpt.result_value || '')}" placeholder="e.g. 14.5 g/dL / Positive / Negative" required>
+              </div>
+              <div class="form-group" style="flex:1;">
+                <label style="font-size:11px;">Normal / Reference Range</label>
+                <input type="text" class="form-control" id="rpt_ref_${rpt.id}" value="${esc(rpt.normal_range || '')}" placeholder="e.g. 13.0 - 17.0 g/dL">
+              </div>
+            </div>
+            <div class="form-group">
+              <label style="font-size:11px;">Pathology Notes / Interpretation</label>
+              <input type="text" class="form-control" id="rpt_notes_${rpt.id}" value="${esc(rpt.notes || '')}" placeholder="Optional lab notes or comments...">
+            </div>
+            <div style="text-align:right;">
+              <button type="submit" class="btn btn-primary" style="padding:6px 14px; font-size:12px;">Save Test Result</button>
+            </div>
+          </form>
+        </div>
+      `).join("");
+    }
+  } catch (err) {
+    container.innerHTML = '<div class="empty-cell" style="color:var(--danger);">Error loading lab reports</div>';
+  }
+}
+
+async function saveLabReportEntry(e, reportId) {
+  e.preventDefault();
+  const val = document.getElementById(`rpt_val_${reportId}`).value.trim();
+  const ref = document.getElementById(`rpt_ref_${reportId}`).value.trim();
+  const notes = document.getElementById(`rpt_notes_${reportId}`).value.trim();
+
+  try {
+    const res = await fetch(`${API_BASE}/lab?action=reports`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        report_id: reportId,
+        result_value: val,
+        normal_range: ref,
+        notes,
+        status: "completed"
+      })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast("Lab test result saved successfully!", "success");
+      loadLabInvoices();
+    } else {
+      showToast(data.error || "Failed to save test result", "error");
+    }
+  } catch (err) {
+    showToast("Network error saving test result", "error");
+  }
+}
+
+function exportLabInvoicePDF(id) {
+  window.open(`${API_BASE}/lab/export-pdf?id=${id}`, "_blank");
+}
+
 
 
 

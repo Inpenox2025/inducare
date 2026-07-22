@@ -305,6 +305,156 @@ module.exports = async function handler(req, res) {
       )
     `;
 
+    // 5a. Create Pharmacy Tables
+    await sql`
+      CREATE TABLE IF NOT EXISTS medicines (
+        id SERIAL PRIMARY KEY,
+        barcode VARCHAR(100),
+        name VARCHAR(255) NOT NULL,
+        generic_name VARCHAR(255),
+        category VARCHAR(100),
+        manufacturer VARCHAR(255),
+        unit_price NUMERIC(15,2) DEFAULT 0.00,
+        mrp NUMERIC(15,2) DEFAULT 0.00,
+        stock_quantity INT DEFAULT 0,
+        reorder_level INT DEFAULT 10,
+        expiry_date DATE,
+        rack_location VARCHAR(100),
+        hospital_id INT REFERENCES hospitals(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS pharmacy_invoices (
+        id SERIAL PRIMARY KEY,
+        invoice_no VARCHAR(100) UNIQUE NOT NULL,
+        patient_id INT REFERENCES patients(id) ON DELETE SET NULL,
+        doctor_id INT REFERENCES doctors(id) ON DELETE SET NULL,
+        description TEXT,
+        total_amount NUMERIC(15,2) DEFAULT 0.00,
+        discount_amount NUMERIC(15,2) DEFAULT 0.00,
+        tax_amount NUMERIC(15,2) DEFAULT 0.00,
+        net_amount NUMERIC(15,2) DEFAULT 0.00,
+        paid_amount NUMERIC(15,2) DEFAULT 0.00,
+        due_amount NUMERIC(15,2) DEFAULT 0.00,
+        status VARCHAR(20) DEFAULT 'unpaid',
+        payment_mode VARCHAR(50),
+        hospital_id INT REFERENCES hospitals(id) ON DELETE CASCADE,
+        created_by INT REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS pharmacy_invoice_items (
+        id SERIAL PRIMARY KEY,
+        pharmacy_invoice_id INT REFERENCES pharmacy_invoices(id) ON DELETE CASCADE,
+        medicine_id INT REFERENCES medicines(id) ON DELETE SET NULL,
+        medicine_name VARCHAR(255) NOT NULL,
+        quantity INT DEFAULT 1,
+        unit_price NUMERIC(15,2) DEFAULT 0.00,
+        total_price NUMERIC(15,2) DEFAULT 0.00,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS pharmacy_receipts (
+        id SERIAL PRIMARY KEY,
+        receipt_no VARCHAR(100) UNIQUE NOT NULL,
+        pharmacy_invoice_id INT REFERENCES pharmacy_invoices(id) ON DELETE CASCADE,
+        amount_paid NUMERIC(15,2) NOT NULL,
+        payment_mode VARCHAR(50) NOT NULL,
+        payment_date DATE DEFAULT CURRENT_DATE,
+        hospital_id INT REFERENCES hospitals(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
+    // 5b. Create Lab Tables
+    await sql`
+      CREATE TABLE IF NOT EXISTS lab_tests (
+        id SERIAL PRIMARY KEY,
+        test_code VARCHAR(100),
+        test_name VARCHAR(255) NOT NULL,
+        category VARCHAR(100),
+        price NUMERIC(15,2) DEFAULT 0.00,
+        normal_range VARCHAR(255),
+        sample_type VARCHAR(100),
+        description TEXT,
+        hospital_id INT REFERENCES hospitals(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS lab_invoices (
+        id SERIAL PRIMARY KEY,
+        invoice_no VARCHAR(100) UNIQUE NOT NULL,
+        patient_id INT REFERENCES patients(id) ON DELETE SET NULL,
+        doctor_id INT REFERENCES doctors(id) ON DELETE SET NULL,
+        description TEXT,
+        total_amount NUMERIC(15,2) DEFAULT 0.00,
+        discount_amount NUMERIC(15,2) DEFAULT 0.00,
+        tax_amount NUMERIC(15,2) DEFAULT 0.00,
+        net_amount NUMERIC(15,2) DEFAULT 0.00,
+        paid_amount NUMERIC(15,2) DEFAULT 0.00,
+        due_amount NUMERIC(15,2) DEFAULT 0.00,
+        status VARCHAR(20) DEFAULT 'unpaid',
+        payment_mode VARCHAR(50),
+        hospital_id INT REFERENCES hospitals(id) ON DELETE CASCADE,
+        created_by INT REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS lab_invoice_items (
+        id SERIAL PRIMARY KEY,
+        lab_invoice_id INT REFERENCES lab_invoices(id) ON DELETE CASCADE,
+        lab_test_id INT REFERENCES lab_tests(id) ON DELETE SET NULL,
+        test_name VARCHAR(255) NOT NULL,
+        price NUMERIC(15,2) DEFAULT 0.00,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS lab_receipts (
+        id SERIAL PRIMARY KEY,
+        receipt_no VARCHAR(100) UNIQUE NOT NULL,
+        lab_invoice_id INT REFERENCES lab_invoices(id) ON DELETE CASCADE,
+        amount_paid NUMERIC(15,2) NOT NULL,
+        payment_mode VARCHAR(50) NOT NULL,
+        payment_date DATE DEFAULT CURRENT_DATE,
+        hospital_id INT REFERENCES hospitals(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS lab_reports (
+        id SERIAL PRIMARY KEY,
+        lab_invoice_id INT REFERENCES lab_invoices(id) ON DELETE CASCADE,
+        patient_id INT REFERENCES patients(id) ON DELETE SET NULL,
+        doctor_id INT REFERENCES doctors(id) ON DELETE SET NULL,
+        lab_test_id INT REFERENCES lab_tests(id) ON DELETE SET NULL,
+        test_name VARCHAR(255) NOT NULL,
+        result_value TEXT,
+        normal_range VARCHAR(255),
+        notes TEXT,
+        status VARCHAR(20) DEFAULT 'pending',
+        hospital_id INT REFERENCES hospitals(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
     // Seed default hospitals if empty
     const checkHospitals = await sql`SELECT id FROM hospitals LIMIT 1`;
     let hospital1Id;
@@ -341,6 +491,7 @@ module.exports = async function handler(req, res) {
         { role_name: "nurse", description: "Staff Nurse" },
         { role_name: "doctor", description: "Medical Doctor" },
         { role_name: "pharmacist", description: "Pharmacy Manager" },
+        { role_name: "lab_incharge", description: "Lab Incharge" },
       ];
       for (const r of rolesToSeed) {
         const checkRole = await sql`
@@ -504,6 +655,60 @@ module.exports = async function handler(req, res) {
         await sql`
           INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon, hospital_id)
           VALUES ('admin', 'claims', 'Insurance Claims', '📝', ${h.id})
+          ON CONFLICT DO NOTHING
+        `;
+
+        // Pharmacy & Lab menu migrations for Admin, Pharmacist, Lab Incharge
+        await sql`
+          INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon, hospital_id)
+          VALUES ('admin', 'pharmacy-inventory', 'Pharmacy Inventory', '💊', ${h.id})
+          ON CONFLICT DO NOTHING
+        `;
+        await sql`
+          INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon, hospital_id)
+          VALUES ('admin', 'pharma-billing', 'Pharma Bills & Receipts', '🧾', ${h.id})
+          ON CONFLICT DO NOTHING
+        `;
+        await sql`
+          INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon, hospital_id)
+          VALUES ('admin', 'lab-inventory', 'Lab Tests Inventory', '🧪', ${h.id})
+          ON CONFLICT DO NOTHING
+        `;
+        await sql`
+          INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon, hospital_id)
+          VALUES ('admin', 'lab-billing', 'Lab Bills & Receipts', '🔬', ${h.id})
+          ON CONFLICT DO NOTHING
+        `;
+
+        await sql`
+          INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon, hospital_id)
+          VALUES ('pharmacist', 'pharmacy-inventory', 'Pharmacy Inventory', '💊', ${h.id})
+          ON CONFLICT DO NOTHING
+        `;
+        await sql`
+          INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon, hospital_id)
+          VALUES ('pharmacist', 'pharma-billing', 'Pharma Bills & Receipts', '🧾', ${h.id})
+          ON CONFLICT DO NOTHING
+        `;
+        await sql`
+          INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon, hospital_id)
+          VALUES ('pharmacist', 'patients', 'Patients Registry', '👥', ${h.id})
+          ON CONFLICT DO NOTHING
+        `;
+
+        await sql`
+          INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon, hospital_id)
+          VALUES ('lab_incharge', 'lab-inventory', 'Lab Tests Inventory', '🧪', ${h.id})
+          ON CONFLICT DO NOTHING
+        `;
+        await sql`
+          INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon, hospital_id)
+          VALUES ('lab_incharge', 'lab-billing', 'Lab Bills & Receipts', '🔬', ${h.id})
+          ON CONFLICT DO NOTHING
+        `;
+        await sql`
+          INSERT INTO role_menus (role_name, menu_key, menu_label, menu_icon, hospital_id)
+          VALUES ('lab_incharge', 'patients', 'Patients Registry', '👥', ${h.id})
           ON CONFLICT DO NOTHING
         `;
       }

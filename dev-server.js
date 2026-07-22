@@ -137,6 +137,20 @@ app.all('/api/claims', runHandler('./api/claims'));
 // Support Tickets Integration
 app.all('/api/tickets', runHandler('./api/tickets'));
 
+// Pharmacy Operations
+app.all('/api/pharmacy/export-pdf', (req, res, next) => {
+  req.query.action = 'export-pdf';
+  next();
+}, runHandler('./api/pharmacy'));
+app.all('/api/pharmacy', runHandler('./api/pharmacy'));
+
+// Lab Operations
+app.all('/api/lab/export-pdf', (req, res, next) => {
+  req.query.action = 'export-pdf';
+  next();
+}, runHandler('./api/lab'));
+app.all('/api/lab', runHandler('./api/lab'));
+
 // 3. Serve Frontend Static Assets
 app.use(express.static(__dirname));
 
