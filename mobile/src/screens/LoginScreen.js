@@ -35,7 +35,7 @@ export default function LoginScreen({ onLoginSuccess }) {
         Alert.alert('Login Failed', result.error || 'Invalid credentials or hospital code.');
       }
     } catch (err) {
-      Alert.alert('Network Error', 'Unable to reach Inducare server. Please check internet connection.');
+      Alert.alert('Network Error', 'Unable to reach icare server. Please check internet connection.');
     } finally {
       setLoading(false);
     }
@@ -49,7 +49,7 @@ export default function LoginScreen({ onLoginSuccess }) {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerBox}>
           <Text style={styles.logoIcon}>🏥</Text>
-          <Text style={styles.brandTitle}>INDUCARE</Text>
+          <Text style={styles.brandTitle}>Icare</Text>
           <Text style={styles.brandSubtitle}>Hospital & Pharmacy Management</Text>
         </View>
 
@@ -106,7 +106,7 @@ export default function LoginScreen({ onLoginSuccess }) {
         </View>
 
         <Text style={styles.footerNote}>
-          🔒 Secure SSL Encrypted Mobile Connection • Live Inducare Cloud
+          🔒 Secure SSL Encrypted Mobile Connection • Live icare Cloud
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>
