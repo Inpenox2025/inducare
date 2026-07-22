@@ -5,6 +5,12 @@
 const API_BASE = "/api";
 let activeTab = "overview";
 
+// Global Event Listener Helper with safe element lookup
+function on(id, event, handler) {
+  const el = typeof id === "string" ? document.getElementById(id) : id;
+  if (el) el.addEventListener(event, handler);
+}
+
 const DEFAULT_CASE_SHEET_CONFIG = {
   protocols: [
     { name: "Ozone Therapy", description: "Ozone is a powerful healer it improves oxygen delivery, boosts immunity, reduces inflammation & fights infections." },
@@ -2122,12 +2128,6 @@ window.deleteStaff = async function (id) {
 
 // ─────── Event Handlers & Modal Core ───────
 function initEventListeners() {
-  // Helper: safely attach event listener, skips silently if element not found
-  function on(id, event, handler) {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener(event, handler);
-  }
-
   // Save form bindings
   on("patientForm", "submit", savePatient);
   on("appointmentForm", "submit", saveAppointment);
