@@ -12,29 +12,27 @@ This repository contains the standalone React Native & Expo mobile application f
 
 ---
 
-## 🛠️ How to Run & Build
+## 🛠️ How to Export & Generate Android APK
 
-### 1. Install Dependencies
+Because building an Android `.apk` file requires a cloud compiler server (unless Android Studio Java SDK is installed locally), Expo provides a **100% free Cloud APK builder**:
+
+### Step 1: Create a free Expo account (if you don't have one)
+Sign up for free in 30 seconds at [https://expo.dev/signup](https://expo.dev/signup).
+
+### Step 2: Run the APK build command
 ```bash
 cd mobile
-npm install
-```
-
-### 2. Start Development Server
-```bash
-npm start
-```
-Use the Expo Go app on iOS or Android to scan the QR code and run the app live.
-
-### 3. Generate Standalone Android APK (for direct device installation)
-```bash
 npm run build:apk
 ```
 
-### 4. Generate Android App Bundle (AAB for Google Play Store submission)
-```bash
-npm run build:aab
-```
+### Step 3: Enter your username/password when prompted
+When the terminal asks `? Email or username »`, enter your Expo username/email and password.
+
+### Step 4: Download your `.apk` file!
+EAS will build your application in ~2-3 minutes and print a direct link in the terminal:
+> `https://expo.dev/artifacts/eas/inducare-app.apk`
+
+Click that link to download the `.apk` file directly to your computer! You can then copy it to any mobile phone, share it via WhatsApp/Drive, or install it on any Android device.
 
 ---
 
