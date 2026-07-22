@@ -11,7 +11,7 @@ import {
   Alert,
   ScrollView
 } from 'react-native';
-import { getThemeColors, Shadows } from '../theme/colors';
+import { Colors, getThemeColors, Shadows } from '../theme/colors';
 import { api } from '../services/api';
 
 export default function SupportTicketsScreen({ isDarkMode = true }) {
@@ -106,55 +106,55 @@ export default function SupportTicketsScreen({ isDarkMode = true }) {
   };
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity style={styles.raiseBtn} onPress={() => setShowRaiseModal(true)}>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+      <TouchableOpacity style={[styles.raiseBtn, { backgroundColor: colors.accent }]} onPress={() => setShowRaiseModal(true)}>
         <Text style={styles.raiseBtnText}>+ Raise Support Ticket</Text>
       </TouchableOpacity>
 
       {loading ? (
-        <ActivityIndicator color={Colors.accent} style={{ marginTop: 40 }} />
+        <ActivityIndicator color={colors.accent} style={{ marginTop: 40 }} />
       ) : (
         <FlatList
           data={tickets}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={{ paddingBottom: 30 }}
           renderItem={({ item }) => (
-            <View style={[styles.card, Shadows.card]}>
+            <View style={[styles.card, Shadows.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={styles.headerRow}>
-                <Text style={styles.ticketId}>Ticket #{item.id}</Text>
+                <Text style={[styles.ticketId, { color: colors.text }]}>Ticket #{item.id}</Text>
                 <View style={[styles.statusBadge, item.status === 'open' ? styles.badgeOpen : styles.badgeResolved]}>
-                  <Text style={styles.statusText}>{item.status?.toUpperCase()}</Text>
+                  <Text style={[styles.statusText, { color: colors.accent }]}>{item.status?.toUpperCase()}</Text>
                 </View>
               </View>
-              <Text style={styles.subjectText}>{item.subject}</Text>
-              {item.description ? <Text style={styles.descText}>{item.description}</Text> : null}
+              <Text style={[styles.subjectText, { color: colors.text }]}>{item.subject}</Text>
+              {item.description ? <Text style={[styles.descText, { color: colors.textMuted }]}>{item.description}</Text> : null}
 
-              <TouchableOpacity style={styles.chatBtn} onPress={() => openChat(item)}>
-                <Text style={styles.chatBtnText}>💬 View Conversation / Chat</Text>
+              <TouchableOpacity style={[styles.chatBtn, { backgroundColor: colors.cardSub }]} onPress={() => openChat(item)}>
+                <Text style={[styles.chatBtnText, { color: colors.accent }]}>💬 View Conversation / Chat</Text>
               </TouchableOpacity>
             </View>
           )}
-          ListEmptyComponent={<Text style={styles.emptyText}>No support tickets found.</Text>}
+          ListEmptyComponent={<Text style={[styles.emptyText, { color: colors.textMuted }]}>No support tickets found.</Text>}
         />
       )}
 
       {/* Raise Ticket Modal */}
       <Modal visible={showRaiseModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>🛠️ Raise Support Ticket</Text>
+          <View style={[styles.modalBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>🛠️ Raise Support Ticket</Text>
 
-            <Text style={styles.modalLabel}>Subject / Topic *</Text>
-            <TextInput style={styles.modalInput} placeholder="e.g. Reconciliation error, Billing mismatch" placeholderTextColor="#64748b" value={subject} onChangeText={setSubject} />
+            <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Subject / Topic *</Text>
+            <TextInput style={[styles.modalInput, { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text }]} placeholder="e.g. Billing mismatch" placeholderTextColor="#64748b" value={subject} onChangeText={setSubject} />
 
-            <Text style={styles.modalLabel}>Detailed Description</Text>
-            <TextInput style={[styles.modalInput, { height: 100 }]} placeholder="Describe the issue..." placeholderTextColor="#64748b" multiline value={description} onChangeText={setDescription} />
+            <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Detailed Description</Text>
+            <TextInput style={[styles.modalInput, { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text, height: 100 }]} placeholder="Describe the issue..." placeholderTextColor="#64748b" multiline value={description} onChangeText={setDescription} />
 
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowRaiseModal(false)}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.saveBtn} onPress={handleRaiseTicket} disabled={submitting}>
+              <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.accent }]} onPress={handleRaiseTicket} disabled={submitting}>
                 {submitting ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.saveBtnText}>Submit Ticket</Text>}
               </TouchableOpacity>
             </View>
@@ -165,17 +165,17 @@ export default function SupportTicketsScreen({ isDarkMode = true }) {
       {/* Chat Messages Modal */}
       <Modal visible={showChatModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalBox, { maxHeight: '80%' }]}>
-            <Text style={styles.modalTitle}>💬 Ticket #{activeTicket?.id}: {activeTicket?.subject}</Text>
+          <View style={[styles.modalBox, { backgroundColor: colors.card, borderColor: colors.border, maxHeight: '80%' }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>💬 Ticket #{activeTicket?.id}: {activeTicket?.subject}</Text>
 
             <ScrollView style={{ maxHeight: 300, marginVertical: 10 }}>
               {messages.length === 0 ? (
-                <Text style={styles.emptyText}>No messages in chat thread yet.</Text>
+                <Text style={[styles.emptyText, { color: colors.textMuted }]}>No messages in chat thread yet.</Text>
               ) : (
                 messages.map((m, idx) => (
-                  <View key={idx} style={[styles.msgBubble, m.sender_role === 'super_admin' ? styles.msgAdmin : styles.msgMe]}>
+                  <View key={idx} style={[styles.msgBubble, m.sender_role === 'super_admin' ? styles.msgAdmin : [styles.msgMe, { backgroundColor: colors.primary }]]}>
                     <Text style={styles.msgText}>{m.message}</Text>
-                    <Text style={styles.msgMeta}>{m.sender_name || 'User'} ({m.sender_role})</Text>
+                    <Text style={[styles.msgMeta, { color: colors.textMuted }]}>{m.sender_name || 'User'} ({m.sender_role})</Text>
                   </View>
                 ))
               )}
@@ -183,19 +183,19 @@ export default function SupportTicketsScreen({ isDarkMode = true }) {
 
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <TextInput
-                style={[styles.modalInput, { flex: 1 }]}
+                style={[styles.modalInput, { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text, flex: 1 }]}
                 placeholder="Type reply message..."
                 placeholderTextColor="#64748b"
                 value={chatMessage}
                 onChangeText={setChatMessage}
               />
-              <TouchableOpacity style={styles.saveBtn} onPress={handleSendMessage} disabled={sendingMsg}>
+              <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.accent }]} onPress={handleSendMessage} disabled={sendingMsg}>
                 <Text style={styles.saveBtnText}>Send</Text>
               </TouchableOpacity>
             </View>
 
             <TouchableOpacity style={{ marginTop: 12, alignItems: 'center' }} onPress={() => setShowChatModal(false)}>
-              <Text style={{ color: Colors.textMutedLight, fontWeight: '700' }}>Close Chat</Text>
+              <Text style={{ color: colors.textMuted, fontWeight: '700' }}>Close Chat</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -205,33 +205,33 @@ export default function SupportTicketsScreen({ isDarkMode = true }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDark, padding: 16 },
-  raiseBtn: { backgroundColor: Colors.accent, paddingVertical: 14, borderRadius: 14, alignItems: 'center', marginBottom: 16 },
+  container: { flex: 1, padding: 16 },
+  raiseBtn: { paddingVertical: 14, borderRadius: 14, alignItems: 'center', marginBottom: 16 },
   raiseBtnText: { color: '#0f172a', fontSize: 14, fontWeight: '800' },
-  card: { backgroundColor: Colors.bgCardDark, borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: Colors.borderDark },
+  card: { borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  ticketId: { color: '#ffffff', fontSize: 15, fontWeight: '800' },
+  ticketId: { fontSize: 15, fontWeight: '800' },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   badgeOpen: { backgroundColor: 'rgba(245, 158, 11, 0.2)' },
   badgeResolved: { backgroundColor: 'rgba(16, 185, 129, 0.2)' },
-  statusText: { color: Colors.accent, fontSize: 11, fontWeight: '800' },
-  subjectText: { color: '#ffffff', fontSize: 14, fontWeight: '700', marginTop: 6 },
-  descText: { color: Colors.textMutedLight, fontSize: 12, marginTop: 4 },
-  chatBtn: { backgroundColor: '#1e293b', paddingVertical: 8, borderRadius: 10, alignItems: 'center', marginTop: 12 },
-  chatBtnText: { color: Colors.accent, fontSize: 12, fontWeight: '700' },
-  emptyText: { color: Colors.textMutedLight, textAlign: 'center', marginTop: 30, fontSize: 13 },
+  statusText: { fontSize: 11, fontWeight: '800' },
+  subjectText: { fontSize: 14, fontWeight: '700', marginTop: 6 },
+  descText: { fontSize: 12, marginTop: 4 },
+  chatBtn: { paddingVertical: 8, borderRadius: 10, alignItems: 'center', marginTop: 12 },
+  chatBtnText: { fontSize: 12, fontWeight: '700' },
+  emptyText: { textAlign: 'center', marginTop: 30, fontSize: 13 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', padding: 20 },
-  modalBox: { backgroundColor: Colors.bgCardDark, borderRadius: 20, padding: 20 },
-  modalTitle: { color: '#ffffff', fontSize: 16, fontWeight: '800', marginBottom: 12 },
-  modalLabel: { color: Colors.textMutedLight, fontSize: 12, marginBottom: 4, marginTop: 8 },
-  modalInput: { backgroundColor: '#0f172a', borderWidth: 1, borderColor: Colors.borderDark, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, color: '#ffffff' },
+  modalBox: { borderRadius: 20, padding: 20, borderWidth: 1 },
+  modalTitle: { fontSize: 16, fontWeight: '800', marginBottom: 12 },
+  modalLabel: { fontSize: 12, marginBottom: 4, marginTop: 8 },
+  modalInput: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
   cancelBtn: { flex: 1, backgroundColor: '#334155', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
   cancelBtnText: { color: '#ffffff', fontWeight: '700' },
-  saveBtn: { backgroundColor: Colors.accent, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
+  saveBtn: { paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
   saveBtnText: { color: '#0f172a', fontWeight: '800' },
   msgBubble: { padding: 10, borderRadius: 12, marginBottom: 8, maxWidth: '85%' },
-  msgMe: { backgroundColor: Colors.primary, alignSelf: 'flex-end' },
+  msgMe: { alignSelf: 'flex-end' },
   msgAdmin: { backgroundColor: '#334155', alignSelf: 'flex-start' },
   msgText: { color: '#ffffff', fontSize: 13 },
-  msgMeta: { color: Colors.textMutedLight, fontSize: 10, marginTop: 4, textAlign: 'right' },
+  msgMeta: { fontSize: 10, marginTop: 4, textAlign: 'right' },
 });
