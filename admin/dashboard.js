@@ -7120,7 +7120,7 @@ window.savePharmaPayment = savePharmaPayment;
 window.exportPharmaInvoicePDF = exportPharmaInvoicePDF;
 
 window.loadLabInventory = loadLabInventory;
-window.loadLabTests = loadLabTests;
+window.loadLabTests = loadLabInventory;
 window.openLabTestModal = openLabTestModal;
 window.saveLabTestForm = saveLabTestForm;
 window.deleteLabTest = deleteLabTest;
@@ -7128,7 +7128,6 @@ window.loadLabBilling = loadLabBilling;
 window.loadLabInvoices = loadLabInvoices;
 window.loadLabReceipts = loadLabReceipts;
 window.openLabInvoiceModal = openLabInvoiceModal;
-window.toggleLabTestSelection = toggleLabTestSelection;
 window.saveLabInvoice = saveLabInvoice;
 window.openLabPaymentModal = openLabPaymentModal;
 window.saveLabPayment = saveLabPayment;
@@ -7138,7 +7137,8 @@ window.exportLabInvoicePDF = exportLabInvoicePDF;
 
 window.loadSupportTickets = loadSupportTickets;
 window.openTicketChat = openTicketChat;
-window.sendChatMessage = sendChatMessage;
+window.sendSupportMessage = sendSupportMessage;
+window.sendChatMessage = sendSupportMessage;
 window.resolveSupportTicket = resolveSupportTicket;
 window.deleteSupportTicket = deleteSupportTicket;
 window.saveRaiseTicketForm = saveRaiseTicketForm;
