@@ -11,10 +11,11 @@ import {
   Alert,
   ScrollView
 } from 'react-native';
-import { Colors, Shadows } from '../theme/colors';
+import { getThemeColors, Shadows } from '../theme/colors';
 import { api } from '../services/api';
 
-export default function SupportTicketsScreen() {
+export default function SupportTicketsScreen({ isDarkMode = true }) {
+  const colors = getThemeColors(isDarkMode);
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
 

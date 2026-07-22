@@ -8,10 +8,11 @@ import {
   RefreshControl,
   ActivityIndicator
 } from 'react-native';
-import { Colors, Shadows } from '../theme/colors';
+import { getThemeColors, Shadows } from '../theme/colors';
 import { api } from '../services/api';
 
-export default function DashboardScreen({ user, onNavigate }) {
+export default function DashboardScreen({ user, onNavigate, isDarkMode = true }) {
+  const colors = getThemeColors(isDarkMode);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({
