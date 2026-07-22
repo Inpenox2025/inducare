@@ -4336,7 +4336,8 @@ async function loadRoleMenusConfig(role) {
 }
 
 async function saveRoleMenu() {
-  const role = document.getElementById("menu_role_select").value;
+  const roleSelect = document.getElementById("menu_role_select");
+  const role = roleSelect ? roleSelect.value : "";
   const checked = document.querySelectorAll('input[name="menu_tab"]:checked');
   const menus = Array.from(checked).map((cb) => ({
     menu_key: cb.value,
@@ -4346,6 +4347,18 @@ async function saveRoleMenu() {
 
   const superHospSelect = document.getElementById("super_menu_hospital_select");
   const hospId = superHospSelect ? parseInt(superHospSelect.value) : null;
+  const saveBtn = document.getElementById("saveMenuConfigBtn");
+  const statusEl = document.getElementById("superMenuSaveMsg");
+
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = "⏳ Saving Menu Mapping...";
+  }
+
+  if (statusEl) {
+    statusEl.style.color = "var(--primary, #2563eb)";
+    statusEl.innerHTML = "⏳ Saving menu configuration...";
+  }
 
   try {
     const res = await fetch(`${API_BASE}/super?action=menu-mapping`, {
@@ -4354,16 +4367,39 @@ async function saveRoleMenu() {
       body: JSON.stringify({ role_name: role, menus, hospital_id: hospId }),
     });
     const data = await res.json();
+
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = "Save Menu Mapping Map";
+    }
+
     if (res.ok && data.success) {
-      showToast(
-        `Privilege menu mappings updated for role: ${role.toUpperCase()}`,
-        "success",
-      );
+      const msg = `✅ Privilege menu mappings saved successfully for role: ${role.toUpperCase()}!`;
+      if (statusEl) {
+        statusEl.style.color = "#10b981";
+        statusEl.innerHTML = msg;
+        setTimeout(() => { if (statusEl.innerHTML === msg) statusEl.innerHTML = ""; }, 5000);
+      }
+      showToast(msg, "success");
     } else {
-      showToast(data.error || "Save configuration failed", "error");
+      const errMsg = `❌ ${data.error || "Save configuration failed"}`;
+      if (statusEl) {
+        statusEl.style.color = "#ef4444";
+        statusEl.innerHTML = errMsg;
+      }
+      showToast(errMsg, "error");
     }
   } catch (err) {
-    showToast("Network connection mapping config failed", "error");
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = "Save Menu Mapping Map";
+    }
+    const errText = "❌ Network connection error: Failed to save menu configuration.";
+    if (statusEl) {
+      statusEl.style.color = "#ef4444";
+      statusEl.innerHTML = errText;
+    }
+    showToast(errText, "error");
   }
 }
 

@@ -611,28 +611,33 @@ textarea.form-control {
 
 /* Toast styling for admin */
 .toast {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  padding: 16px 24px;
-  border-radius: var(--radius-md);
-  background-color: var(--text1);
-  color: #ffffff;
-  font-weight: 500;
-  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
-  transform: translateY(100px);
-  opacity: 0;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  z-index: 2000;
+  position: fixed !important;
+  top: 24px !important;
+  right: 24px !important;
+  bottom: auto !important;
+  padding: 14px 24px !important;
+  border-radius: 8px !important;
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3) !important;
+  transform: translateY(-40px) !important;
+  opacity: 0 !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  z-index: 999999 !important;
+  pointer-events: none;
+  max-width: 450px;
 }
 
 .toast.show {
-  transform: translateY(0);
-  opacity: 1;
+  transform: translateY(0) !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 
-.toast.success { background-color: var(--success); }
-.toast.error { background-color: var(--error); }
+.toast.success { background-color: #10b981 !important; color: #ffffff !important; }
+.toast.error { background-color: #ef4444 !important; color: #ffffff !important; }
 
 /* Responsive break points */
 @media (max-width: 992px) {
