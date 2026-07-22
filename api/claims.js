@@ -24,6 +24,122 @@ module.exports = async function handler(req, res) {
 
   const sql = getSQL();
   const action = req.query.action;
+  const isTickets = req.query.module === "tickets" || (req.url && req.url.includes("/tickets")) || action === "messages" || action === "create" || action === "message" || action === "resolve";
+
+  if (isTickets) {
+    if (req.method === "GET") {
+      try {
+        if (action === "messages") {
+          const ticketId = req.query.ticket_id;
+          if (!ticketId) return res.status(400).json({ error: "Ticket ID is required" });
+          const ticketRows = await sql`SELECT * FROM support_tickets WHERE id = ${parseInt(ticketId)}`;
+          if (ticketRows.length === 0) return res.status(404).json({ error: "Ticket not found" });
+          const ticket = ticketRows[0];
+
+          if (user.role !== "super_admin" && parseInt(ticket.hospital_id) !== parseInt(user.hospital_id)) {
+            return res.status(403).json({ error: "Access denied to this support ticket." });
+          }
+
+          const messages = await sql`
+            SELECT tm.*, u.username, u.role as sender_role
+            FROM support_ticket_messages tm
+            JOIN users u ON tm.sender_id = u.id
+            WHERE tm.ticket_id = ${parseInt(ticketId)}
+            ORDER BY tm.created_at ASC
+          `;
+          return res.status(200).json({ success: true, ticket, messages });
+        }
+
+        let tickets;
+        if (user.role === "super_admin") {
+          tickets = await sql`
+            SELECT t.*, h.name as hospital_name
+            FROM support_tickets t
+            LEFT JOIN hospitals h ON t.hospital_id = h.id
+            ORDER BY t.created_at DESC
+          `;
+        } else {
+          if (!user.hospital_id) {
+            return res.status(400).json({ error: "User account is not linked to any hospital." });
+          }
+          tickets = await sql`
+            SELECT t.* FROM support_tickets t
+            WHERE t.hospital_id = ${parseInt(user.hospital_id)}
+            ORDER BY t.created_at DESC
+          `;
+        }
+        return res.status(200).json({ success: true, tickets });
+      } catch (error) {
+        return res.status(500).json({ error: "Failed to fetch support tickets", details: error.message });
+      }
+    }
+
+    if (req.method === "POST") {
+      try {
+        if (action === "create") {
+          const { subject, description } = req.body;
+          if (!subject) return res.status(400).json({ error: "Subject is required" });
+          if (!user.hospital_id) return res.status(400).json({ error: "Only hospital users can raise support tickets." });
+
+          const ticketRows = await sql`
+            INSERT INTO support_tickets (hospital_id, subject, description, created_by)
+            VALUES (${parseInt(user.hospital_id)}, ${subject}, ${description || ""}, ${parseInt(user.id)})
+            RETURNING id
+          `;
+          const ticketId = ticketRows[0].id;
+
+          if (description) {
+            await sql`
+              INSERT INTO support_ticket_messages (ticket_id, sender_id, message)
+              VALUES (${parseInt(ticketId)}, ${parseInt(user.id)}, ${description})
+            `;
+          }
+          return res.status(200).json({ success: true, ticket_id: ticketId });
+        }
+
+        if (action === "message") {
+          const { ticket_id, message } = req.body;
+          if (!ticket_id || !message) return res.status(400).json({ error: "Ticket ID and message body are required" });
+
+          const ticketRows = await sql`SELECT * FROM support_tickets WHERE id = ${parseInt(ticket_id)}`;
+          if (ticketRows.length === 0) return res.status(404).json({ error: "Ticket not found" });
+          const ticket = ticketRows[0];
+
+          if (user.role !== "super_admin" && parseInt(ticket.hospital_id) !== parseInt(user.hospital_id)) {
+            return res.status(403).json({ error: "Access denied to this ticket chat." });
+          }
+
+          await sql`
+            INSERT INTO support_ticket_messages (ticket_id, sender_id, message)
+            VALUES (${parseInt(ticket_id)}, ${parseInt(user.id)}, ${message})
+          `;
+
+          await sql`UPDATE support_tickets SET updated_at = NOW() WHERE id = ${parseInt(ticket_id)}`;
+          return res.status(200).json({ success: true });
+        }
+
+        if (action === "resolve") {
+          const { ticket_id } = req.body;
+          if (!ticket_id) return res.status(400).json({ error: "Ticket ID is required" });
+          if (user.role !== "super_admin") return res.status(403).json({ error: "Only Superadmin can resolve support tickets." });
+
+          await sql`UPDATE support_tickets SET status = 'resolved', updated_at = NOW() WHERE id = ${parseInt(ticket_id)}`;
+          return res.status(200).json({ success: true });
+        }
+
+        if (action === "delete") {
+          const { ticket_id } = req.body;
+          if (!ticket_id) return res.status(400).json({ error: "Ticket ID is required" });
+          if (user.role !== "super_admin") return res.status(403).json({ error: "Only Superadmin can delete support tickets." });
+
+          await sql`DELETE FROM support_tickets WHERE id = ${parseInt(ticket_id)}`;
+          return res.status(200).json({ success: true });
+        }
+      } catch (error) {
+        return res.status(500).json({ error: "Ticket processing failed", details: error.message });
+      }
+    }
+  }
 
   // ══════════════════════════════════════════════════════════
   // GET: List claims (Filtered by role / company / hospital)

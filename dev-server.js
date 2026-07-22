@@ -129,27 +129,49 @@ app.all('/api/invoices/:id', runHandler('./api/invoices'));
 app.all('/api/invoices', runHandler('./api/invoices'));
 
 // Billing Payment Reconciliation
-app.all('/api/reconciliation', runHandler('./api/reconciliation'));
+app.all('/api/reconciliation', (req, res, next) => {
+  req.query = req.query || {};
+  req.query.action = 'reconciliation';
+  next();
+}, runHandler('./api/invoices'));
 
 // Claims Integration
 app.all('/api/claims', runHandler('./api/claims'));
 
 // Support Tickets Integration
-app.all('/api/tickets', runHandler('./api/tickets'));
+app.all('/api/tickets', (req, res, next) => {
+  req.query = req.query || {};
+  req.query.module = 'tickets';
+  next();
+}, runHandler('./api/claims'));
 
 // Pharmacy Operations
 app.all('/api/pharmacy/export-pdf', (req, res, next) => {
+  req.query = req.query || {};
+  req.query.module = 'pharmacy';
   req.query.action = 'export-pdf';
   next();
-}, runHandler('./api/pharmacy'));
-app.all('/api/pharmacy', runHandler('./api/pharmacy'));
+}, runHandler('./api/clinical'));
+
+app.all('/api/pharmacy', (req, res, next) => {
+  req.query = req.query || {};
+  req.query.module = 'pharmacy';
+  next();
+}, runHandler('./api/clinical'));
 
 // Lab Operations
 app.all('/api/lab/export-pdf', (req, res, next) => {
+  req.query = req.query || {};
+  req.query.module = 'lab';
   req.query.action = 'export-pdf';
   next();
-}, runHandler('./api/lab'));
-app.all('/api/lab', runHandler('./api/lab'));
+}, runHandler('./api/clinical'));
+
+app.all('/api/lab', (req, res, next) => {
+  req.query = req.query || {};
+  req.query.module = 'lab';
+  next();
+}, runHandler('./api/clinical'));
 
 // 3. Serve Frontend Static Assets
 app.use(express.static(__dirname));

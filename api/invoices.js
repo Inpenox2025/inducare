@@ -137,6 +137,83 @@ module.exports = async function handler(req, res) {
   const user = verifyToken(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
 
+  // ══════ ACTION: Reconciliation Overview ══════
+  if (action === "reconciliation") {
+    try {
+      const targetHospitalId = user.role === 'super_admin' ? (req.query.hospital_id ? parseInt(req.query.hospital_id) : null) : user.hospital_id;
+      let aggregates, cashCollected, onlineCollected, statusCounts, patientCount, appointmentCount, todayAppointments, doctorStats, recentInvoices;
+
+      if (targetHospitalId !== null) {
+        aggregates = await sql`
+          SELECT COALESCE(SUM(amount), 0) as total_invoiced, COALESCE(SUM(paid_amount), 0) as total_collected, COALESCE(SUM(due_amount), 0) as total_due
+          FROM invoices WHERE hospital_id = ${targetHospitalId}
+        `;
+        cashCollected = await sql`
+          SELECT COALESCE(SUM(paid_amount), 0) as total FROM invoices WHERE payment_mode = 'cash' AND hospital_id = ${targetHospitalId}
+        `;
+        onlineCollected = await sql`
+          SELECT COALESCE(SUM(paid_amount), 0) as total FROM invoices WHERE payment_mode = 'online' AND hospital_id = ${targetHospitalId}
+        `;
+        statusCounts = await sql`
+          SELECT status, COUNT(*) as count FROM invoices WHERE hospital_id = ${targetHospitalId} GROUP BY status
+        `;
+        patientCount = await sql`SELECT COUNT(*) as total FROM patients WHERE hospital_id = ${targetHospitalId}`;
+        appointmentCount = await sql`SELECT COUNT(*) as total FROM appointments WHERE hospital_id = ${targetHospitalId}`;
+        todayAppointments = await sql`
+          SELECT COUNT(*) as total FROM appointments WHERE appointment_date = CURRENT_DATE AND hospital_id = ${targetHospitalId}
+        `;
+        doctorStats = await sql`
+          SELECT doctor_name, COUNT(*) as visit_count, COALESCE(SUM(fee), 0) as total_revenue
+          FROM appointments WHERE hospital_id = ${targetHospitalId} GROUP BY doctor_name ORDER BY total_revenue DESC
+        `;
+        recentInvoices = await sql`
+          SELECT i.*, p.full_name as patient_name FROM invoices i JOIN patients p ON i.patient_id = p.id WHERE i.hospital_id = ${targetHospitalId} ORDER BY i.updated_at DESC LIMIT 5
+        `;
+      } else {
+        aggregates = await sql`
+          SELECT COALESCE(SUM(amount), 0) as total_invoiced, COALESCE(SUM(paid_amount), 0) as total_collected, COALESCE(SUM(due_amount), 0) as total_due FROM invoices
+        `;
+        cashCollected = await sql`SELECT COALESCE(SUM(paid_amount), 0) as total FROM invoices WHERE payment_mode = 'cash'`;
+        onlineCollected = await sql`SELECT COALESCE(SUM(paid_amount), 0) as total FROM invoices WHERE payment_mode = 'online'`;
+        statusCounts = await sql`SELECT status, COUNT(*) as count FROM invoices GROUP BY status`;
+        patientCount = await sql`SELECT COUNT(*) as total FROM patients`;
+        appointmentCount = await sql`SELECT COUNT(*) as total FROM appointments`;
+        todayAppointments = await sql`SELECT COUNT(*) as total FROM appointments WHERE appointment_date = CURRENT_DATE`;
+        doctorStats = await sql`
+          SELECT doctor_name, COUNT(*) as visit_count, COALESCE(SUM(fee), 0) as total_revenue FROM appointments GROUP BY doctor_name ORDER BY total_revenue DESC
+        `;
+        recentInvoices = await sql`
+          SELECT i.*, p.full_name as patient_name FROM invoices i JOIN patients p ON i.patient_id = p.id ORDER BY i.updated_at DESC LIMIT 5
+        `;
+      }
+
+      const summary = {
+        totalInvoiced: parseFloat(aggregates[0].total_invoiced),
+        totalCollected: parseFloat(aggregates[0].total_collected),
+        totalDue: parseFloat(aggregates[0].total_due),
+        cashCollected: parseFloat(cashCollected[0].total),
+        onlineCollected: parseFloat(onlineCollected[0].total),
+        patientsCount: parseInt(patientCount[0].total),
+        appointmentsCount: parseInt(appointmentCount[0].total),
+        todayAppointmentsCount: parseInt(todayAppointments[0].total),
+        statusBreakdown: statusCounts.reduce((acc, row) => {
+          acc[row.status] = parseInt(row.count);
+          return acc;
+        }, { paid: 0, unpaid: 0, partially_paid: 0 }),
+        doctorBreakdown: doctorStats.map(row => ({
+          doctorName: row.doctor_name,
+          visitCount: parseInt(row.visit_count),
+          totalRevenue: parseFloat(row.total_revenue)
+        })),
+        recentActivity: recentInvoices
+      };
+
+      return res.status(200).json({ success: true, summary });
+    } catch (error) {
+      return res.status(500).json({ error: 'Reconciliation aggregation failed', details: error.message });
+    }
+  }
+
   // ══════ ACTION: List receipts (GET) ══════
   if (action === "receipts") {
     const targetHospitalId =

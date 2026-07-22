@@ -16,12 +16,13 @@
     { "source": "/api/invoices/export-pdf", "destination": "/api/invoices?action=export-pdf" },
     { "source": "/api/invoices/export-receipt-pdf", "destination": "/api/invoices?action=export-receipt-pdf" },
     { "source": "/api/invoices/:id", "destination": "/api/invoices?id=:id" },
+    { "source": "/api/reconciliation", "destination": "/api/invoices?action=reconciliation" },
     { "source": "/api/super", "destination": "/api/super" },
-    { "source": "/api/tickets", "destination": "/api/tickets" },
-    { "source": "/api/pharmacy/export-pdf", "destination": "/api/pharmacy?action=export-pdf" },
-    { "source": "/api/pharmacy", "destination": "/api/pharmacy" },
-    { "source": "/api/lab/export-pdf", "destination": "/api/lab?action=export-pdf" },
-    { "source": "/api/lab", "destination": "/api/lab" }
+    { "source": "/api/tickets", "destination": "/api/claims?module=tickets" },
+    { "source": "/api/pharmacy/export-pdf", "destination": "/api/clinical?module=pharmacy&action=export-pdf" },
+    { "source": "/api/pharmacy", "destination": "/api/clinical?module=pharmacy" },
+    { "source": "/api/lab/export-pdf", "destination": "/api/clinical?module=lab&action=export-pdf" },
+    { "source": "/api/lab", "destination": "/api/clinical?module=lab" }
   ],
   "headers": [
     {
