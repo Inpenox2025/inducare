@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-asyncstorage/asyncstorage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const DEFAULT_API_BASE = 'https://icare.inspenox.in/api';
 
