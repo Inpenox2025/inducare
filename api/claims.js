@@ -79,11 +79,11 @@ module.exports = async function handler(req, res) {
         if (action === "create") {
           const { subject, description } = req.body;
           if (!subject) return res.status(400).json({ error: "Subject is required" });
-          if (!user.hospital_id) return res.status(400).json({ error: "Only hospital users can raise support tickets." });
+          const hospId = user.hospital_id ? parseInt(user.hospital_id) : 1;
 
           const ticketRows = await sql`
             INSERT INTO support_tickets (hospital_id, subject, description, created_by)
-            VALUES (${parseInt(user.hospital_id)}, ${subject}, ${description || ""}, ${parseInt(user.id)})
+            VALUES (${hospId}, ${subject}, ${description || ""}, ${parseInt(user.id)})
             RETURNING id
           `;
           const ticketId = ticketRows[0].id;

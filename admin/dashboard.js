@@ -2607,49 +2607,8 @@ function initEventListeners() {
   });
 
   // Support Tickets Bindings
-  const raiseForm = document.getElementById("raiseTicketForm");
-  if (raiseForm) {
-    raiseForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const subject = document.getElementById("ticketSubject").value.trim();
-      const description = document.getElementById("ticketDescription").value.trim();
-      
-      const submitBtn = raiseForm.querySelector('button[type="submit"]');
-      const originalText = submitBtn.innerHTML;
-      submitBtn.innerHTML = "Submitting...";
-      submitBtn.disabled = true;
-
-      try {
-        const res = await fetch(`${API_BASE}/tickets?action=create`, {
-          method: "POST",
-          headers: authHeaders(),
-          body: JSON.stringify({ subject, description })
-        });
-        const result = await res.json();
-        if (res.ok && result.success) {
-          showToast("Support ticket raised successfully!", "success");
-          raiseForm.reset();
-          closeModal("raiseTicketModal");
-          await loadSupportTickets();
-          if (result.ticket_id) {
-            await openTicketChat(result.ticket_id);
-          }
-        } else {
-          showToast(result.error || "Failed to raise ticket", "error");
-        }
-      } catch (err) {
-        showToast("Network error raising ticket", "error");
-      } finally {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-      }
-    });
-  }
-
-  const raiseTicketBtn = document.getElementById("raiseTicketBtn");
-  if (raiseTicketBtn) {
-    raiseTicketBtn.addEventListener("click", () => openModal("raiseTicketModal"));
-  }
+  on("raiseTicketForm", "submit", saveRaiseTicketForm);
+  on("raiseTicketBtn", "click", () => openModal("raiseTicketModal"));
 
   const resolveTicketBtn = document.getElementById("resolveTicketBtn");
   if (resolveTicketBtn) {
@@ -5674,6 +5633,53 @@ document.addEventListener("DOMContentLoaded", () => {
 // ══════════════════════════════════════════════════════════
 let activeSupportTicketId = null;
 
+async function saveRaiseTicketForm(e) {
+  if (e) e.preventDefault();
+  const raiseForm = document.getElementById("raiseTicketForm");
+  if (!raiseForm) return;
+
+  const subject = document.getElementById("ticketSubject").value.trim();
+  const description = document.getElementById("ticketDescription").value.trim();
+  if (!subject) {
+    showToast("Please enter a subject for the support ticket", "error");
+    return;
+  }
+
+  const submitBtn = raiseForm.querySelector('button[type="submit"]');
+  const originalText = submitBtn ? submitBtn.innerHTML : "Submit Ticket";
+  if (submitBtn) {
+    submitBtn.innerHTML = "⏳ Submitting...";
+    submitBtn.disabled = true;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/tickets?action=create`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ subject, description })
+    });
+    const result = await res.json();
+    if (res.ok && result.success) {
+      showToast("Support ticket raised successfully!", "success");
+      raiseForm.reset();
+      closeModal("raiseTicketModal");
+      await loadSupportTickets();
+      if (result.ticket_id) {
+        await openTicketChat(result.ticket_id);
+      }
+    } else {
+      showToast(result.error || "Failed to raise ticket", "error");
+    }
+  } catch (err) {
+    showToast("Network error raising support ticket", "error");
+  } finally {
+    if (submitBtn) {
+      submitBtn.innerHTML = originalText;
+      submitBtn.disabled = false;
+    }
+  }
+}
+
 async function loadSupportTickets() {
   const user = getUser();
   if (!user) return;
@@ -5683,7 +5689,7 @@ async function loadSupportTickets() {
 
   const raiseTicketBtn = document.getElementById("raiseTicketBtn");
   if (raiseTicketBtn) {
-    raiseTicketBtn.style.display = (user.role !== "super_admin" && user.role !== "insurer") ? "block" : "none";
+    raiseTicketBtn.style.display = "inline-flex";
   }
 
   const ticketChatCard = document.getElementById("ticketChatCard");
