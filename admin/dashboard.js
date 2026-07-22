@@ -7071,6 +7071,53 @@ function exportLabInvoicePDF(id) {
   window.open(`${API_BASE}/lab/export-pdf?id=${id}`, "_blank");
 }
 
+// ═════════════════════════════════════════════════════════════════════
+// GLOBAL WINDOW EXPORTS FOR PHARMACY, LAB & SUPPORT TICKETS
+// ═════════════════════════════════════════════════════════════════════
+window.loadPharmacyInventory = loadPharmacyInventory;
+window.openMedicineModal = openMedicineModal;
+window.saveMedicineForm = saveMedicineForm;
+window.deleteMedicine = deleteMedicine;
+window.startBarcodeScan = startBarcodeScan;
+window.stopBarcodeScan = stopBarcodeScan;
+window.loadPharmaBilling = loadPharmaBilling;
+window.loadPharmaInvoices = loadPharmaInvoices;
+window.loadPharmaReceipts = loadPharmaReceipts;
+window.openPharmaInvoiceModal = openPharmaInvoiceModal;
+window.addMedicineToCart = addMedicineToCart;
+window.removeCartItem = removeCartItem;
+window.updateCartQty = updateCartQty;
+window.openDynamicMedicineModal = openDynamicMedicineModal;
+window.saveDynamicMedicine = saveDynamicMedicine;
+window.savePharmaInvoice = savePharmaInvoice;
+window.openPharmaPaymentModal = openPharmaPaymentModal;
+window.savePharmaPayment = savePharmaPayment;
+window.exportPharmaInvoicePDF = exportPharmaInvoicePDF;
+
+window.loadLabInventory = loadLabInventory;
+window.loadLabTests = loadLabTests;
+window.openLabTestModal = openLabTestModal;
+window.saveLabTestForm = saveLabTestForm;
+window.deleteLabTest = deleteLabTest;
+window.loadLabBilling = loadLabBilling;
+window.loadLabInvoices = loadLabInvoices;
+window.loadLabReceipts = loadLabReceipts;
+window.openLabInvoiceModal = openLabInvoiceModal;
+window.toggleLabTestSelection = toggleLabTestSelection;
+window.saveLabInvoice = saveLabInvoice;
+window.openLabPaymentModal = openLabPaymentModal;
+window.saveLabPayment = saveLabPayment;
+window.openLabReportEntryModal = openLabReportEntryModal;
+window.saveLabReportEntry = saveLabReportEntry;
+window.exportLabInvoicePDF = exportLabInvoicePDF;
+
+window.loadSupportTickets = loadSupportTickets;
+window.openTicketChat = openTicketChat;
+window.sendChatMessage = sendChatMessage;
+window.resolveSupportTicket = resolveSupportTicket;
+window.deleteSupportTicket = deleteSupportTicket;
+window.saveRaiseTicketForm = saveRaiseTicketForm;
+
 
 
 

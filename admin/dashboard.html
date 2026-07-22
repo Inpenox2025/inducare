@@ -1086,8 +1086,8 @@
                     </div>
                     <div style="display:flex; gap:10px; align-items:center;">
                         <input type="text" class="form-control" id="pharmacySearchInput" placeholder="🔍 Search Name, Generic, Barcode..." style="width:240px; font-size:13px;">
-                        <button class="btn btn-outline" id="scanBarcodeBtn" type="button">📷 Scan Barcode</button>
-                        <button class="btn btn-primary" id="openMedicineModalBtn" type="button">+ Add Medicine</button>
+                        <button class="btn btn-outline" id="scanBarcodeBtn" type="button" onclick="startBarcodeScan('pharmacySearchInput')">📷 Scan Barcode</button>
+                        <button class="btn btn-primary" id="openMedicineModalBtn" type="button" onclick="openMedicineModal()">+ Add Medicine</button>
                     </div>
                 </div>
                 <div class="table-container minimal">
@@ -1129,7 +1129,7 @@
                             <button type="button" class="btn btn-sm" id="pharmaBillsToggleBtn" style="background:var(--primary, #0f172a); color:#fff; font-weight:600; border-radius:6px; padding:6px 14px;">🧾 Pharma Bills</button>
                             <button type="button" class="btn btn-sm" id="pharmaReceiptsToggleBtn" style="background:transparent; color:var(--text2, #475569); font-weight:600; border-radius:6px; padding:6px 14px;">📄 Payment Receipts</button>
                         </div>
-                        <button class="btn btn-primary" id="openPharmaInvoiceModalBtn" type="button">+ Create Pharmacy Bill</button>
+                        <button class="btn btn-primary" id="openPharmaInvoiceModalBtn" type="button" onclick="openPharmaInvoiceModal()">+ Create Pharmacy Bill</button>
                     </div>
                 </div>
 
@@ -1196,7 +1196,7 @@
                     </div>
                     <div style="display:flex; gap:10px; align-items:center;">
                         <input type="text" class="form-control" id="labTestSearchInput" placeholder="🔍 Search Test Name, Code..." style="width:240px; font-size:13px;">
-                        <button class="btn btn-primary" id="openLabTestModalBtn" type="button">+ Add Lab Test</button>
+                        <button class="btn btn-primary" id="openLabTestModalBtn" type="button" onclick="openLabTestModal()">+ Add Lab Test</button>
                     </div>
                 </div>
                 <div class="table-container minimal">
@@ -1235,7 +1235,7 @@
                             <button type="button" class="btn btn-sm" id="labBillsToggleBtn" style="background:var(--primary, #0f172a); color:#fff; font-weight:600; border-radius:6px; padding:6px 14px;">🔬 Lab Orders & Bills</button>
                             <button type="button" class="btn btn-sm" id="labReceiptsToggleBtn" style="background:transparent; color:var(--text2, #475569); font-weight:600; border-radius:6px; padding:6px 14px;">📄 Payment Receipts</button>
                         </div>
-                        <button class="btn btn-primary" id="openLabInvoiceModalBtn" type="button">+ Create Lab Order / Bill</button>
+                        <button class="btn btn-primary" id="openLabInvoiceModalBtn" type="button" onclick="openLabInvoiceModal()">+ Create Lab Order / Bill</button>
                     </div>
                 </div>
 
