@@ -298,11 +298,28 @@ function initTabNavigation() {
       switchTab(tabName);
     });
   });
+
+  window.addEventListener("hashchange", () => {
+    const tabFromHash = window.location.hash.replace("#", "");
+    if (tabFromHash && tabFromHash !== activeTab) {
+      switchTab(tabFromHash);
+    }
+  });
 }
 
 function switchTab(tabName) {
   const user = getUser();
   if (!user) return;
+
+  activeTab = tabName;
+  try {
+    localStorage.setItem("activeTab", tabName);
+    if (window.location.hash !== `#${tabName}`) {
+      history.replaceState(null, "", `#${tabName}`);
+    }
+  } catch (err) {
+    // Ignore storage quota warnings
+  }
 
   // Enforce dynamic sidebar visible navigation checks
   if (user.role !== "super_admin") {
@@ -3385,12 +3402,14 @@ async function loadDynamicNavigation() {
         if (el) el.style.display = "none";
       });
 
+      const savedTab = (window.location.hash ? window.location.hash.replace("#", "") : localStorage.getItem("activeTab")) || "";
+
       if (user.role === "insurer") {
         const hHosp = document.getElementById("navInsurerHospitals");
         if (hHosp) hHosp.style.display = "";
         const hClaims = document.getElementById("navInsurerClaims");
         if (hClaims) hClaims.style.display = "";
-        switchTab("insurer-claims");
+        switchTab(savedTab && (savedTab === "insurer-hospitals" || savedTab === "insurer-claims") ? savedTab : "insurer-claims");
         return;
       }
 
@@ -3420,14 +3439,19 @@ async function loadDynamicNavigation() {
           superTickets.innerHTML = '<span class="nav-icon">🛠️</span> Support Tickets';
           superTickets.setAttribute("data-tab", "support-tickets");
         }
-        switchTab("super-panel");
+
+        const validSuperTabs = ["overview", "super-panel", "claims", "support-tickets", "patients", "discharged-patients", "appointments", "invoices", "receipts-panel", "doctors", "rooms", "staff", "hospital-setup", "pharmacy-inventory", "pharma-billing", "lab-inventory", "lab-billing"];
+        const targetTab = (savedTab && validSuperTabs.includes(savedTab)) ? savedTab : "super-panel";
+        switchTab(targetTab);
         return;
       }
 
       let firstTab = "";
+      const allowedTabKeys = [];
       data.menus.forEach((menu) => {
         const mapped = allNavLinks.find((item) => item.key === menu.menu_key);
         if (mapped) {
+          allowedTabKeys.push(menu.menu_key);
           const el = document.getElementById(mapped.id);
           if (el) {
             el.style.display = "";
@@ -3438,9 +3462,8 @@ async function loadDynamicNavigation() {
         }
       });
 
-      if (firstTab) {
-        switchTab(firstTab);
-      }
+      const targetTab = (savedTab && allowedTabKeys.includes(savedTab)) ? savedTab : (firstTab || "overview");
+      switchTab(targetTab);
     }
   } catch (err) {
     console.error("Failed to load dynamic nav menus:", err);
