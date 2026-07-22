@@ -2645,6 +2645,8 @@ function closeModal(id) {
 // Expose modal helpers globally so inline onclick="openModal(...)" in HTML always works
 window.openModal = openModal;
 window.closeModal = closeModal;
+window.showModal = openModal;
+window.hideModal = closeModal;
 
 // Pagination Drawing Utility
 function renderPagination(
@@ -6068,7 +6070,7 @@ async function openMedicineModal(id = null) {
     modalTitle.textContent = "💊 Add Medicine to Inventory";
   }
 
-  showModal("medicineModal");
+  openModal("medicineModal");
 }
 
 async function saveMedicineForm(e) {
@@ -6101,7 +6103,7 @@ async function saveMedicineForm(e) {
     const data = await res.json();
     if (res.ok && data.success) {
       showToast(id ? "Medicine updated successfully!" : "New medicine added to inventory!", "success");
-      hideModal("medicineModal");
+      closeModal("medicineModal");
       loadPharmacyInventory();
     } else {
       showToast(data.error || "Failed to save medicine", "error");
@@ -6135,7 +6137,7 @@ function startBarcodeScan(targetInputId) {
   activeBarcodeTargetInputId = targetInputId;
   const statusMsg = document.getElementById("scannerStatusMsg");
   statusMsg.textContent = "Initializing camera scanner...";
-  showModal("barcodeScannerModal");
+  openModal("barcodeScannerModal");
 
   if (typeof Html5Qrcode === "undefined") {
     statusMsg.textContent = "Camera scanner library loading... If camera is unavailable, use USB scanner or manual entry.";
@@ -6192,7 +6194,7 @@ function stopBarcodeScan() {
       html5QrcodeInstance = null;
     });
   }
-  hideModal("barcodeScannerModal");
+  closeModal("barcodeScannerModal");
 }
 
 // ──────── 3. PHARMACY BILLING & PAYMENT RECEIPTS ────────
@@ -6304,7 +6306,7 @@ async function openPharmaInvoiceModal() {
   patSelect.innerHTML = '<option value="">Loading patients...</option>';
   docSelect.innerHTML = '<option value="">Loading doctors...</option>';
 
-  showModal("pharmaInvoiceModal");
+  openModal("pharmaInvoiceModal");
 
   // Fetch patients & doctors
   try {
@@ -6449,7 +6451,7 @@ function openDynamicMedicineModal() {
   if (searchInputVal) {
     document.getElementById("dyn_med_name").value = searchInputVal;
   }
-  showModal("dynamicMedicineModal");
+  openModal("dynamicMedicineModal");
 }
 
 async function saveDynamicMedicine(e) {
@@ -6471,7 +6473,7 @@ async function saveDynamicMedicine(e) {
     const data = await res.json();
     if (res.ok && data.success && data.medicine) {
       showToast(`Medicine "${name}" added dynamically!`, "success");
-      hideModal("dynamicMedicineModal");
+      closeModal("dynamicMedicineModal");
       addMedicineToCart(data.medicine.id, data.medicine.name, data.medicine.unit_price);
     } else {
       showToast(data.error || "Failed to add dynamic medicine", "error");
@@ -6514,7 +6516,7 @@ async function savePharmaInvoice(e) {
     const data = await res.json();
     if (res.ok && data.success) {
       showToast("Pharmacy bill generated successfully!", "success");
-      hideModal("pharmaInvoiceModal");
+      closeModal("pharmaInvoiceModal");
       loadPharmaInvoices();
     } else {
       showToast(data.error || "Failed to generate pharmacy bill", "error");
@@ -6530,7 +6532,7 @@ function openPharmaPaymentModal(invoiceId, invoiceNo, patientName, dueAmt) {
   document.getElementById("pay_pharma_patient_name").textContent = patientName;
   document.getElementById("pay_pharma_due_display").textContent = `₹ ${dueAmt.toFixed(2)}`;
   document.getElementById("pay_pharma_amount").value = dueAmt.toFixed(2);
-  showModal("pharmaPaymentModal");
+  openModal("pharmaPaymentModal");
 }
 
 async function savePharmaPayment(e) {
@@ -6552,7 +6554,7 @@ async function savePharmaPayment(e) {
     const data = await res.json();
     if (res.ok && data.success) {
       showToast("Payment receipt recorded successfully!", "success");
-      hideModal("pharmaPaymentModal");
+      closeModal("pharmaPaymentModal");
       loadPharmaInvoices();
     } else {
       showToast(data.error || "Failed to record payment", "error");
@@ -6640,7 +6642,7 @@ async function openLabTestModal(id = null) {
     modalTitle.textContent = "🧪 Add Lab Test to Catalog";
   }
 
-  showModal("labTestModal");
+  openModal("labTestModal");
 }
 
 async function saveLabTestForm(e) {
@@ -6669,7 +6671,7 @@ async function saveLabTestForm(e) {
     const data = await res.json();
     if (res.ok && data.success) {
       showToast(id ? "Lab test updated successfully!" : "New lab test added to catalog!", "success");
-      hideModal("labTestModal");
+      closeModal("labTestModal");
       loadLabInventory();
     } else {
       showToast(data.error || "Failed to save lab test", "error");
@@ -6808,7 +6810,7 @@ async function openLabInvoiceModal() {
   docSelect.innerHTML = '<option value="">Loading doctors...</option>';
   checkboxesDiv.innerHTML = '<span style="font-size:12px; color:var(--text3);">Loading lab tests catalog...</span>';
 
-  showModal("labInvoiceModal");
+  openModal("labInvoiceModal");
 
   try {
     const [patRes, docRes, testRes] = await Promise.all([
@@ -6909,7 +6911,7 @@ async function saveLabInvoice(e) {
     const data = await res.json();
     if (res.ok && data.success) {
       showToast("Lab order generated successfully!", "success");
-      hideModal("labInvoiceModal");
+      closeModal("labInvoiceModal");
       loadLabInvoices();
     } else {
       showToast(data.error || "Failed to create lab order", "error");
@@ -6925,7 +6927,7 @@ function openLabPaymentModal(invoiceId, invoiceNo, patientName, dueAmt) {
   document.getElementById("pay_lab_patient_name").textContent = patientName;
   document.getElementById("pay_lab_due_display").textContent = `₹ ${dueAmt.toFixed(2)}`;
   document.getElementById("pay_lab_amount").value = dueAmt.toFixed(2);
-  showModal("labPaymentModal");
+  openModal("labPaymentModal");
 }
 
 async function saveLabPayment(e) {
@@ -6947,7 +6949,7 @@ async function saveLabPayment(e) {
     const data = await res.json();
     if (res.ok && data.success) {
       showToast("Lab payment receipt recorded successfully!", "success");
-      hideModal("labPaymentModal");
+      closeModal("labPaymentModal");
       loadLabInvoices();
     } else {
       showToast(data.error || "Failed to record payment", "error");
@@ -6964,7 +6966,7 @@ async function openLabReportEntryModal(invoiceId, invoiceNo, patientName, doctor
 
   const container = document.getElementById("labReportItemsContainer");
   container.innerHTML = '<div style="text-align:center; padding:20px;">Loading lab test report entries...</div>';
-  showModal("labReportEntryModal");
+  openModal("labReportEntryModal");
 
   try {
     const res = await fetch(`${API_BASE}/lab?action=reports&invoice_id=${invoiceId}`, { headers: authHeaders() });
